@@ -1,0 +1,133 @@
+# Zephyr CRM Architecture
+
+**Status:** Frozen implementation authority (Phase 0)
+**Version:** 1.0.0
+**Deployment model:** One isolated stack per client
+
+## Product boundary
+
+Zephyr CRM is a focused sales-workflow system for small businesses. Its bounded workflow is:
+
+```text
+Lead → Qualification → Quote → Follow-up → Won/Lost → Client
+```
+
+It receives enquiries, helps staff qualify them, creates and sends quotes, tracks follow-up work, records communication history, and closes opportunities as won or lost. A website enquiry remains a `Lead` until a deliberate commercial conversion creates or links a `Client`.
+
+Zephyr CRM is not a generic CRM, marketing suite, accounting system, ERP, helpdesk, project-management system, customer portal, or multi-tenant SaaS platform.
+
+## Deployment topology
+
+Each client owns or is assigned one complete isolated stack:
+
+```text
+one client
+  ├── one Cloudflare Pages deployment
+  ├── one Supabase project
+  │     ├── PostgreSQL
+  │     ├── Auth
+  │     ├── private Storage
+  │     ├── Edge Functions
+  │     └── Cron schedules
+  └── one SendPulse configuration
+```
+
+The client owns the Cloudflare account/project, Supabase project, domains and DNS, SendPulse account, sender-domain authentication, credentials, billing, backups, and offboarding decision. The application repository contains reusable product code and typed client configuration; it does not contain client secrets.
+
+## Runtime topology
+
+The SvelteKit application is static-first and is built by Vite for Cloudflare Pages using the Cloudflare adapter. The browser uses the Supabase publishable key for ordinary RLS-secured reads and writes. Trusted operations run in Supabase Edge Functions or hardened PostgreSQL functions.
+
+```text
+WordPress/Bricks form
+        │ authenticated HTTPS request
+        ▼
+ingest-bricks-lead Edge Function
+        │ validate → normalize → idempotently persist
+        ▼
+Supabase PostgreSQL + Activity
+        ▲
+        │ RLS-secured browser access
+SvelteKit CRM on Cloudflare Pages
+        │ trusted action request
+        ▼
+Edge Functions / PostgreSQL domain actions
+        │ provider adapter
+        ▼
+SendPulse transactional API
+```
+
+PostgreSQL is the durable business source of truth. Browser state, Realtime messages, provider responses, and generated documents are not authoritative replacements for persisted database state.
+
+## Bounded domains
+
+The product has exactly these domains:
+
+1. Identity & Access
+2. Lead Management
+3. Client Management
+4. Quoting
+5. Tasks & Follow-up
+6. Communications
+7. Activity & Audit
+8. Integrations
+9. Reporting & Analytics
+10. Configuration
+
+Each domain and its canonical resources are defined in `docs/DOMAIN_MODEL.md`. Lifecycle states are defined only in `docs/STATE_MACHINES.md`.
+
+## Access and mutation architecture
+
+All exposed business tables have Row Level Security enabled. Anonymous access is denied. Authenticated access is granted by role and active-user status. Simple editable fields use RLS-secured Data API operations. Business actions that span resources, allocate numbers, use secrets, or establish authoritative state transitions use trusted Edge Functions or hardened PostgreSQL functions.
+
+Trusted domain actions are:
+
+```text
+convert_lead
+mark_lead_lost
+reopen_lead
+finalise_quote
+send_quote
+revise_quote
+accept_quote
+process_reminders
+process_quote_expiry
+```
+
+The browser may request these actions but never supplies the resulting authority. The server/database validates role, current state, lock version, required relationships, idempotency key, and all authoritative totals.
+
+## Integration boundaries
+
+Integrations are adapters around domain operations:
+
+- Bricks: authenticated lead-intake boundary only.
+- SendPulse: transactional email adapter and event boundary only.
+- Supabase Auth: invitation-only staff identity.
+- Supabase Storage: private quote-document artifacts.
+- Supabase Cron: scheduler that invokes trusted processors.
+
+Provider-specific request and response details stay within adapter modules. Core domain code consumes stable outcomes such as `submitted`, `delivered`, `bounced`, or `failed`; it does not call provider APIs directly.
+
+## Data and document authority
+
+PostgreSQL stores business records, relationships, lifecycle state, activity evidence, idempotency records, provider references, configuration, and document metadata. Private Storage stores generated quote artifacts; the database stores their path, provenance, and cryptographic hash. Sent quote commercial content and snapshots are immutable. SendPulse is authoritative only for provider event observations, not for CRM state transitions.
+
+## Operational invariants
+
+- Pipeline position, attention responsibility, and next task remain separate concepts.
+- A `Lead` precedes a `Client`; conversion is explicit and transactional.
+- Sent `Quote` records are immutable; revisions are new drafts linked to the prior quote.
+- Money uses exact decimal/numeric arithmetic and server-authoritative totals.
+- External events and retries are idempotent.
+- Concurrent writes use optimistic locking and reject stale updates.
+- All timestamps are stored in UTC; user-facing interpretation uses configured IANA time zones.
+- Activity is append-only evidence for material business actions.
+- Private documents are never publicly accessible.
+
+## Deferred scope
+
+The current product deliberately excludes marketing campaigns, mass mailing, inbound mailbox, WhatsApp, SMS, telephone integration, accounting, payments, invoices, subscriptions, project management, AI agents, workflow builders, arbitrary custom fields, public customer portals, electronic signatures, advanced document generation, and multi-company SaaS tenancy. These are future product decisions, not hidden current requirements.
+
+## Authority rule
+
+This document describes structure and boundaries. Resource definitions belong in `docs/DOMAIN_MODEL.md`, states and transitions belong in `docs/STATE_MACHINES.md`, security rules belong in `docs/SECURITY_MODEL.md`, and phase sequence belongs in `docs/ROADMAP.md`. If implementation code appears to conflict with these documents, the frozen authority documents take precedence until a formally authorized change is recorded.
