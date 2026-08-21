@@ -1,0 +1,34 @@
+name: quality
+
+on:
+  push:
+    tags-ignore:
+      - '**'
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  quality:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: '1.2.22'
+      - run: bun install --frozen-lockfile
+      - run: bun run format:check
+      - run: bun run lint
+      - run: bun run check
+      - run: bun run test:unit -- --run
+      - run: bun run test:e2e:install
+      - run: bun run test:e2e
+      - run: bun run build
+      - run: bun run security:bundle
+      - run: bun run db:start
+      - run: bun run db:reset
+      - run: bun run db:test
+      - if: always()
+        run: bun run db:stop
+      - run: git diff --check

@@ -1,0 +1,18 @@
+# Package Managers
+package-lock.json
+pnpm-lock.yaml
+yarn.lock
+bun.lock
+bun.lockb
+
+# Miscellaneous
+/static/
+
+# Frozen authority documents retain their canonical formatting and hashes
+AGENTS.md
+CRM_IMPLEMENTATION_ROADMAP_v1.1.0.md
+POST_BUILD_PILOT_PROGRAMME.md
+Small Business CRM — Complete Architecture, Domain & Implementation Blueprint v1.0.0.md
+Phases/
+docs/
+.agent/

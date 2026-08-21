@@ -1,0 +1,73 @@
+# Zephyr CRM
+
+Zephyr CRM is a SvelteKit 2 + Svelte 5 application built by Vite for Cloudflare Pages. Phase 1 contains only the reproducible technical skeleton and quality gates; CRM business domains are added in later roadmap phases.
+
+## Requirements
+
+- Bun 1.2 or newer
+- Docker Desktop or a compatible Docker Engine for Supabase local development
+- Git
+
+Bun is the only JavaScript package manager and `bun.lock` is the only JavaScript lockfile.
+
+## Install and run
+
+```sh
+bun install --frozen-lockfile
+cp .env.example .env
+bun run dev
+```
+
+The browser-safe environment contract is documented in `.env.example`. Trusted runtime variables belong in `.dev.vars` for Wrangler or the local Supabase/Edge Function secret store; use `.dev.vars.example` as the names-only template. Never commit either file containing secrets.
+
+## Local Supabase lifecycle
+
+```sh
+bun run db:start
+bun run db:reset
+bun run db:test
+bun run db:stop
+```
+
+The Supabase CLI is executed through `bunx`, so a separate global installation is not required. Phase 1 intentionally has no business migrations; `supabase/seed.sql` is a deterministic no-op seed. Later phases add canonical migrations.
+
+## Quality commands
+
+```sh
+bun run format:check
+bun run lint
+bun run check
+bun run test:unit -- --run
+bun run test:e2e:install       # once per machine
+bun run test:e2e
+bun run build
+bun run security:bundle
+bun run db:test                # with local Supabase running
+bun run diff:check
+```
+
+The complete local gate is `bun run quality` after Supabase is running and the Playwright Chromium browser is installed. `bun run build` generates/checks Cloudflare Worker types and writes the Cloudflare Pages output to `.svelte-kit/cloudflare`.
+
+## Project boundaries
+
+Source is organized for the frozen architecture:
+
+```text
+src/lib/components/{ui,leads,clients,quotes,tasks,dashboard}
+src/lib/domain/{leads,clients,quotes,tasks,communications}
+src/lib/services/supabase
+src/lib/types
+src/lib/utils
+supabase/{migrations,functions}
+```
+
+No service-role key, SendPulse credential, Bricks secret, database password, or client data belongs in browser source control or public variables.
+
+## Cloudflare Pages smoke preview
+
+```sh
+bun run build
+bun run preview
+```
+
+The preview uses Wrangler Pages locally and does not publish or mutate remote infrastructure.

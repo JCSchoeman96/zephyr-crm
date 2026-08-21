@@ -1,0 +1,5 @@
+# Wrangler local trusted-variable names only. Keep real values in an ignored .dev.vars file.
+SUPABASE_SERVICE_ROLE_KEY=
+SENDPULSE_CLIENT_ID=
+SENDPULSE_CLIENT_SECRET=
+BRICKS_WEBHOOK_SECRET=
