@@ -1,6 +1,6 @@
 # Zephyr CRM
 
-Zephyr CRM is a SvelteKit 2 + Svelte 5 application built by Vite for Cloudflare Pages. The current foundation includes the tokenized design system, responsive application shell, invitation-only Supabase Auth, PostgreSQL schema, and role-aware RLS. CRM business workflows are added in later roadmap phases.
+Zephyr CRM is a SvelteKit 2 + Svelte 5 application built by Vite for Cloudflare Pages. The current foundation includes the tokenized design system, responsive application shell, invitation-only Supabase Auth, PostgreSQL schema, role-aware RLS, and a complete local Lead → Quote → SendPulse → Task → Client tracer bullet.
 
 ## Requirements
 
@@ -28,6 +28,8 @@ bun run db:reset
 bun run db:test
 bun run db:security
 bun run auth:integration
+bun run test:p4:domain
+bun run test:p4:tracer
 bun run db:stop
 ```
 
@@ -49,12 +51,14 @@ bun run db:test                # with local Supabase running
 bun run db:security             # role/RLS/constraint regression
 bun run auth:integration        # server action and cookie integration
 bun run db:types                # inspect generated public schema types
+bun run test:p4:domain          # trusted domain action contract
+bun run test:p4:tracer          # full local CRM tracer bullet
 bun run diff:check
 ```
 
 The complete local gate is `bun run quality` after Supabase is running and the Playwright Chromium browser is installed. `bun run build` generates/checks Cloudflare Worker types and writes the Cloudflare Pages output to `.svelte-kit/cloudflare`.
 
-The design-system component lab is available at `/system`. The invitation-only login is available at `/login` when the three browser-safe Supabase variables are configured. Its implementation contract is documented in `docs/DESIGN_SYSTEM.md`; it intentionally contains no CRM business API calls or feature screens.
+The design-system component lab is available at `/system`. The invitation-only login is available at `/login` when the three browser-safe Supabase variables are configured. Authenticated staff can review the tracer-bullet Lead workflow at `/leads`. Its implementation contract is documented in `docs/DESIGN_SYSTEM.md`; it intentionally contains no CRM business API calls or feature screens.
 
 ## Project boundaries
 

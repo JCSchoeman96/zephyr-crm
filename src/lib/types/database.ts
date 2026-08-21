@@ -884,7 +884,51 @@ export type Database = {
 			[_ in never]: never;
 		};
 		Functions: {
-			[_ in never]: never;
+			complete_quote_send: {
+				Args: { p_outbound_message_id: string; p_provider_message_id: string };
+				Returns: Json;
+			};
+			convert_lead: {
+				Args: { p_lead_id: string; p_lock_version: number };
+				Returns: Json;
+			};
+			create_minimal_quote: {
+				Args: {
+					p_item_name: string;
+					p_lead_id: string;
+					p_quantity: number;
+					p_subject: string;
+					p_tax_rate?: number;
+					p_unit_price: number;
+				};
+				Returns: Json;
+			};
+			ingest_bricks_lead: {
+				Args: {
+					p_external_submission_id: string;
+					p_form_id: string;
+					p_payload: Json;
+				};
+				Returns: Json;
+			};
+			prepare_quote_send: {
+				Args: { p_lock_version: number; p_quote_id: string };
+				Returns: Json;
+			};
+			provision_invited_profile: {
+				Args: { p_role?: string; p_status?: string; p_user_id: string };
+				Returns: Json;
+			};
+			transition_lead: {
+				Args: {
+					p_lead_id: string;
+					p_lock_version: number;
+					p_lost_notes?: string;
+					p_lost_reason_id?: string;
+					p_to_stage: string;
+				};
+				Returns: Json;
+			};
 		};
 		Enums: {
 			[_ in never]: never;

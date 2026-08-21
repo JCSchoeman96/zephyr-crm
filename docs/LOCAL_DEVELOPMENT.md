@@ -24,6 +24,8 @@ bun run db:reset
 bun run db:test
 bun run db:security
 bun run auth:integration
+bun run test:p4:domain
+bun run test:p4:tracer
 bun run db:stop
 ```
 
@@ -31,9 +33,11 @@ Playwright Chromium is installed once with `bun run test:e2e:install`; browser t
 
 `bun run db:security` exercises the local anonymous, viewer, sales, admin, owner, and suspended-user RLS boundaries, durable constraints, and optimistic locking. `bun run auth:integration` creates a disposable local Auth user, verifies the invitation-only server login action returns a session cookie, and removes that user afterward. Both commands require the isolated local Supabase stack to be running.
 
+`bun run test:p4:domain` proves the transactional Lead/Quote/Task/Client actions through the local Supabase API. `bun run test:p4:tracer` starts a disposable SvelteKit server and deterministic local provider, then proves the authenticated Bricks webhook, retry idempotency, Lead UI, SendPulse adapter contract, follow-up task, Won conversion, and Lost path. It uses only disposable local users and rows and cleans them up afterward.
+
 ## Environment boundary
 
-Only `PUBLIC_SUPABASE_URL`, `PUBLIC_SUPABASE_PUBLISHABLE_KEY`, and `PUBLIC_SITE_URL` are browser-safe. `SUPABASE_SERVICE_ROLE_KEY`, `SENDPULSE_CLIENT_ID`, `SENDPULSE_CLIENT_SECRET`, and `BRICKS_WEBHOOK_SECRET` are trusted-only variables. Real values are supplied through ignored local files or the hosting/Edge Function secret store and are never committed.
+Only `PUBLIC_SUPABASE_URL`, `PUBLIC_SUPABASE_PUBLISHABLE_KEY`, and `PUBLIC_SITE_URL` are browser-safe. `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `SENDPULSE_CLIENT_ID`, `SENDPULSE_CLIENT_SECRET`, `SENDPULSE_API_BASE_URL`, `SENDPULSE_SENDER_EMAIL`, `SENDPULSE_SENDER_NAME`, `BRICKS_FORM_ID`, and `BRICKS_WEBHOOK_SECRET` are trusted-only runtime variables. Real values are supplied through ignored local files or the hosting/Edge Function secret store and are never committed.
 
 ## Local reset contract
 

@@ -3,9 +3,14 @@ import { join } from 'node:path';
 
 const outputRoots = ['.svelte-kit/output/client', '.svelte-kit/cloudflare', 'build'];
 const forbiddenNames = [
+	'SUPABASE_URL',
 	'SUPABASE_SERVICE_ROLE_KEY',
 	'SENDPULSE_CLIENT_ID',
 	'SENDPULSE_CLIENT_SECRET',
+	'SENDPULSE_API_BASE_URL',
+	'SENDPULSE_SENDER_EMAIL',
+	'SENDPULSE_SENDER_NAME',
+	'BRICKS_FORM_ID',
 	'BRICKS_WEBHOOK_SECRET'
 ];
 

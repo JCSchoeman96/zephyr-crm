@@ -258,6 +258,7 @@ otp_expiry = 3600
 # Allow/disallow new user signups via SMS to your project.
 enable_signup = false
 # If enabled, users need to confirm their phone number before signing in.
+
 enable_confirmations = false
 # Template for sending OTP to users
 template = "Your code is {{ .Code }}"
@@ -370,6 +371,10 @@ enabled = false
 authorization_url_path = "/oauth/consent"
 # Allow dynamic client registration
 allow_dynamic_registration = false
+
+[functions.ingest-bricks-lead]
+# Bricks uses the project-owned Authorization secret boundary instead of a staff JWT.
+verify_jwt = false
 
 [edge_runtime]
 enabled = true

@@ -1,5 +1,6 @@
 insert into public.lead_sources (code, label, sort_order)
 values
+	('bricks', 'Bricks website form', 5),
 	('website', 'Website', 10),
 	('manual', 'Manual', 20),
 	('telephone', 'Telephone', 30),

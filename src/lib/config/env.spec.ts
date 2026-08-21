@@ -27,9 +27,14 @@ describe('environment contract', () => {
 
 	it('keeps trusted variables out of the browser contract', () => {
 		expect(trustedEnvironmentKeys).toEqual([
+			'SUPABASE_URL',
 			'SUPABASE_SERVICE_ROLE_KEY',
 			'SENDPULSE_CLIENT_ID',
 			'SENDPULSE_CLIENT_SECRET',
+			'SENDPULSE_API_BASE_URL',
+			'SENDPULSE_SENDER_EMAIL',
+			'SENDPULSE_SENDER_NAME',
+			'BRICKS_FORM_ID',
 			'BRICKS_WEBHOOK_SECRET'
 		]);
 	});
