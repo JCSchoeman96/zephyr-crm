@@ -22,10 +22,14 @@ Supabase local lifecycle is:
 bun run db:start
 bun run db:reset
 bun run db:test
+bun run db:security
+bun run auth:integration
 bun run db:stop
 ```
 
 Playwright Chromium is installed once with `bun run test:e2e:install`; browser tests run with `bun run test:e2e`.
+
+`bun run db:security` exercises the local anonymous, viewer, sales, admin, owner, and suspended-user RLS boundaries, durable constraints, and optimistic locking. `bun run auth:integration` creates a disposable local Auth user, verifies the invitation-only server login action returns a session cookie, and removes that user afterward. Both commands require the isolated local Supabase stack to be running.
 
 ## Environment boundary
 
@@ -33,7 +37,7 @@ Only `PUBLIC_SUPABASE_URL`, `PUBLIC_SUPABASE_PUBLISHABLE_KEY`, and `PUBLIC_SITE_
 
 ## Local reset contract
 
-Phase 1 includes no CRM migrations. `supabase/seed.sql` executes a no-op query so `db:reset` is deterministic without inventing future business tables. Domain migrations are added only by their authorized roadmap phase.
+Phase 3 owns the first canonical business migration. `bun run db:reset` recreates the isolated local database from zero, applies the identity/RLS schema, and loads deterministic lead sources, lost reasons, and non-secret app settings from `supabase/seed.sql`. No production or shared Supabase project is addressed by these commands.
 
 ## CI parity
 

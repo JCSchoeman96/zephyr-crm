@@ -8,8 +8,18 @@
 	let {
 		brandMode = $bindable('default'),
 		children,
-		context = 'Workspace'
-	}: { brandMode?: 'default' | 'alternate'; children?: Snippet; context?: string } = $props();
+		context = 'Workspace',
+		userEmail = null,
+		onSignOut,
+		signOutAction = null
+	}: {
+		brandMode?: 'default' | 'alternate';
+		children?: Snippet;
+		context?: string;
+		userEmail?: string | null;
+		onSignOut?: () => void;
+		signOutAction?: string | null;
+	} = $props();
 
 	let navigationOpen = $state(false);
 
@@ -31,7 +41,13 @@
 		onclick={closeNavigation}
 	></div>
 	<div class="app-shell__body">
-		<Topbar {context} onToggleNavigation={toggleNavigation} />
+		<Topbar
+			{context}
+			{userEmail}
+			{onSignOut}
+			{signOutAction}
+			onToggleNavigation={toggleNavigation}
+		/>
 		<main class="app-shell__content">
 			{@render children?.()}
 		</main>

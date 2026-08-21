@@ -35,6 +35,13 @@ The Phase 2 runtime UI dependency is also pinned exactly:
 |---|---:|
 | `lucide-svelte` | `1.0.1` |
 
+The Phase 3 Auth and database client dependencies are pinned exactly:
+
+| Package | Version |
+|---|---:|
+| `@supabase/ssr` | `0.12.4` |
+| `@supabase/supabase-js` | `2.112.3` |
+
 The project uses Vite as the SvelteKit build pipeline, `@tailwindcss/vite` for Tailwind CSS 4, Cloudflare Pages output through `@sveltejs/adapter-cloudflare`, Lucide for ordinary icons, and Bun as package manager/runner. No second package manager, alternate bundler, UI system, state framework, form framework, or provider SDK is introduced.
 
-Run `bun install --frozen-lockfile` to reproduce the dependency graph. Run `bun run authority:verify` before phase work to detect frozen authority drift.
+Run `bun install --frozen-lockfile` to reproduce the dependency graph. Run `bun run authority:verify` before phase work to detect frozen authority drift. `db:types` generates the public Supabase schema types used by the server boundary; it does not introduce a second ORM or database client.

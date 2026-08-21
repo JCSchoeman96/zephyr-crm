@@ -1,8 +1,10 @@
 <script lang="ts">
 	import { resolve } from '$app/paths';
+	import type { PageData } from './$types';
 	import AppShell from '$lib/components/shell/AppShell.svelte';
 	import PageHeader from '$lib/components/ui/PageHeader.svelte';
 
+	let { data }: { data: PageData } = $props();
 	let brandMode = $state<'default' | 'alternate'>('default');
 </script>
 
@@ -11,7 +13,11 @@
 	<meta name="description" content="Zephyr CRM application shell" />
 </svelte:head>
 
-<AppShell bind:brandMode>
+<AppShell
+	bind:brandMode
+	userEmail={data.auth.user?.email}
+	signOutAction={data.auth.user ? '?/logout' : null}
+>
 	<PageHeader
 		title="Zephyr CRM"
 		description="A focused sales workflow workspace. Feature modules will be introduced after the identity foundation."

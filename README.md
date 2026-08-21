@@ -1,6 +1,6 @@
 # Zephyr CRM
 
-Zephyr CRM is a SvelteKit 2 + Svelte 5 application built by Vite for Cloudflare Pages. Phase 2 adds the tokenized design system, accessible UI primitives, responsive application shell, and a lightweight component lab; CRM business domains are added in later roadmap phases.
+Zephyr CRM is a SvelteKit 2 + Svelte 5 application built by Vite for Cloudflare Pages. The current foundation includes the tokenized design system, responsive application shell, invitation-only Supabase Auth, PostgreSQL schema, and role-aware RLS. CRM business workflows are added in later roadmap phases.
 
 ## Requirements
 
@@ -26,10 +26,12 @@ The browser-safe environment contract is documented in `.env.example`. Trusted r
 bun run db:start
 bun run db:reset
 bun run db:test
+bun run db:security
+bun run auth:integration
 bun run db:stop
 ```
 
-The Supabase CLI is executed through `bunx`, so a separate global installation is not required. Phase 1 intentionally has no business migrations; `supabase/seed.sql` is a deterministic no-op seed. Later phases add canonical migrations.
+The Supabase CLI is executed through `bunx`, so a separate global installation is not required. Phase 3 adds the first canonical identity, schema, and RLS migration; `supabase/seed.sql` loads deterministic non-secret baseline data. Later phases extend the schema only through their authorized migrations.
 
 ## Quality commands
 
@@ -44,12 +46,15 @@ bun run build
 bun run security:bundle
 bun run tokens:check
 bun run db:test                # with local Supabase running
+bun run db:security             # role/RLS/constraint regression
+bun run auth:integration        # server action and cookie integration
+bun run db:types                # inspect generated public schema types
 bun run diff:check
 ```
 
 The complete local gate is `bun run quality` after Supabase is running and the Playwright Chromium browser is installed. `bun run build` generates/checks Cloudflare Worker types and writes the Cloudflare Pages output to `.svelte-kit/cloudflare`.
 
-The design-system component lab is available at `/system`. Its implementation contract is documented in `docs/DESIGN_SYSTEM.md`; it intentionally contains no CRM business API calls or feature screens.
+The design-system component lab is available at `/system`. The invitation-only login is available at `/login` when the three browser-safe Supabase variables are configured. Its implementation contract is documented in `docs/DESIGN_SYSTEM.md`; it intentionally contains no CRM business API calls or feature screens.
 
 ## Project boundaries
 
@@ -64,7 +69,7 @@ src/lib/utils
 supabase/{migrations,functions}
 ```
 
-No service-role key, SendPulse credential, Bricks secret, database password, or client data belongs in browser source control or public variables.
+No service-role key, SendPulse credential, Bricks secret, database password, or client data belongs in browser source control or public variables. The database security contract is documented in `docs/DATABASE_SECURITY.md`.
 
 ## Cloudflare Pages smoke preview
 

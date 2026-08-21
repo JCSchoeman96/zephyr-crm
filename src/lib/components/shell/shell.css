@@ -116,8 +116,35 @@
 }
 
 .app-shell__topbar-context {
+	max-width: 16rem;
+	overflow: hidden;
 	color: var(--color-text-muted);
 	font-size: var(--font-size-sm);
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.app-shell__sign-in,
+.app-shell__sign-out {
+	color: var(--color-brand-primary);
+	font-size: var(--font-size-sm);
+	font-weight: var(--font-weight-semibold);
+}
+
+.app-shell__sign-in {
+	text-decoration: none;
+}
+
+.app-shell__sign-out {
+	padding: 0;
+	border: 0;
+	background: transparent;
+	cursor: pointer;
+}
+
+.app-shell__sign-in:hover,
+.app-shell__sign-out:hover {
+	color: var(--color-brand-primary-hover);
 }
 
 .app-shell__content {
@@ -158,6 +185,10 @@
 	.app-shell__topbar {
 		min-height: 4rem;
 		padding: 0 var(--space-lg);
+	}
+
+	.app-shell__topbar-actions {
+		min-width: 0;
 	}
 
 	.app-shell__content {

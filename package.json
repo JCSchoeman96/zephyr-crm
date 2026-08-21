@@ -21,12 +21,15 @@
 		"db:start": "bunx supabase start",
 		"db:reset": "bunx supabase db reset",
 		"db:stop": "bunx supabase stop",
+		"db:types": "bunx supabase gen types typescript --local --schema public",
 		"db:test": "bunx supabase db lint --local --fail-on error",
+		"db:security": "node scripts/test-database-security.mjs",
+		"auth:integration": "node scripts/test-auth-session.mjs",
 		"diff:check": "git diff --check",
 		"authority:verify": "node scripts/verify-authority-hashes.mjs",
 		"security:bundle": "node scripts/check-public-bundle.mjs",
 		"tokens:check": "node scripts/check-design-tokens.mjs",
-		"quality": "bun run authority:verify && bun run format:check && bun run lint && bun run check && bun run tokens:check && bun run test && bun run build && bun run security:bundle && bun run db:test && bun run diff:check"
+		"quality": "bun run authority:verify && bun run format:check && bun run lint && bun run check && bun run tokens:check && bun run test && bun run build && bun run security:bundle && bun run db:test && bun run db:security && bun run auth:integration && bun run diff:check"
 	},
 	"devDependencies": {
 		"@eslint/js": "10.0.1",
@@ -53,6 +56,8 @@
 		"wrangler": "4.125.0"
 	},
 	"dependencies": {
+		"@supabase/ssr": "0.12.4",
+		"@supabase/supabase-js": "2.112.3",
 		"lucide-svelte": "1.0.1"
 	}
 }
