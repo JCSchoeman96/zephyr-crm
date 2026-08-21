@@ -1,1 +1,4 @@
 @import 'tailwindcss';
+@import '../lib/styles/tokens.css';
+@import '../lib/components/ui/ui.css';
+@import '../lib/components/shell/shell.css';

@@ -1,0 +1,113 @@
+:root {
+	color-scheme: light;
+	font-family: var(--font-family-sans);
+	font-synthesis: none;
+
+	--font-family-sans:
+		Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+	--font-size-xs: 0.75rem;
+	--font-size-sm: 0.875rem;
+	--font-size-md: 1rem;
+	--font-size-lg: 1.125rem;
+	--font-size-xl: 1.5rem;
+	--font-size-2xl: 2rem;
+	--line-height-tight: 1.2;
+	--line-height-normal: 1.5;
+	--line-height-relaxed: 1.7;
+	--font-weight-regular: 400;
+	--font-weight-medium: 500;
+	--font-weight-semibold: 600;
+	--font-weight-bold: 700;
+
+	--space-xs: 0.25rem;
+	--space-sm: 0.5rem;
+	--space-md: 0.75rem;
+	--space-lg: 1rem;
+	--space-xl: 1.5rem;
+	--space-2xl: 2rem;
+	--space-3xl: 3rem;
+
+	--radius-sm: 0.375rem;
+	--radius-md: 0.625rem;
+	--radius-lg: 0.875rem;
+	--radius-pill: 999px;
+
+	--color-background: #f5f7fb;
+	--color-surface: #ffffff;
+	--color-surface-raised: #eef2f8;
+	--color-border: #dbe2ec;
+	--color-border-strong: #b8c5d6;
+	--color-text: #172334;
+	--color-text-muted: #66758a;
+	--color-text-inverse: #ffffff;
+	--color-brand-primary: #315cce;
+	--color-brand-primary-hover: #2649a8;
+	--color-brand-accent: #d9773b;
+	--color-brand-accent-soft: #fff0e7;
+	--color-success: #19734a;
+	--color-success-soft: #e5f5ec;
+	--color-warning: #95620a;
+	--color-warning-soft: #fff4d7;
+	--color-danger: #b63845;
+	--color-danger-soft: #fdebed;
+	--color-info: #25627f;
+	--color-info-soft: #e6f4fb;
+	--color-overlay: rgb(23 35 52 / 0.48);
+	--color-backdrop: rgb(23 35 52 / 0.32);
+
+	--pipeline-new: #64748b;
+	--pipeline-qualification: #2563a9;
+	--pipeline-proposal: #7c3a9a;
+	--pipeline-decision: #b45309;
+	--pipeline-won: #19734a;
+	--pipeline-lost: #b63845;
+
+	--shadow-sm: 0 1px 2px rgb(23 35 52 / 0.06);
+	--shadow-md: 0 8px 24px rgb(23 35 52 / 0.1);
+}
+
+[data-brand='alternate'] {
+	--color-brand-primary: #6846c4;
+	--color-brand-primary-hover: #50329b;
+	--color-brand-accent: #168b87;
+	--color-brand-accent-soft: #e4f7f5;
+}
+
+html {
+	background: var(--color-background);
+	color: var(--color-text);
+	font-size: 16px;
+	line-height: var(--line-height-normal);
+}
+
+body {
+	margin: 0;
+	min-width: 320px;
+	background: var(--color-background);
+	color: var(--color-text);
+}
+
+button,
+input,
+select,
+textarea {
+	font: inherit;
+}
+
+button,
+a,
+input,
+select,
+textarea {
+	-webkit-tap-highlight-color: transparent;
+}
+
+:focus-visible {
+	outline: 3px solid color-mix(in srgb, var(--color-brand-accent) 72%, transparent);
+	outline-offset: 2px;
+}
+
+::selection {
+	background: var(--color-brand-accent-soft);
+	color: var(--color-text);
+}

@@ -1,4 +1,4 @@
-# Phase 1 Dependency Baseline
+# Zephyr CRM Dependency Baseline
 
 The candidate stack was installed and proven together before direct dependency versions were pinned. The proof consisted of a clean Svelte CLI scaffold, Bun installation, Svelte check, Vitest unit run, Wrangler type generation/check, Vite Cloudflare build, ESLint, Prettier, and Playwright browser smoke execution.
 
@@ -29,6 +29,12 @@ Direct development dependencies are pinned exactly in `package.json` and resolve
 | `vitest` | `4.1.11` |
 | `wrangler` | `4.125.0` |
 
-The project uses Vite as the SvelteKit build pipeline, `@tailwindcss/vite` for Tailwind CSS 4, Cloudflare Pages output through `@sveltejs/adapter-cloudflare`, and Bun as package manager/runner. No second package manager, alternate bundler, UI system, state framework, form framework, icon system, or provider SDK is introduced by Phase 1.
+The Phase 2 runtime UI dependency is also pinned exactly:
+
+| Package | Version |
+|---|---:|
+| `lucide-svelte` | `1.0.1` |
+
+The project uses Vite as the SvelteKit build pipeline, `@tailwindcss/vite` for Tailwind CSS 4, Cloudflare Pages output through `@sveltejs/adapter-cloudflare`, Lucide for ordinary icons, and Bun as package manager/runner. No second package manager, alternate bundler, UI system, state framework, form framework, or provider SDK is introduced.
 
 Run `bun install --frozen-lockfile` to reproduce the dependency graph. Run `bun run authority:verify` before phase work to detect frozen authority drift.

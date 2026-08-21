@@ -1,6 +1,6 @@
 # Zephyr CRM
 
-Zephyr CRM is a SvelteKit 2 + Svelte 5 application built by Vite for Cloudflare Pages. Phase 1 contains only the reproducible technical skeleton and quality gates; CRM business domains are added in later roadmap phases.
+Zephyr CRM is a SvelteKit 2 + Svelte 5 application built by Vite for Cloudflare Pages. Phase 2 adds the tokenized design system, accessible UI primitives, responsive application shell, and a lightweight component lab; CRM business domains are added in later roadmap phases.
 
 ## Requirements
 
@@ -42,11 +42,14 @@ bun run test:e2e:install       # once per machine
 bun run test:e2e
 bun run build
 bun run security:bundle
+bun run tokens:check
 bun run db:test                # with local Supabase running
 bun run diff:check
 ```
 
 The complete local gate is `bun run quality` after Supabase is running and the Playwright Chromium browser is installed. `bun run build` generates/checks Cloudflare Worker types and writes the Cloudflare Pages output to `.svelte-kit/cloudflare`.
+
+The design-system component lab is available at `/system`. Its implementation contract is documented in `docs/DESIGN_SYSTEM.md`; it intentionally contains no CRM business API calls or feature screens.
 
 ## Project boundaries
 

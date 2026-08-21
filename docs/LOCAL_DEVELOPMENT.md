@@ -10,6 +10,7 @@ cp .env.example .env
 bun run gen
 bun run check
 bun run test:unit -- --run
+bun run tokens:check
 bun run build
 ```
 

@@ -25,7 +25,8 @@
 		"diff:check": "git diff --check",
 		"authority:verify": "node scripts/verify-authority-hashes.mjs",
 		"security:bundle": "node scripts/check-public-bundle.mjs",
-		"quality": "bun run authority:verify && bun run format:check && bun run lint && bun run check && bun run test && bun run build && bun run security:bundle && bun run db:test && bun run diff:check"
+		"tokens:check": "node scripts/check-design-tokens.mjs",
+		"quality": "bun run authority:verify && bun run format:check && bun run lint && bun run check && bun run tokens:check && bun run test && bun run build && bun run security:bundle && bun run db:test && bun run diff:check"
 	},
 	"devDependencies": {
 		"@eslint/js": "10.0.1",
@@ -50,5 +51,8 @@
 		"vite": "8.2.2",
 		"vitest": "4.1.11",
 		"wrangler": "4.125.0"
+	},
+	"dependencies": {
+		"lucide-svelte": "1.0.1"
 	}
 }
