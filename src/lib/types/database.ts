@@ -86,6 +86,13 @@ export type Database = {
 						foreignKeyName: 'activities_task_id_fkey';
 						columns: ['task_id'];
 						isOneToOne: false;
+						referencedRelation: 'task_work_queue';
+						referencedColumns: ['id'];
+					},
+					{
+						foreignKeyName: 'activities_task_id_fkey';
+						columns: ['task_id'];
+						isOneToOne: false;
 						referencedRelation: 'tasks';
 						referencedColumns: ['id'];
 					}
@@ -545,6 +552,7 @@ export type Database = {
 					recipient_snapshot: Json;
 					subject: string | null;
 					submitted_at: string | null;
+					task_id: string | null;
 					updated_at: string;
 				};
 				Insert: {
@@ -565,6 +573,7 @@ export type Database = {
 					recipient_snapshot?: Json;
 					subject?: string | null;
 					submitted_at?: string | null;
+					task_id?: string | null;
 					updated_at?: string;
 				};
 				Update: {
@@ -585,6 +594,7 @@ export type Database = {
 					recipient_snapshot?: Json;
 					subject?: string | null;
 					submitted_at?: string | null;
+					task_id?: string | null;
 					updated_at?: string;
 				};
 				Relationships: [
@@ -607,6 +617,20 @@ export type Database = {
 						columns: ['quote_id'];
 						isOneToOne: false;
 						referencedRelation: 'quotes';
+						referencedColumns: ['id'];
+					},
+					{
+						foreignKeyName: 'outbound_messages_task_id_fkey';
+						columns: ['task_id'];
+						isOneToOne: false;
+						referencedRelation: 'task_work_queue';
+						referencedColumns: ['id'];
+					},
+					{
+						foreignKeyName: 'outbound_messages_task_id_fkey';
+						columns: ['task_id'];
+						isOneToOne: false;
+						referencedRelation: 'tasks';
 						referencedColumns: ['id'];
 					}
 				];
@@ -834,6 +858,7 @@ export type Database = {
 			tasks: {
 				Row: {
 					assigned_to: string | null;
+					automation_key: string | null;
 					cancelled_at: string | null;
 					client_id: string | null;
 					completed_at: string | null;
@@ -843,8 +868,15 @@ export type Database = {
 					due_at: string | null;
 					id: string;
 					lead_id: string | null;
+					lock_version: number;
 					notification_sent_at: string | null;
 					quote_id: string | null;
+					reminder_attempt_count: number;
+					reminder_claim_id: string | null;
+					reminder_claimed_at: string | null;
+					reminder_last_error: string | null;
+					reminder_outbound_message_id: string | null;
+					reminder_status: string;
 					status: string;
 					title: string;
 					type: string;
@@ -852,6 +884,7 @@ export type Database = {
 				};
 				Insert: {
 					assigned_to?: string | null;
+					automation_key?: string | null;
 					cancelled_at?: string | null;
 					client_id?: string | null;
 					completed_at?: string | null;
@@ -861,8 +894,15 @@ export type Database = {
 					due_at?: string | null;
 					id?: string;
 					lead_id?: string | null;
+					lock_version?: number;
 					notification_sent_at?: string | null;
 					quote_id?: string | null;
+					reminder_attempt_count?: number;
+					reminder_claim_id?: string | null;
+					reminder_claimed_at?: string | null;
+					reminder_last_error?: string | null;
+					reminder_outbound_message_id?: string | null;
+					reminder_status?: string;
 					status?: string;
 					title: string;
 					type: string;
@@ -870,6 +910,7 @@ export type Database = {
 				};
 				Update: {
 					assigned_to?: string | null;
+					automation_key?: string | null;
 					cancelled_at?: string | null;
 					client_id?: string | null;
 					completed_at?: string | null;
@@ -879,8 +920,15 @@ export type Database = {
 					due_at?: string | null;
 					id?: string;
 					lead_id?: string | null;
+					lock_version?: number;
 					notification_sent_at?: string | null;
 					quote_id?: string | null;
+					reminder_attempt_count?: number;
+					reminder_claim_id?: string | null;
+					reminder_claimed_at?: string | null;
+					reminder_last_error?: string | null;
+					reminder_outbound_message_id?: string | null;
+					reminder_status?: string;
 					status?: string;
 					title?: string;
 					type?: string;
@@ -921,12 +969,151 @@ export type Database = {
 						isOneToOne: false;
 						referencedRelation: 'quotes';
 						referencedColumns: ['id'];
+					},
+					{
+						foreignKeyName: 'tasks_reminder_outbound_message_id_fkey';
+						columns: ['reminder_outbound_message_id'];
+						isOneToOne: false;
+						referencedRelation: 'outbound_messages';
+						referencedColumns: ['id'];
 					}
 				];
 			};
 		};
 		Views: {
-			[_ in never]: never;
+			task_work_queue: {
+				Row: {
+					assigned_to: string | null;
+					automation_key: string | null;
+					cancelled_at: string | null;
+					client_id: string | null;
+					completed_at: string | null;
+					created_at: string | null;
+					created_by: string | null;
+					derived_state: string | null;
+					description: string | null;
+					due_at: string | null;
+					id: string | null;
+					is_due: boolean | null;
+					is_overdue: boolean | null;
+					lead_id: string | null;
+					lock_version: number | null;
+					notification_sent_at: string | null;
+					quote_id: string | null;
+					reminder_attempt_count: number | null;
+					reminder_claim_id: string | null;
+					reminder_claimed_at: string | null;
+					reminder_last_error: string | null;
+					reminder_outbound_message_id: string | null;
+					reminder_status: string | null;
+					status: string | null;
+					title: string | null;
+					type: string | null;
+					updated_at: string | null;
+				};
+				Insert: {
+					assigned_to?: string | null;
+					automation_key?: string | null;
+					cancelled_at?: string | null;
+					client_id?: string | null;
+					completed_at?: string | null;
+					created_at?: string | null;
+					created_by?: string | null;
+					derived_state?: never;
+					description?: string | null;
+					due_at?: string | null;
+					id?: string | null;
+					is_due?: never;
+					is_overdue?: never;
+					lead_id?: string | null;
+					lock_version?: number | null;
+					notification_sent_at?: string | null;
+					quote_id?: string | null;
+					reminder_attempt_count?: number | null;
+					reminder_claim_id?: string | null;
+					reminder_claimed_at?: string | null;
+					reminder_last_error?: string | null;
+					reminder_outbound_message_id?: string | null;
+					reminder_status?: string | null;
+					status?: string | null;
+					title?: string | null;
+					type?: string | null;
+					updated_at?: string | null;
+				};
+				Update: {
+					assigned_to?: string | null;
+					automation_key?: string | null;
+					cancelled_at?: string | null;
+					client_id?: string | null;
+					completed_at?: string | null;
+					created_at?: string | null;
+					created_by?: string | null;
+					derived_state?: never;
+					description?: string | null;
+					due_at?: string | null;
+					id?: string | null;
+					is_due?: never;
+					is_overdue?: never;
+					lead_id?: string | null;
+					lock_version?: number | null;
+					notification_sent_at?: string | null;
+					quote_id?: string | null;
+					reminder_attempt_count?: number | null;
+					reminder_claim_id?: string | null;
+					reminder_claimed_at?: string | null;
+					reminder_last_error?: string | null;
+					reminder_outbound_message_id?: string | null;
+					reminder_status?: string | null;
+					status?: string | null;
+					title?: string | null;
+					type?: string | null;
+					updated_at?: string | null;
+				};
+				Relationships: [
+					{
+						foreignKeyName: 'tasks_assigned_to_fkey';
+						columns: ['assigned_to'];
+						isOneToOne: false;
+						referencedRelation: 'profiles';
+						referencedColumns: ['id'];
+					},
+					{
+						foreignKeyName: 'tasks_client_id_fkey';
+						columns: ['client_id'];
+						isOneToOne: false;
+						referencedRelation: 'clients';
+						referencedColumns: ['id'];
+					},
+					{
+						foreignKeyName: 'tasks_created_by_fkey';
+						columns: ['created_by'];
+						isOneToOne: false;
+						referencedRelation: 'profiles';
+						referencedColumns: ['id'];
+					},
+					{
+						foreignKeyName: 'tasks_lead_id_fkey';
+						columns: ['lead_id'];
+						isOneToOne: false;
+						referencedRelation: 'leads';
+						referencedColumns: ['id'];
+					},
+					{
+						foreignKeyName: 'tasks_quote_id_fkey';
+						columns: ['quote_id'];
+						isOneToOne: false;
+						referencedRelation: 'quotes';
+						referencedColumns: ['id'];
+					},
+					{
+						foreignKeyName: 'tasks_reminder_outbound_message_id_fkey';
+						columns: ['reminder_outbound_message_id'];
+						isOneToOne: false;
+						referencedRelation: 'outbound_messages';
+						referencedColumns: ['id'];
+					}
+				];
+			};
 		};
 		Functions: {
 			accept_quote: {
@@ -954,8 +1141,16 @@ export type Database = {
 				Args: { p_lock_version: number; p_quote_id: string };
 				Returns: Json;
 			};
+			cancel_task: {
+				Args: { p_lock_version: number; p_task_id: string };
+				Returns: Json;
+			};
 			complete_quote_send: {
 				Args: { p_outbound_message_id: string; p_provider_message_id: string };
+				Returns: Json;
+			};
+			complete_task: {
+				Args: { p_lock_version: number; p_task_id: string };
 				Returns: Json;
 			};
 			convert_lead: {
@@ -970,6 +1165,20 @@ export type Database = {
 					p_subject: string;
 					p_tax_rate?: number | string;
 					p_unit_price: number | string;
+				};
+				Returns: Json;
+			};
+			create_task: {
+				Args: {
+					p_assigned_to?: string;
+					p_automation_key?: string;
+					p_client_id?: string;
+					p_description?: string;
+					p_due_at?: string;
+					p_lead_id?: string;
+					p_quote_id?: string;
+					p_title?: string;
+					p_type?: string;
 				};
 				Returns: Json;
 			};
@@ -1001,14 +1210,22 @@ export type Database = {
 				Args: { p_lock_version: number; p_quote_id: string };
 				Returns: Json;
 			};
+			prepare_task_reminder: {
+				Args: { p_run_id: string; p_task_id: string };
+				Returns: Json;
+			};
+			process_reminders: {
+				Args: { p_limit?: number; p_run_id: string };
+				Returns: Json;
+			};
 			process_sendpulse_event: {
 				Args: {
 					p_deduplication_hash: string;
 					p_event_type: string;
 					p_metadata: Json;
 					p_occurred_at: string;
-					p_provider_event_id: string | null;
-					p_provider_message_id: string;
+					p_provider_event_id: string;
+					p_provider_message_id: string | null;
 				};
 				Returns: Json;
 			};
@@ -1025,8 +1242,21 @@ export type Database = {
 				};
 				Returns: Json;
 			};
+			record_task_reminder: {
+				Args: {
+					p_error?: string;
+					p_provider_message_id?: string;
+					p_run_id: string;
+					p_task_id: string;
+				};
+				Returns: Json;
+			};
 			reopen_lead: {
 				Args: { p_lead_id: string; p_lock_version: number; p_reason: string };
+				Returns: Json;
+			};
+			reschedule_task: {
+				Args: { p_due_at: string; p_lock_version: number; p_task_id: string };
 				Returns: Json;
 			};
 			revise_quote: {

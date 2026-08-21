@@ -15,3 +15,5 @@ SENDPULSE_DKIM_RECORD=
 SENDPULSE_DMARC_RECORD=
 # Set only after the post-build pilot DNS verification procedure passes.
 SENDPULSE_DOMAIN_AUTHENTICATED=false
+# Supabase Cron / local scheduler invocation secret; keep out of browser code.
+AUTOMATION_CRON_SECRET=
