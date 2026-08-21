@@ -176,6 +176,12 @@ export type Database = {
 			clients: {
 				Row: {
 					billing_address: string | null;
+					billing_address_line_1: string | null;
+					billing_address_line_2: string | null;
+					billing_city: string | null;
+					billing_country: string | null;
+					billing_postal_code: string | null;
+					billing_region: string | null;
 					client_number: number;
 					company_name: string | null;
 					converted_at: string | null;
@@ -184,13 +190,21 @@ export type Database = {
 					email: string | null;
 					id: string;
 					phone: string | null;
+					registration_number: string | null;
 					source_lead_id: string | null;
 					status: string;
+					tax_number: string | null;
 					type: string;
 					updated_at: string;
 				};
 				Insert: {
 					billing_address?: string | null;
+					billing_address_line_1?: string | null;
+					billing_address_line_2?: string | null;
+					billing_city?: string | null;
+					billing_country?: string | null;
+					billing_postal_code?: string | null;
+					billing_region?: string | null;
 					client_number?: number;
 					company_name?: string | null;
 					converted_at?: string | null;
@@ -199,13 +213,21 @@ export type Database = {
 					email?: string | null;
 					id?: string;
 					phone?: string | null;
+					registration_number?: string | null;
 					source_lead_id?: string | null;
 					status?: string;
+					tax_number?: string | null;
 					type: string;
 					updated_at?: string;
 				};
 				Update: {
 					billing_address?: string | null;
+					billing_address_line_1?: string | null;
+					billing_address_line_2?: string | null;
+					billing_city?: string | null;
+					billing_country?: string | null;
+					billing_postal_code?: string | null;
+					billing_region?: string | null;
 					client_number?: number;
 					company_name?: string | null;
 					converted_at?: string | null;
@@ -214,8 +236,10 @@ export type Database = {
 					email?: string | null;
 					id?: string;
 					phone?: string | null;
+					registration_number?: string | null;
 					source_lead_id?: string | null;
 					status?: string;
+					tax_number?: string | null;
 					type?: string;
 					updated_at?: string;
 				};

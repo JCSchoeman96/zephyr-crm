@@ -27,6 +27,7 @@ bun run auth:integration
 bun run test:p4:domain
 bun run test:p4:tracer
 bun run test:p5:leads
+bun run test:p6:clients
 bun run db:stop
 ```
 
@@ -37,6 +38,8 @@ Playwright Chromium is installed once with `bun run test:e2e:install`; browser t
 `bun run test:p4:domain` proves the transactional Lead/Quote/Task/Client actions through the local Supabase API. `bun run test:p4:tracer` starts a disposable SvelteKit server and deterministic local provider, then proves the authenticated Bricks webhook, retry idempotency, Lead UI, SendPulse adapter contract, follow-up task, Won conversion, and Lost path. It uses only disposable local users and rows and cleans them up afterward.
 
 `bun run test:p5:leads` proves the Lead management hardening contract against the disposable local stack: the complete pipeline transition matrix, independent attention and pause metadata, lost/reopen authorization and Activity evidence, Bricks schema/form/error handling, accepted retry idempotency, same-email distinct enquiries, bounded pagination/search/filter rendering, assignment authorization, optimistic-lock concurrency, and representative PostgreSQL query plans. It starts a disposable local SvelteKit server and removes its namespaced users and rows afterward.
+
+`bun run test:p6:clients` proves the Client/contact contract against the disposable local stack: individual and company conversion, idempotent retries, rollback after a forced mid-transaction failure, the single-primary contact invariant, unauthorized conversion, source Lead/activity preservation, and same-email distinct customer handling. It removes its namespaced users and rows afterward.
 
 ## Environment boundary
 
