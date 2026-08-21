@@ -11,29 +11,47 @@ function lockVersion(formData: FormData) {
 
 export const load: PageServerLoad = async (event) => {
 	const { supabase, profile } = await requireActiveStaff(event);
-	const [leadResponse, quoteResponse, taskResponse, activityResponse, reasonResponse] =
-		await Promise.all([
-			supabase.from('leads').select('*').eq('id', event.params.id).maybeSingle(),
-			supabase
-				.from('quotes')
-				.select('*')
-				.eq('lead_id', event.params.id)
-				.order('created_at', { ascending: false }),
-			supabase
-				.from('tasks')
-				.select('*')
-				.eq('lead_id', event.params.id)
-				.order('created_at', { ascending: false }),
-			supabase
-				.from('activities')
-				.select('*')
-				.eq('lead_id', event.params.id)
-				.order('occurred_at', { ascending: false }),
-			supabase.from('lost_reasons').select('*').eq('active', true).order('sort_order')
-		]);
+	const [
+		leadResponse,
+		quoteResponse,
+		taskResponse,
+		activityResponse,
+		reasonResponse,
+		staffResponse
+	] = await Promise.all([
+		supabase.from('leads').select('*').eq('id', event.params.id).maybeSingle(),
+		supabase
+			.from('quotes')
+			.select('*')
+			.eq('lead_id', event.params.id)
+			.order('created_at', { ascending: false }),
+		supabase
+			.from('tasks')
+			.select('*')
+			.eq('lead_id', event.params.id)
+			.order('created_at', { ascending: false }),
+		supabase
+			.from('activities')
+			.select('*')
+			.eq('lead_id', event.params.id)
+			.order('occurred_at', { ascending: false }),
+		supabase.from('lost_reasons').select('*').eq('active', true).order('sort_order'),
+		supabase
+			.from('profiles')
+			.select('id,full_name,email,role,status')
+			.eq('status', 'active')
+			.in('role', ['owner', 'admin', 'sales'])
+			.order('full_name')
+	]);
 	if (leadResponse.error) throw error(500, leadResponse.error.message);
 	if (!leadResponse.data) throw error(404, 'Lead not found');
-	if (quoteResponse.error || taskResponse.error || activityResponse.error || reasonResponse.error) {
+	if (
+		quoteResponse.error ||
+		taskResponse.error ||
+		activityResponse.error ||
+		reasonResponse.error ||
+		staffResponse.error
+	) {
 		throw error(500, 'Could not load lead details');
 	}
 	return {
@@ -42,6 +60,7 @@ export const load: PageServerLoad = async (event) => {
 		tasks: taskResponse.data ?? [],
 		activities: activityResponse.data ?? [],
 		lostReasons: reasonResponse.data ?? [],
+		staff: staffResponse.data ?? [],
 		profile
 	};
 };
@@ -144,6 +163,59 @@ export const actions: Actions = {
 		} catch (actionError) {
 			return fail(422, {
 				message: actionError instanceof Error ? actionError.message : 'Could not mark lead lost'
+			});
+		}
+		throw redirect(303, `/leads/${event.params.id}`);
+	},
+	setAttention: async (event) => {
+		const { supabase } = await requireActiveStaff(event);
+		const form = await event.request.formData();
+		try {
+			const response = await supabase.rpc('set_lead_attention', {
+				p_lead_id: event.params.id,
+				p_attention_state: String(form.get('attention_state') ?? 'none'),
+				p_reason: String(form.get('attention_reason') ?? '') || undefined,
+				p_resume_at: String(form.get('attention_resume_at') ?? '') || undefined,
+				p_lock_version: lockVersion(form)
+			});
+			if (response.error) return fail(422, { message: response.error.message });
+		} catch (actionError) {
+			return fail(422, {
+				message: actionError instanceof Error ? actionError.message : 'Could not update attention'
+			});
+		}
+		throw redirect(303, `/leads/${event.params.id}`);
+	},
+	assign: async (event) => {
+		const { supabase } = await requireActiveStaff(event);
+		const form = await event.request.formData();
+		try {
+			const response = await supabase.rpc('assign_lead', {
+				p_lead_id: event.params.id,
+				p_assigned_to: (String(form.get('assigned_to') ?? '') || null) as string,
+				p_lock_version: lockVersion(form)
+			});
+			if (response.error) return fail(422, { message: response.error.message });
+		} catch (actionError) {
+			return fail(422, {
+				message: actionError instanceof Error ? actionError.message : 'Could not assign lead'
+			});
+		}
+		throw redirect(303, `/leads/${event.params.id}`);
+	},
+	reopen: async (event) => {
+		const { supabase } = await requireActiveStaff(event);
+		const form = await event.request.formData();
+		try {
+			const response = await supabase.rpc('reopen_lead', {
+				p_lead_id: event.params.id,
+				p_lock_version: lockVersion(form),
+				p_reason: String(form.get('reopen_reason') ?? '')
+			});
+			if (response.error) return fail(422, { message: response.error.message });
+		} catch (actionError) {
+			return fail(422, {
+				message: actionError instanceof Error ? actionError.message : 'Could not reopen lead'
 			});
 		}
 		throw redirect(303, `/leads/${event.params.id}`);

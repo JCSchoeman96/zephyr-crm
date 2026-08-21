@@ -7,10 +7,16 @@ const MAX_BODY_BYTES = 64 * 1024;
 
 export class BricksIntakeError extends Error {
 	status: number;
+	context?: {
+		formId?: string;
+		externalId?: string;
+		payload?: Record<string, string>;
+	};
 
-	constructor(message: string, status = 400) {
+	constructor(message: string, status = 400, context?: BricksIntakeError['context']) {
 		super(message);
 		this.status = status;
+		this.context = context;
 	}
 }
 
@@ -47,6 +53,7 @@ function normalizePayload(payload: Record<string, unknown>): Record<string, stri
 			'source'
 		].map((key) => [key, textField(payload, key)])
 	);
+	if (!normalized.first_name) normalized.first_name = textField(payload, 'name');
 	return normalized;
 }
 
@@ -87,33 +94,53 @@ async function parseRequest(
 	const externalId =
 		textField(rawPayload, 'external_submission_id') || textField(rawPayload, 'submission_id');
 	const payload = normalizePayload(rawPayload);
+	const context = { formId, externalId, payload };
 	if (!formId || !externalId || !payload.first_name || !payload.email) {
 		throw new BricksIntakeError(
 			'form_id, external_submission_id, first_name, and email are required',
-			422
+			422,
+			context
 		);
 	}
 	const expectedFormId = env.BRICKS_FORM_ID?.trim() || 'contact-form';
-	if (formId !== expectedFormId) throw new BricksIntakeError('Unknown Bricks form', 422);
+	if (formId !== expectedFormId) throw new BricksIntakeError('Unknown Bricks form', 422, context);
 	if (
 		payload.email.length > 320 ||
 		payload.first_name.length > 120 ||
 		payload.message.length > 10_000
 	) {
-		throw new BricksIntakeError('Intake field length is invalid', 422);
+		throw new BricksIntakeError('Intake field length is invalid', 422, context);
 	}
 	if (!/^\S+@\S+\.\S+$/.test(payload.email))
-		throw new BricksIntakeError('Intake email is invalid', 422);
+		throw new BricksIntakeError('Intake email is invalid', 422, context);
 	return { formId, externalId, payload };
 }
 
 export async function handleBricksIntake(event: RequestEvent) {
-	const { formId, externalId, payload } = await parseRequest(event);
-	const { data, error } = await trustedServiceClient().rpc('ingest_bricks_lead', {
-		p_form_id: formId,
-		p_external_submission_id: externalId,
-		p_payload: payload
-	});
-	if (error) throw new BricksIntakeError(error.message, 422);
-	return data;
+	try {
+		const { formId, externalId, payload } = await parseRequest(event);
+		const { data, error } = await trustedServiceClient().rpc('ingest_bricks_lead', {
+			p_form_id: formId,
+			p_external_submission_id: externalId,
+			p_payload: payload
+		});
+		if (error) throw new BricksIntakeError(error.message, 422, { formId, externalId, payload });
+		return data;
+	} catch (error) {
+		if (error instanceof BricksIntakeError && error.context?.externalId) {
+			const context = error.context;
+			const externalId = context.externalId as string;
+			try {
+				await trustedServiceClient().rpc('record_bricks_rejection', {
+					p_form_id: context.formId || 'unknown',
+					p_external_submission_id: externalId,
+					p_payload: context.payload ?? {},
+					p_error_message: error.message
+				});
+			} catch {
+				// Preserve the original intake error if the rejection recorder is unavailable.
+			}
+		}
+		throw error;
+	}
 }

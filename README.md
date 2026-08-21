@@ -30,6 +30,7 @@ bun run db:security
 bun run auth:integration
 bun run test:p4:domain
 bun run test:p4:tracer
+bun run test:p5:leads
 bun run db:stop
 ```
 
@@ -53,12 +54,13 @@ bun run auth:integration        # server action and cookie integration
 bun run db:types                # inspect generated public schema types
 bun run test:p4:domain          # trusted domain action contract
 bun run test:p4:tracer          # full local CRM tracer bullet
+bun run test:p5:leads           # Lead state, intake, list, assignment and query-plan contract
 bun run diff:check
 ```
 
 The complete local gate is `bun run quality` after Supabase is running and the Playwright Chromium browser is installed. `bun run build` generates/checks Cloudflare Worker types and writes the Cloudflare Pages output to `.svelte-kit/cloudflare`.
 
-The design-system component lab is available at `/system`. The invitation-only login is available at `/login` when the three browser-safe Supabase variables are configured. Authenticated staff can review the tracer-bullet Lead workflow at `/leads`. Its implementation contract is documented in `docs/DESIGN_SYSTEM.md`; it intentionally contains no CRM business API calls or feature screens.
+The design-system component lab is available at `/system`. The invitation-only login is available at `/login` when the three browser-safe Supabase variables are configured. Authenticated staff can review the bounded Lead workflow at `/leads`. Lead search, filters, assignment, attention, pause/resume, and controlled reopen actions are enforced through server actions and PostgreSQL functions. The full local Lead hardening contract is `bun run test:p5:leads`.
 
 ## Project boundaries
 

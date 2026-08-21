@@ -7,11 +7,59 @@ function textField(payload: BricksPayload, key: string): string {
 	return typeof value === 'string' ? value.trim() : '';
 }
 
+function normalizedPayload(payload: BricksPayload): Record<string, string> {
+	const normalized = Object.fromEntries(
+		[
+			'first_name',
+			'last_name',
+			'email',
+			'phone',
+			'company',
+			'message',
+			'landing_page',
+			'referrer',
+			'utm_source',
+			'utm_medium',
+			'utm_campaign',
+			'utm_content',
+			'utm_term',
+			'source'
+		].map((key) => [key, textField(payload, key)])
+	) as Record<string, string>;
+	if (!normalized.first_name) normalized.first_name = textField(payload, 'name');
+	return normalized;
+}
+
 function jsonResponse(body: Record<string, unknown>, status: number) {
 	return new Response(JSON.stringify(body), {
 		status,
 		headers: { 'content-type': 'application/json' }
 	});
+}
+
+async function recordRejection(
+	supabaseUrl: string,
+	serviceRoleKey: string,
+	formId: string,
+	externalId: string,
+	payload: BricksPayload,
+	errorMessage: string
+) {
+	if (!formId || !externalId) return;
+	await fetch(`${supabaseUrl}/rest/v1/rpc/record_bricks_rejection`, {
+		method: 'POST',
+		headers: {
+			apikey: serviceRoleKey,
+			Authorization: `Bearer ${serviceRoleKey}`,
+			'content-type': 'application/json'
+		},
+		body: JSON.stringify({
+			p_form_id: formId,
+			p_external_submission_id: externalId,
+			p_payload: normalizedPayload(payload),
+			p_error_message: errorMessage
+		})
+	}).catch(() => undefined);
 }
 
 Deno.serve(async (request) => {
@@ -48,7 +96,18 @@ Deno.serve(async (request) => {
 		textField(payload, 'external_submission_id') || textField(payload, 'submission_id');
 	const firstName = textField(payload, 'first_name') || textField(payload, 'name');
 	const email = textField(payload, 'email');
+	const supabaseUrl = Deno.env.get('SUPABASE_URL')?.trim();
+	const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')?.trim();
 	if (!formId || !externalId || !firstName || !email || !/^\S+@\S+\.\S+$/.test(email)) {
+		if (supabaseUrl && serviceRoleKey && formId && externalId)
+			await recordRejection(
+				supabaseUrl,
+				serviceRoleKey,
+				formId,
+				externalId,
+				payload,
+				'form_id, external_submission_id, first_name, and valid email are required'
+			);
 		return jsonResponse(
 			{ error: 'form_id, external_submission_id, first_name, and valid email are required' },
 			422
@@ -56,13 +115,31 @@ Deno.serve(async (request) => {
 	}
 	const expectedFormId = Deno.env.get('BRICKS_FORM_ID')?.trim() || 'contact-form';
 	const message = textField(payload, 'message');
-	if (formId !== expectedFormId) return jsonResponse({ error: 'Unknown Bricks form' }, 422);
+	if (formId !== expectedFormId) {
+		if (supabaseUrl && serviceRoleKey)
+			await recordRejection(
+				supabaseUrl,
+				serviceRoleKey,
+				formId,
+				externalId,
+				payload,
+				'Unknown Bricks form'
+			);
+		return jsonResponse({ error: 'Unknown Bricks form' }, 422);
+	}
 	if (email.length > 320 || firstName.length > 120 || message.length > 10_000) {
+		if (supabaseUrl && serviceRoleKey)
+			await recordRejection(
+				supabaseUrl,
+				serviceRoleKey,
+				formId,
+				externalId,
+				payload,
+				'Intake field length is invalid'
+			);
 		return jsonResponse({ error: 'Intake field length is invalid' }, 422);
 	}
 
-	const supabaseUrl = Deno.env.get('SUPABASE_URL')?.trim();
-	const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')?.trim();
 	if (!supabaseUrl || !serviceRoleKey)
 		return jsonResponse({ error: 'Trusted intake is not configured' }, 503);
 
@@ -76,29 +153,21 @@ Deno.serve(async (request) => {
 		body: JSON.stringify({
 			p_form_id: formId,
 			p_external_submission_id: externalId,
-			p_payload: Object.fromEntries(
-				[
-					'first_name',
-					'last_name',
-					'email',
-					'phone',
-					'company',
-					'message',
-					'landing_page',
-					'referrer',
-					'utm_source',
-					'utm_medium',
-					'utm_campaign',
-					'utm_content',
-					'utm_term',
-					'source'
-				].map((key) => [key, textField(payload, key)])
-			)
+			p_payload: normalizedPayload(payload)
 		})
 	});
 	const responseBody = await rpcResponse
 		.json()
 		.catch(() => ({ error: 'Invalid trusted intake response' }));
+	if (!rpcResponse.ok)
+		await recordRejection(
+			supabaseUrl,
+			serviceRoleKey,
+			formId,
+			externalId,
+			payload,
+			`Trusted intake failed with HTTP ${rpcResponse.status}`
+		);
 	return jsonResponse(
 		(responseBody && typeof responseBody === 'object'
 			? responseBody

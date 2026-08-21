@@ -309,6 +309,8 @@ export type Database = {
 			leads: {
 				Row: {
 					assigned_to: string | null;
+					attention_reason: string | null;
+					attention_resume_at: string | null;
 					attention_state: string;
 					company: string | null;
 					converted_client_id: string | null;
@@ -338,6 +340,8 @@ export type Database = {
 				};
 				Insert: {
 					assigned_to?: string | null;
+					attention_reason?: string | null;
+					attention_resume_at?: string | null;
 					attention_state?: string;
 					company?: string | null;
 					converted_client_id?: string | null;
@@ -367,6 +371,8 @@ export type Database = {
 				};
 				Update: {
 					assigned_to?: string | null;
+					attention_reason?: string | null;
+					attention_resume_at?: string | null;
 					attention_state?: string;
 					company?: string | null;
 					converted_client_id?: string | null;
@@ -884,6 +890,14 @@ export type Database = {
 			[_ in never]: never;
 		};
 		Functions: {
+			assign_lead: {
+				Args: {
+					p_assigned_to: string;
+					p_lead_id: string;
+					p_lock_version: number;
+				};
+				Returns: Json;
+			};
 			complete_quote_send: {
 				Args: { p_outbound_message_id: string; p_provider_message_id: string };
 				Returns: Json;
@@ -917,6 +931,29 @@ export type Database = {
 			};
 			provision_invited_profile: {
 				Args: { p_role?: string; p_status?: string; p_user_id: string };
+				Returns: Json;
+			};
+			record_bricks_rejection: {
+				Args: {
+					p_error_message: string;
+					p_external_submission_id: string;
+					p_form_id: string;
+					p_payload: Json;
+				};
+				Returns: Json;
+			};
+			reopen_lead: {
+				Args: { p_lead_id: string; p_lock_version: number; p_reason: string };
+				Returns: Json;
+			};
+			set_lead_attention: {
+				Args: {
+					p_attention_state: string;
+					p_lead_id: string;
+					p_lock_version?: number;
+					p_reason?: string;
+					p_resume_at?: string;
+				};
 				Returns: Json;
 			};
 			transition_lead: {
