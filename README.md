@@ -32,6 +32,7 @@ bun run test:p4:domain
 bun run test:p4:tracer
 bun run test:p5:leads
 bun run test:p6:clients
+bun run test:p7:quotes
 bun run db:stop
 ```
 
@@ -57,12 +58,13 @@ bun run test:p4:domain          # trusted domain action contract
 bun run test:p4:tracer          # full local CRM tracer bullet
 bun run test:p5:leads           # Lead state, intake, list, assignment and query-plan contract
 bun run test:p6:clients         # Client/contact conversion, rollback, dedupe and history contract
+bun run test:p7:quotes          # Quote money, numbering, lifecycle, immutability, revisions and editor conflict contract
 bun run diff:check
 ```
 
 The complete local gate is `bun run quality` after Supabase is running and the Playwright Chromium browser is installed. `bun run build` generates/checks Cloudflare Worker types and writes the Cloudflare Pages output to `.svelte-kit/cloudflare`.
 
-The design-system component lab is available at `/system`. The invitation-only login is available at `/login` when the three browser-safe Supabase variables are configured. Authenticated staff can review the bounded Lead workflow at `/leads` and converted customers at `/clients`. Lead search, filters, assignment, attention, pause/resume, controlled reopen actions, Client conversion, contact primary semantics, and source-Lead history are enforced through server actions and PostgreSQL functions. The full local Lead hardening contract is `bun run test:p5:leads`; the Client/contact contract is `bun run test:p6:clients`.
+The design-system component lab is available at `/system`. The invitation-only login is available at `/login` when the three browser-safe Supabase variables are configured. Authenticated staff can review the bounded Lead workflow at `/leads`, create and manage durable Quotes at `/quotes`, and review converted customers at `/clients`. Lead search, filters, assignment, attention, pause/resume, controlled reopen actions, Client conversion, contact primary semantics, source-Lead history, exact Quote money, trusted Quote state actions, immutable sent snapshots, and revisions are enforced through server actions and PostgreSQL functions. The full local Lead hardening contract is `bun run test:p5:leads`, the Client/contact contract is `bun run test:p6:clients`, and the Quote contract is `bun run test:p7:quotes`. See `docs/QUOTE_MANAGEMENT.md` for the Quote lifecycle boundary.
 
 ## Project boundaries
 

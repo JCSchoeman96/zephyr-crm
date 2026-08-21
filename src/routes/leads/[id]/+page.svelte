@@ -25,6 +25,16 @@
 	function dateTime(value: string | null) {
 		return value ? new Date(value).toLocaleString('en-ZA') : '—';
 	}
+
+	function money(value: number | string) {
+		const normalized = String(value);
+		const [whole, fraction = ''] = normalized.split('.');
+		return `${whole}.${(fraction + '00').slice(0, 2)}`;
+	}
+
+	function quoteNumber(quote: PageData['quotes'][number]) {
+		return quote.quote_number ?? `#${quote.base_quote_number}`;
+	}
 </script>
 
 <svelte:head>
@@ -211,9 +221,9 @@
 					{#each data.quotes as quote (quote.id)}
 						<div class="quote-row">
 							<div>
-								<strong>{quote.subject}</strong><span
-									>#{quote.base_quote_number} · {quote.currency}
-									{quote.total.toFixed(2)} · {quote.status}</span
+								<strong><a href={resolve(`/quotes/${quote.id}`)}>{quote.subject}</a></strong><span
+									>{quoteNumber(quote)} · {quote.currency}
+									{money(quote.total)} · {quote.status}</span
 								>
 							</div>
 							{#if quote.status === 'ready'}

@@ -698,6 +698,7 @@ export type Database = {
 				Row: {
 					accepted_at: string | null;
 					base_quote_number: number;
+					cancelled_at: string | null;
 					client_id: string | null;
 					created_at: string;
 					created_by: string;
@@ -710,6 +711,9 @@ export type Database = {
 					introduction: string | null;
 					lead_id: string;
 					lock_version: number;
+					quote_number: string | null;
+					quote_snapshot: Json;
+					quote_year: number;
 					ready_at: string | null;
 					revision_number: number;
 					sent_at: string | null;
@@ -728,6 +732,7 @@ export type Database = {
 				Insert: {
 					accepted_at?: string | null;
 					base_quote_number?: number;
+					cancelled_at?: string | null;
 					client_id?: string | null;
 					created_at?: string;
 					created_by: string;
@@ -740,6 +745,9 @@ export type Database = {
 					introduction?: string | null;
 					lead_id: string;
 					lock_version?: number;
+					quote_number?: string | null;
+					quote_snapshot?: Json;
+					quote_year?: number;
 					ready_at?: string | null;
 					revision_number?: number;
 					sent_at?: string | null;
@@ -758,6 +766,7 @@ export type Database = {
 				Update: {
 					accepted_at?: string | null;
 					base_quote_number?: number;
+					cancelled_at?: string | null;
 					client_id?: string | null;
 					created_at?: string;
 					created_by?: string;
@@ -770,6 +779,9 @@ export type Database = {
 					introduction?: string | null;
 					lead_id?: string;
 					lock_version?: number;
+					quote_number?: string | null;
+					quote_snapshot?: Json;
+					quote_year?: number;
 					ready_at?: string | null;
 					revision_number?: number;
 					sent_at?: string | null;
@@ -914,6 +926,10 @@ export type Database = {
 			[_ in never]: never;
 		};
 		Functions: {
+			accept_quote: {
+				Args: { p_lock_version: number; p_quote_id: string };
+				Returns: Json;
+			};
 			assign_lead: {
 				Args: {
 					p_assigned_to: string;
@@ -926,6 +942,10 @@ export type Database = {
 				Args: { p_outbound_message_id: string; p_provider_message_id: string };
 				Returns: Json;
 			};
+			cancel_quote: {
+				Args: { p_lock_version: number; p_quote_id: string };
+				Returns: Json;
+			};
 			convert_lead: {
 				Args: { p_lead_id: string; p_lock_version: number };
 				Returns: Json;
@@ -934,11 +954,19 @@ export type Database = {
 				Args: {
 					p_item_name: string;
 					p_lead_id: string;
-					p_quantity: number;
+					p_quantity: number | string;
 					p_subject: string;
-					p_tax_rate?: number;
-					p_unit_price: number;
+					p_tax_rate?: number | string;
+					p_unit_price: number | string;
 				};
+				Returns: Json;
+			};
+			decline_quote: {
+				Args: { p_lock_version: number; p_quote_id: string };
+				Returns: Json;
+			};
+			expire_quote: {
+				Args: { p_lock_version: number; p_quote_id: string };
 				Returns: Json;
 			};
 			ingest_bricks_lead: {
@@ -947,6 +975,10 @@ export type Database = {
 					p_form_id: string;
 					p_payload: Json;
 				};
+				Returns: Json;
+			};
+			mark_quote_ready: {
+				Args: { p_lock_version: number; p_quote_id: string };
 				Returns: Json;
 			};
 			prepare_quote_send: {
@@ -970,6 +1002,27 @@ export type Database = {
 				Args: { p_lead_id: string; p_lock_version: number; p_reason: string };
 				Returns: Json;
 			};
+			revise_quote: {
+				Args: { p_lock_version: number; p_quote_id: string };
+				Returns: Json;
+			};
+			save_quote_draft: {
+				Args: {
+					p_client_id: string | null;
+					p_currency: string;
+					p_introduction: string | null;
+					p_items: Json;
+					p_lead_id: string;
+					p_lock_version: number | null;
+					p_quote_id: string | null;
+					p_subject: string;
+					p_tax_label: string | null;
+					p_tax_rate: number | string;
+					p_terms: string | null;
+					p_valid_until: string | null;
+				};
+				Returns: Json;
+			};
 			set_lead_attention: {
 				Args: {
 					p_attention_state: string;
@@ -988,6 +1041,14 @@ export type Database = {
 					p_lost_reason_id?: string;
 					p_to_stage: string;
 				};
+				Returns: Json;
+			};
+			transition_quote_status: {
+				Args: { p_lock_version: number; p_quote_id: string; p_to_status: string };
+				Returns: Json;
+			};
+			supersede_quote: {
+				Args: { p_lock_version: number; p_quote_id: string };
 				Returns: Json;
 			};
 		};

@@ -18,4 +18,34 @@ describe('quote money contract', () => {
 			total: '247.48'
 		});
 	});
+
+	it('rounds each line at cents and taxes only taxable lines', () => {
+		expect(
+			calculateQuoteTotals(
+				[
+					{ quantity: '0.3333', unitPrice: '10.01', taxable: true },
+					{ quantity: '2', unitPrice: '100.10', taxable: false }
+				],
+				'15.125'
+			)
+		).toEqual({
+			lineSubtotals: ['3.34', '200.20'],
+			subtotal: '203.54',
+			taxAmount: '0.51',
+			total: '204.05'
+		});
+	});
+
+	it('rejects empty, negative, zero, and over-precision values', () => {
+		expect(() => calculateQuoteTotals([], '15')).toThrow('At least one quote line');
+		expect(() =>
+			calculateQuoteTotals([{ quantity: '0', unitPrice: '1', taxable: true }], '15')
+		).toThrow('greater than zero');
+		expect(() =>
+			calculateQuoteTotals([{ quantity: '-1', unitPrice: '1', taxable: true }], '15')
+		).toThrow('Invalid non-negative decimal');
+		expect(() =>
+			calculateQuoteTotals([{ quantity: '1.00001', unitPrice: '1', taxable: true }], '15')
+		).toThrow('too many fractional places');
+	});
 });

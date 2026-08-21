@@ -1,6 +1,7 @@
 import { error, fail, redirect } from '@sveltejs/kit';
 import type { Actions, PageServerLoad } from './$types';
 import { sendQuote } from '$lib/server/quote-actions';
+import { decimalValue } from '$lib/server/quote-form';
 import { requireActiveStaff } from '$lib/server/require-auth';
 
 function lockVersion(formData: FormData) {
@@ -101,10 +102,10 @@ export const actions: Actions = {
 	createQuote: async (event) => {
 		const { supabase } = await requireActiveStaff(event);
 		const form = await event.request.formData();
-		const quantity = Number(form.get('quantity'));
-		const unitPrice = Number(form.get('unit_price'));
-		const taxRate = Number(form.get('tax_rate') || 0);
 		try {
+			const quantity = decimalValue(form, 'quantity', /^(?:0|[1-9]\d*)(?:\.\d{1,4})?$/);
+			const unitPrice = decimalValue(form, 'unit_price', /^(?:0|[1-9]\d*)(?:\.\d{1,2})?$/);
+			const taxRate = decimalValue(form, 'tax_rate', /^(?:0|[1-9]\d*)(?:\.\d{1,4})?$/);
 			const response = await supabase.rpc('create_minimal_quote', {
 				p_lead_id: event.params.id,
 				p_subject: String(form.get('subject') ?? ''),
