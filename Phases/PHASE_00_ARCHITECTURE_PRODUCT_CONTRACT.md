@@ -1,0 +1,148 @@
+# Phase 0 — Architecture & Product Contract
+
+**Project:** Small Business CRM  
+**Roadmap Version:** 1.1.0  
+**Phase:** 0  
+**Milestone:** M0 — Foundation  
+**Status:** Implementation Authority  
+**Architecture:** SvelteKit + TypeScript + Cloudflare Pages + Supabase PostgreSQL/Auth/RLS/Storage/Edge Functions/Cron + SendPulse + WordPress/Bricks  
+**Deployment model:** One isolated stack per client
+
+> This document is the execution authority for this phase. The coding agent must not expand beyond this boundary without an explicit architecture decision.
+
+---
+
+# Exact Goal
+
+Freeze the product, domain model, state machines, deployment model, security boundaries, integration boundaries, and implementation sequence so later agents build against one stable authority rather than inventing architecture during implementation.
+
+# Preconditions
+
+The high-level CRM blueprint and roadmap exist. No implementation work from later phases should be treated as authoritative until this phase is closed.
+
+# Phase Boundary
+
+This phase owns only the work described below. Any adjacent capability not listed under **MUST happen** is out of scope unless required solely to make a listed item testable.
+
+# MUST Happen
+
+- Create and/or reconcile `docs/ARCHITECTURE.md`, `docs/DOMAIN_MODEL.md`, `docs/STATE_MACHINES.md`, `docs/SECURITY_MODEL.md`, and `docs/ROADMAP.md`.
+- Freeze the product boundary: Lead → Qualification → Quote → Follow-up → Won/Lost → Client.
+- Freeze the deployment model: one client = one Cloudflare deployment + one Supabase project + one SendPulse configuration.
+- Freeze the domains: Identity & Access, Lead Management, Client Management, Quoting, Tasks & Follow-up, Communications, Activity & Audit, Integrations, Reporting & Analytics, Configuration.
+- Freeze Lead pipeline states and legal transitions.
+- Freeze Attention states independently from pipeline stage.
+- Freeze Quote lifecycle and immutability rules.
+- Freeze Task and Outbound Message state machines.
+- Define resource ownership and authoritative source of truth for every domain.
+- Define which operations are direct RLS-secured CRUD versus trusted database/Edge Function actions.
+- Define client ownership/offboarding model for Cloudflare, Supabase, domain, and SendPulse.
+- Record explicit deferred scope so future agents cannot quietly add it.
+
+# MUST NOT Happen
+
+- Do not scaffold Svelte routes, Supabase tables, Edge Functions, or UI components.
+- Do not introduce implementation dependencies.
+- Do not design a generic HubSpot replacement.
+- Do not introduce multi-tenancy.
+- Do not add WhatsApp, accounting, invoicing, AI, workflow builders, project management, or customer portals.
+- Do not leave two competing definitions for Lead, Client, Quote, Task, or Activity.
+- Do not allow one overloaded `status` field to represent pipeline, waiting state, and work due.
+
+# Detailed Execution Breakdown
+
+| Sub-phase | Exact Outcome |
+|---|---|
+| **P0.1 Product Contract** | Freeze product purpose, target user, bounded scope, explicit deferred scope. |
+| **P0.2 Domain Model** | Define resources, relationships, invariants, ownership, and trusted actions. |
+| **P0.3 State Machines** | Define legal states and transitions for Leads, Quotes, Tasks, Users, inbound submissions, and outbound messages. |
+| **P0.4 Security Model** | Define Auth, roles, RLS responsibilities, secret boundaries, and privileged actions. |
+| **P0.5 Deployment Contract** | Define single-client ownership, environment boundaries, and integration ownership. |
+| **P0.6 Roadmap Reconciliation** | Ensure phase ordering and dependencies match the frozen domain model. |
+
+# Mandatory Test Matrix
+
+**Every test below is a release gate for this phase. A phase cannot be marked complete while any mandatory test is failing, skipped without an explicit written waiver, or replaced by an unverified assumption.**
+
+| ID | Mandatory Test | Type | Exact Pass Criterion |
+|---|---|---|---|
+| `P0-T01` | Architecture completeness review | Manual/document test | Every domain, state machine, trusted action boundary, and deployment boundary is documented exactly once with no unresolved TODOs. |
+| `P0-T02` | Cross-document consistency | Document review/search | Lead, Quote, Task, role, and deployment terminology is identical across all authority docs. |
+| `P0-T03` | Deferred-scope check | Document review | All known post-v1 items are explicitly marked deferred and do not appear as current requirements. |
+| `P0-T04` | No implementation leakage | Git diff review | No production source code, migration, dependency, route, or integration implementation was added in Phase 0. |
+| `P0-T05` | Roadmap dependency check | Manual review | No phase depends on functionality scheduled after it. |
+
+# Definition of Done
+
+- There is one authoritative definition for every core resource and lifecycle.
+- Architecture contradictions are resolved rather than deferred to coding agents.
+- All five authority documents exist and agree.
+- Implementation can begin without an agent needing to invent domain rules.
+
+# Handoff to Next Phase
+
+Phase 1 receives frozen architecture documents and may scaffold the technical project, but may not reinterpret the domain model.
+
+# Phase Closure Checklist
+
+- [ ] All MUST items are implemented or documented exactly as required.
+- [ ] No MUST NOT item was introduced.
+- [ ] Every mandatory phase test passes.
+- [ ] All prior-phase regression tests still pass and none were weakened, skipped, or removed merely to make this phase pass.
+- [ ] Project-wide format/lint/type/test/build/database/diff gates pass.
+- [ ] Migrations are deterministic and clean where applicable.
+- [ ] Security/RLS assumptions are test-backed where applicable.
+- [ ] No secrets are exposed.
+- [ ] No unrelated feature scope was introduced.
+- [ ] Git diff is reviewable and limited to this phase's outcomes.
+- [ ] Phase documentation is updated to match the implemented truth.
+
+# Global Rules Inherited by This Phase
+
+The following rules apply to every phase:
+
+1. **One codebase, isolated client deployments.**
+2. **PostgreSQL is the durable source of truth.**
+3. **RLS is mandatory for exposed business data.**
+4. **Secrets must never enter browser code or public environment variables.**
+5. **Sent quotes are immutable.**
+6. **External integrations must be retry-safe and idempotent.**
+7. **Do not introduce Redis, microservices, Kafka, background infrastructure, or a separate analytics system unless a measured requirement proves they are necessary.**
+8. **Use the smallest number of tools and dependencies necessary.**
+9. **Do not implement functionality allocated to a later phase.**
+10. **Every phase closes with focused tests plus the complete existing project quality gate.**
+
+# Standard Agent Tool Policy
+
+Use only the tools required by the current task.
+
+**Default tools**
+- filesystem read/write
+- shell
+- git
+
+**Add only when required**
+- Supabase CLI for schema, migrations, Edge Functions, Auth/RLS, or database tests
+- browser for UI or end-to-end verification
+- SendPulse/API access only for the communication integration phase and explicit end-to-end verification
+- WordPress/Bricks access only for webhook integration verification
+
+Do not browse, install dependencies, or call external services merely because they are available.
+
+# Global Execution STOP Conditions
+
+Execution may stop only under a genuine `AGENTS.md` **EXECUTION STOP** condition. Ordinary test/build/lint/migration failures, phase completion, or reaching this phase's scope boundary are not execution stops; diagnose/repair or close the phase as defined by `AGENTS.md`.
+
+# Phase Close Condition
+
+Once all required outcomes in this document are implemented, every mandatory phase test passes, all completed-phase regression gates still pass, the project-wide quality gate passes, migrations are clean, and no unrelated scope was introduced:
+
+1. **STOP WORK ON THIS PHASE.**
+2. Mark the phase `COMPLETE`.
+3. Persist `STATE.json` / `STATE.md` and the local phase handoff.
+4. Create a safe local checkpoint commit when permitted and isolatable.
+5. **Immediately advance to the next dependency-valid phase.**
+
+This is a **PHASE CLOSE**, not an `EXECUTION STOP`. Do not “improve” adjacent systems before advancing.
+
+---
