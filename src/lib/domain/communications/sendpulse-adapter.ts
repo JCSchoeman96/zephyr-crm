@@ -6,6 +6,12 @@ export type SendPulseEmail = {
 	html: string;
 	fromEmail?: string;
 	fromName?: string;
+	attachments?: SendPulseAttachment[];
+};
+
+export type SendPulseAttachment = {
+	name: string;
+	content: string;
 };
 
 type SendPulseAdapterOptions = {
@@ -54,23 +60,24 @@ export class SendPulseAdapter {
 			throw new Error('SendPulse authentication failed');
 		}
 
+		const email: Record<string, unknown> = {
+			html: input.html,
+			subject: input.subject,
+			from: {
+				email: input.fromEmail ?? this.options.senderEmail,
+				name: input.fromName ?? this.options.senderName
+			},
+			to: input.to
+		};
+		if (input.attachments?.length) email.attachments = input.attachments;
+
 		const sendResponse = await this.options.fetcher(`${this.options.baseUrl}/smtp/emails`, {
 			method: 'POST',
 			headers: {
 				Authorization: `Bearer ${tokenBody.access_token}`,
 				'content-type': 'application/json'
 			},
-			body: JSON.stringify({
-				email: {
-					html: input.html,
-					subject: input.subject,
-					from: {
-						email: input.fromEmail ?? this.options.senderEmail,
-						name: input.fromName ?? this.options.senderName
-					},
-					to: input.to
-				}
-			})
+			body: JSON.stringify({ email })
 		});
 		const sendBody = (await sendResponse.json()) as SendResponse;
 		const providerMessageId = sendBody.id ?? sendBody.message_id;

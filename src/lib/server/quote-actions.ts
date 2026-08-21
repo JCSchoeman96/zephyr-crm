@@ -2,6 +2,7 @@ import { env } from '$env/dynamic/private';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { Database } from '$lib/types/database';
 import { SendPulseAdapter } from '$lib/domain/communications/sendpulse-adapter';
+import { bytesToBase64, ensureQuoteDocument } from '$lib/server/quote-documents';
 
 type ServerSupabaseClient = SupabaseClient<Database>;
 type JsonRecord = Record<string, unknown>;
@@ -27,9 +28,22 @@ export async function sendQuote(
 	quoteId: string,
 	lockVersion: number
 ): Promise<JsonRecord> {
+	const currentQuote = await supabase
+		.from('quotes')
+		.select('status')
+		.eq('id', quoteId)
+		.maybeSingle();
+	if (currentQuote.error) throw new Error(currentQuote.error.message);
+	if (!currentQuote.data) throw new Error('Quote not found.');
+
+	let document: Awaited<ReturnType<typeof ensureQuoteDocument>> | null = null;
+	if (currentQuote.data.status === 'ready') {
+		document = await ensureQuoteDocument(supabase, quoteId, lockVersion);
+	}
+
 	const preparedResponse = await supabase.rpc('prepare_quote_send', {
 		p_quote_id: quoteId,
-		p_lock_version: lockVersion
+		p_lock_version: document?.lockVersion ?? lockVersion
 	});
 	if (preparedResponse.error) throw new Error(preparedResponse.error.message);
 
@@ -55,17 +69,22 @@ export async function sendQuote(
 		const result = await adapter.sendEmail({
 			to: [{ email: stringValue(recipient.email), name: stringValue(recipient.name) }],
 			subject: stringValue(prepared.subject),
-			html: `<p>${escapeHtml(stringValue(prepared.subject))}</p><p>Total: ${escapeHtml(stringValue(prepared.total))}</p>`
+			html: `<p>${escapeHtml(stringValue(prepared.subject))}</p><p>A frozen PDF quote is attached.</p>`,
+			attachments: document
+				? [
+						{
+							name: document.path.split('/').at(-1) ?? 'quote.pdf',
+							content: await bytesToBase64(document.bytes)
+						}
+					]
+				: undefined
 		});
 		providerMessageId = result.providerMessageId;
 	} catch (error) {
-		await supabase
-			.from('outbound_messages')
-			.update({
-				delivery_status: 'failed',
-				last_error: error instanceof Error ? error.message : 'Provider error'
-			})
-			.eq('id', stringValue(prepared.outbound_message_id));
+		await supabase.rpc('fail_quote_send', {
+			p_outbound_message_id: stringValue(prepared.outbound_message_id),
+			p_error: error instanceof Error ? error.message : 'Provider error'
+		});
 		throw error;
 	}
 

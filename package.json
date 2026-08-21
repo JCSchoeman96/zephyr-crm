@@ -30,11 +30,12 @@
 		"test:p5:leads": "node scripts/test-p5-leads.mjs",
 		"test:p6:clients": "node scripts/test-p6-clients.mjs",
 		"test:p7:quotes": "node scripts/test-p7-quotes.mjs",
+		"test:p8:documents": "node scripts/test-p8-documents.mjs",
 		"diff:check": "git diff --check",
 		"authority:verify": "node scripts/verify-authority-hashes.mjs",
 		"security:bundle": "node scripts/check-public-bundle.mjs",
 		"tokens:check": "node scripts/check-design-tokens.mjs",
-		"quality": "bun run authority:verify && bun run format:check && bun run lint && bun run check && bun run tokens:check && bun run test && bun run build && bun run security:bundle && bun run db:test && bun run db:security && bun run auth:integration && bun run test:p4:domain && bun run test:p4:tracer && bun run test:p5:leads && bun run test:p6:clients && bun run test:p7:quotes && bun run diff:check"
+		"quality": "bun run authority:verify && bun run format:check && bun run lint && bun run check && bun run tokens:check && bun run test && bun run build && bun run security:bundle && bun run db:test && bun run db:security && bun run auth:integration && bun run test:p4:domain && bun run test:p4:tracer && bun run test:p5:leads && bun run test:p6:clients && bun run test:p7:quotes && bun run test:p8:documents && bun run diff:check"
 	},
 	"devDependencies": {
 		"@eslint/js": "10.0.1",

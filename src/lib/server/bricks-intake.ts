@@ -1,7 +1,6 @@
 import { env } from '$env/dynamic/private';
-import { createClient } from '@supabase/supabase-js';
 import type { RequestEvent } from '@sveltejs/kit';
-import type { Database } from '$lib/types/database';
+import { createTrustedSupabaseClient } from '$lib/server/trusted-supabase';
 
 const MAX_BODY_BYTES = 64 * 1024;
 
@@ -21,12 +20,11 @@ export class BricksIntakeError extends Error {
 }
 
 function trustedServiceClient() {
-	const url = (env.SUPABASE_URL || env.PUBLIC_SUPABASE_URL)?.trim();
-	const key = env.SUPABASE_SERVICE_ROLE_KEY?.trim();
-	if (!url || !key) throw new BricksIntakeError('Trusted intake is not configured', 503);
-	return createClient<Database>(url, key, {
-		auth: { autoRefreshToken: false, persistSession: false }
-	});
+	try {
+		return createTrustedSupabaseClient();
+	} catch {
+		throw new BricksIntakeError('Trusted intake is not configured', 503);
+	}
 }
 
 function textField(payload: Record<string, unknown>, key: string): string {

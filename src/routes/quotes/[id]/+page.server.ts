@@ -26,25 +26,38 @@ export const load: PageServerLoad = async (event) => {
 		.maybeSingle();
 	if (quoteResponse.error) throw error(500, 'Could not load the quote');
 	if (!quoteResponse.data) throw error(404, 'Quote not found');
-	const [itemsResponse, leadResponse, clientResponse, activityResponse] = await Promise.all([
-		supabase
-			.from('quote_items')
-			.select('*')
-			.eq('quote_id', event.params.id)
-			.order('position')
-			.limit(100),
-		supabase.from('leads').select('*').eq('id', quoteResponse.data.lead_id).maybeSingle(),
-		quoteResponse.data.client_id
-			? supabase.from('clients').select('*').eq('id', quoteResponse.data.client_id).maybeSingle()
-			: Promise.resolve({ data: null, error: null }),
-		supabase
-			.from('activities')
-			.select('*')
-			.eq('quote_id', event.params.id)
-			.order('occurred_at', { ascending: false })
-			.limit(50)
-	]);
-	if (itemsResponse.error || leadResponse.error || clientResponse.error || activityResponse.error)
+	const [itemsResponse, leadResponse, clientResponse, activityResponse, outboundResponse] =
+		await Promise.all([
+			supabase
+				.from('quote_items')
+				.select('*')
+				.eq('quote_id', event.params.id)
+				.order('position')
+				.limit(100),
+			supabase.from('leads').select('*').eq('id', quoteResponse.data.lead_id).maybeSingle(),
+			quoteResponse.data.client_id
+				? supabase.from('clients').select('*').eq('id', quoteResponse.data.client_id).maybeSingle()
+				: Promise.resolve({ data: null, error: null }),
+			supabase
+				.from('activities')
+				.select('*')
+				.eq('quote_id', event.params.id)
+				.order('occurred_at', { ascending: false })
+				.limit(50),
+			supabase
+				.from('outbound_messages')
+				.select('*')
+				.eq('quote_id', event.params.id)
+				.order('created_at', { ascending: false })
+				.limit(10)
+		]);
+	if (
+		itemsResponse.error ||
+		leadResponse.error ||
+		clientResponse.error ||
+		activityResponse.error ||
+		outboundResponse.error
+	)
 		throw error(500, 'Could not load quote details');
 	if (!leadResponse.data) throw error(500, 'Quote lead could not be loaded');
 	return {
@@ -53,6 +66,7 @@ export const load: PageServerLoad = async (event) => {
 		lead: leadResponse.data,
 		client: clientResponse.data,
 		activities: activityResponse.data ?? [],
+		outboundMessages: outboundResponse.data ?? [],
 		profile
 	};
 };

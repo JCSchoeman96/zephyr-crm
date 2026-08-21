@@ -28,6 +28,19 @@
 			value && typeof value === 'object' && !Array.isArray(value) && 'company_identity' in value
 		);
 	}
+
+	function messageTone(status: string) {
+		if (status === 'delivered') return 'success';
+		if (['failed', 'bounced'].includes(status)) return 'danger';
+		if (status === 'submitted') return 'warning';
+		return 'neutral';
+	}
+
+	function recipientEmail(value: unknown) {
+		return value && typeof value === 'object' && !Array.isArray(value) && 'email' in value
+			? String(value.email ?? '')
+			: 'recipient unavailable';
+	}
 </script>
 
 <svelte:head
@@ -176,6 +189,31 @@
 						</li>{/each}{/if}
 			</ul></Card
 		>
+		<Card title="Document & delivery">
+			<div class="delivery-panel">
+				{#if data.quote.document_path}
+					<a class="document-link" href={resolve(`/api/quotes/${data.quote.id}/document`)}
+						>Download frozen PDF</a
+					>
+					<p class="muted">Generated {data.quote.document_generated_at ?? 'time unavailable'}</p>
+				{:else}
+					<p class="muted">The private PDF is generated when this Quote is sent.</p>
+				{/if}
+				{#if data.outboundMessages.length > 0}
+					<ul class="delivery-list">
+						{#each data.outboundMessages as message (message.id)}
+							<li>
+								<span>{recipientEmail(message.recipient_snapshot)}</span>
+								<Badge tone={messageTone(message.delivery_status)}>{message.delivery_status}</Badge>
+								{#if message.last_error}<small>{message.last_error}</small>{/if}
+							</li>
+						{/each}
+					</ul>
+				{:else}
+					<p class="muted">No outbound message has been created.</p>
+				{/if}
+			</div>
+		</Card>
 	</div>
 </AppShell>
 
@@ -237,6 +275,35 @@
 		margin-top: var(--space-xs);
 		color: var(--color-text-muted);
 		font-size: var(--font-size-xs);
+	}
+	.delivery-panel {
+		display: grid;
+		gap: var(--space-sm);
+	}
+	.document-link {
+		color: var(--color-brand-primary);
+		font-weight: 600;
+		text-decoration: none;
+	}
+	.delivery-list {
+		display: grid;
+		gap: var(--space-sm);
+		margin: var(--space-sm) 0 0;
+		padding: 0;
+		list-style: none;
+	}
+	.delivery-list li {
+		display: grid;
+		grid-template-columns: 1fr auto;
+		gap: var(--space-xs) var(--space-sm);
+		align-items: center;
+		padding-top: var(--space-sm);
+		border-top: 1px solid var(--color-border-subtle);
+		font-size: var(--font-size-sm);
+	}
+	.delivery-list small {
+		grid-column: 1 / -1;
+		color: var(--color-text-muted);
 	}
 	.muted {
 		color: var(--color-text-muted);

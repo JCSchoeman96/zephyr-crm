@@ -704,6 +704,7 @@ export type Database = {
 					created_by: string;
 					currency: string;
 					declined_at: string | null;
+					document_generated_at: string | null;
 					document_hash: string | null;
 					document_path: string | null;
 					expired_at: string | null;
@@ -738,6 +739,7 @@ export type Database = {
 					created_by: string;
 					currency?: string;
 					declined_at?: string | null;
+					document_generated_at?: string | null;
 					document_hash?: string | null;
 					document_path?: string | null;
 					expired_at?: string | null;
@@ -772,6 +774,7 @@ export type Database = {
 					created_by?: string;
 					currency?: string;
 					declined_at?: string | null;
+					document_generated_at?: string | null;
 					document_hash?: string | null;
 					document_path?: string | null;
 					expired_at?: string | null;
@@ -938,12 +941,21 @@ export type Database = {
 				};
 				Returns: Json;
 			};
-			complete_quote_send: {
-				Args: { p_outbound_message_id: string; p_provider_message_id: string };
+			attach_quote_document: {
+				Args: {
+					p_document_hash: string;
+					p_document_path: string;
+					p_lock_version: number;
+					p_quote_id: string;
+				};
 				Returns: Json;
 			};
 			cancel_quote: {
 				Args: { p_lock_version: number; p_quote_id: string };
+				Returns: Json;
+			};
+			complete_quote_send: {
+				Args: { p_outbound_message_id: string; p_provider_message_id: string };
 				Returns: Json;
 			};
 			convert_lead: {
@@ -969,6 +981,10 @@ export type Database = {
 				Args: { p_lock_version: number; p_quote_id: string };
 				Returns: Json;
 			};
+			fail_quote_send: {
+				Args: { p_error: string; p_outbound_message_id: string };
+				Returns: Json;
+			};
 			ingest_bricks_lead: {
 				Args: {
 					p_external_submission_id: string;
@@ -983,6 +999,17 @@ export type Database = {
 			};
 			prepare_quote_send: {
 				Args: { p_lock_version: number; p_quote_id: string };
+				Returns: Json;
+			};
+			process_sendpulse_event: {
+				Args: {
+					p_deduplication_hash: string;
+					p_event_type: string;
+					p_metadata: Json;
+					p_occurred_at: string;
+					p_provider_event_id: string | null;
+					p_provider_message_id: string;
+				};
 				Returns: Json;
 			};
 			provision_invited_profile: {
@@ -1033,6 +1060,10 @@ export type Database = {
 				};
 				Returns: Json;
 			};
+			supersede_quote: {
+				Args: { p_lock_version: number; p_quote_id: string };
+				Returns: Json;
+			};
 			transition_lead: {
 				Args: {
 					p_lead_id: string;
@@ -1044,11 +1075,11 @@ export type Database = {
 				Returns: Json;
 			};
 			transition_quote_status: {
-				Args: { p_lock_version: number; p_quote_id: string; p_to_status: string };
-				Returns: Json;
-			};
-			supersede_quote: {
-				Args: { p_lock_version: number; p_quote_id: string };
+				Args: {
+					p_lock_version: number;
+					p_quote_id: string;
+					p_to_status: string;
+				};
 				Returns: Json;
 			};
 		};
