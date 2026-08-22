@@ -10,6 +10,7 @@
 	import LoadingState from '$lib/components/ui/LoadingState.svelte';
 	import PageHeader from '$lib/components/ui/PageHeader.svelte';
 	import Select from '$lib/components/ui/Select.svelte';
+	import RealtimeStatus from '$lib/realtime/RealtimeStatus.svelte';
 
 	let { data }: { data: PageData } = $props();
 	const hasFilters = $derived(Boolean(data.filters.q || data.filters.status));
@@ -58,8 +59,10 @@
 		title="Quotes"
 		description="Durable commercial snapshots with exact totals and controlled lifecycle actions."
 	>
-		{#snippet actions()}<a class="primary-link" href={resolve('/quotes/new')}>New quote</a
-			>{/snippet}
+		{#snippet actions()}
+			<RealtimeStatus scope="quotes" tables={['quotes']} />
+			<a class="primary-link" href={resolve('/quotes/new')}>New quote</a>
+		{/snippet}
 	</PageHeader>
 
 	{#if navigating.to}<LoadingState message="Loading quotes…" />{/if}

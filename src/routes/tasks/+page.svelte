@@ -9,6 +9,7 @@
 	import Input from '$lib/components/ui/Input.svelte';
 	import PageHeader from '$lib/components/ui/PageHeader.svelte';
 	import Select from '$lib/components/ui/Select.svelte';
+	import RealtimeStatus from '$lib/realtime/RealtimeStatus.svelte';
 
 	let { data, form }: { data: PageData; form: ActionData } = $props();
 	const canMutate = $derived(data.profile.role !== 'viewer');
@@ -34,7 +35,9 @@
 	<PageHeader
 		title="Tasks"
 		description="Every open Task is an explicit next action; overdue is derived from its due time."
-	/>
+	>
+		{#snippet actions()}<RealtimeStatus scope="tasks" tables={['tasks', 'leads']} />{/snippet}
+	</PageHeader>
 	{#if form?.message}<ErrorState title="Task action failed" message={form.message} />{/if}
 
 	<Card class="filters-card">

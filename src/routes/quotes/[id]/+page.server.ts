@@ -2,7 +2,14 @@ import { error, fail, redirect } from '@sveltejs/kit';
 import type { Actions, PageServerLoad } from './$types';
 import { quoteFormValues } from '$lib/server/quote-form';
 import { sendQuote } from '$lib/server/quote-actions';
+import { actionFailureStatus, userFacingActionMessage } from '$lib/server/action-errors';
 import { requireActiveStaff } from '$lib/server/require-auth';
+
+function actionFailure(errorValue: unknown, fallback = 'Could not complete Quote action') {
+	return fail(actionFailureStatus(errorValue), {
+		message: userFacingActionMessage(errorValue, fallback)
+	});
+}
 
 function lockVersion(form: FormData) {
 	const value = Number(form.get('lock_version'));
@@ -80,11 +87,9 @@ export const actions: Actions = {
 				'save_quote_draft',
 				quoteFormValues(form, String(form.get('lead_id') ?? ''), event.params.id)
 			);
-			if (response.error) return fail(422, { message: response.error.message });
+			if (response.error) return actionFailure(response.error, 'Could not save Quote');
 		} catch (actionError) {
-			return fail(422, {
-				message: actionError instanceof Error ? actionError.message : 'Could not save quote'
-			});
+			return actionFailure(actionError, 'Could not save Quote');
 		}
 		throw redirect(303, `/quotes/${event.params.id}`);
 	},
@@ -95,11 +100,9 @@ export const actions: Actions = {
 				p_quote_id: event.params.id,
 				p_lock_version: lockVersion(await event.request.formData())
 			});
-			if (response.error) return fail(422, { message: response.error.message });
+			if (response.error) return actionFailure(response.error, 'Could not mark Quote ready');
 		} catch (actionError) {
-			return fail(422, {
-				message: actionError instanceof Error ? actionError.message : 'Could not mark quote ready'
-			});
+			return actionFailure(actionError, 'Could not mark Quote ready');
 		}
 		throw redirect(303, `/quotes/${event.params.id}`);
 	},
@@ -108,9 +111,7 @@ export const actions: Actions = {
 		try {
 			await sendQuote(supabase, event.params.id, lockVersion(await event.request.formData()));
 		} catch (actionError) {
-			return fail(422, {
-				message: actionError instanceof Error ? actionError.message : 'Could not send quote'
-			});
+			return actionFailure(actionError, 'Could not send Quote');
 		}
 		throw redirect(303, `/quotes/${event.params.id}`);
 	},
@@ -121,16 +122,14 @@ export const actions: Actions = {
 				p_quote_id: event.params.id,
 				p_lock_version: lockVersion(await event.request.formData())
 			});
-			if (response.error) return fail(422, { message: response.error.message });
+			if (response.error) return actionFailure(response.error, 'Could not create Quote revision');
 			const newQuoteId = String(record(response.data).quote_id ?? '');
 			if (!newQuoteId) return fail(500, { message: 'Revision was created without an identifier.' });
 			throw redirect(303, `/quotes/${newQuoteId}`);
 		} catch (actionError) {
 			if (actionError && typeof actionError === 'object' && 'status' in actionError)
 				throw actionError;
-			return fail(422, {
-				message: actionError instanceof Error ? actionError.message : 'Could not revise quote'
-			});
+			return actionFailure(actionError, 'Could not revise Quote');
 		}
 	},
 	accept: async (event) => transition(event, 'accept_quote'),
@@ -149,11 +148,9 @@ async function transition(
 			p_quote_id: event.params.id,
 			p_lock_version: lockVersion(await event.request.formData())
 		});
-		if (response.error) return fail(422, { message: response.error.message });
+		if (response.error) return actionFailure(response.error, 'Could not update Quote state');
 	} catch (actionError) {
-		return fail(422, {
-			message: actionError instanceof Error ? actionError.message : 'Could not update quote state'
-		});
+		return actionFailure(actionError, 'Could not update Quote state');
 	}
 	throw redirect(303, `/quotes/${event.params.id}`);
 }

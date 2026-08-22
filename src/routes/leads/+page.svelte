@@ -11,6 +11,7 @@
 	import LoadingState from '$lib/components/ui/LoadingState.svelte';
 	import PageHeader from '$lib/components/ui/PageHeader.svelte';
 	import Select from '$lib/components/ui/Select.svelte';
+	import RealtimeStatus from '$lib/realtime/RealtimeStatus.svelte';
 
 	let { data }: { data: PageData } = $props();
 
@@ -68,7 +69,9 @@
 	<PageHeader
 		title="Leads"
 		description="Qualify enquiries and move the right opportunities forward."
-	/>
+	>
+		{#snippet actions()}<RealtimeStatus scope="leads" tables={['leads']} />{/snippet}
+	</PageHeader>
 
 	{#if navigating.to}
 		<LoadingState message="Loading leads…" />

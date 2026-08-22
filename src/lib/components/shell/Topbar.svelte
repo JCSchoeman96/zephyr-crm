@@ -6,12 +6,14 @@
 	let {
 		context = 'Workspace',
 		onToggleNavigation,
+		navigationOpen = false,
 		userEmail = null,
 		onSignOut,
 		signOutAction = null
 	}: {
 		context?: string;
 		onToggleNavigation?: () => void;
+		navigationOpen?: boolean;
 		userEmail?: string | null;
 		onSignOut?: () => void;
 		signOutAction?: string | null;
@@ -21,7 +23,12 @@
 <header class="app-shell__topbar">
 	<div class="app-shell__topbar-start">
 		<div class="app-shell__mobile-menu">
-			<IconButton ariaLabel="Open navigation" onclick={onToggleNavigation}>
+			<IconButton
+				ariaLabel={navigationOpen ? 'Close navigation' : 'Open navigation'}
+				aria-expanded={navigationOpen}
+				aria-controls="primary-navigation"
+				onclick={onToggleNavigation}
+			>
 				<Menu size={19} aria-hidden="true" />
 			</IconButton>
 		</div>

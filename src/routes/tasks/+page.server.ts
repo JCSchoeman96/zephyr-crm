@@ -28,7 +28,8 @@ export const load: PageServerLoad = async (event) => {
 		.select('*')
 		.eq('status', status)
 		.order('due_at', { ascending: true, nullsFirst: false })
-		.order('created_at', { ascending: false });
+		.order('created_at', { ascending: false })
+		.limit(50);
 	if (overdue) taskQuery = taskQuery.eq('is_overdue', true);
 	const [tasksResponse, leadsResponse, staffResponse] = await Promise.all([
 		taskQuery,
@@ -43,6 +44,7 @@ export const load: PageServerLoad = async (event) => {
 			.eq('status', 'active')
 			.in('role', ['owner', 'admin', 'sales'])
 			.order('full_name')
+			.limit(100)
 	]);
 	if (tasksResponse.error || leadsResponse.error || staffResponse.error)
 		throw new Error('Could not load Tasks');

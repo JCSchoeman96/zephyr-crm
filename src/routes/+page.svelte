@@ -8,6 +8,7 @@
 	import EmptyState from '$lib/components/ui/EmptyState.svelte';
 	import PageHeader from '$lib/components/ui/PageHeader.svelte';
 	import StatCard from '$lib/components/ui/StatCard.svelte';
+	import RealtimeStatus from '$lib/realtime/RealtimeStatus.svelte';
 
 	let { data }: { data: PageData } = $props();
 	let brandMode = $state<'default' | 'alternate'>('default');
@@ -52,6 +53,7 @@
 		description="Start with the work that needs attention, then reconcile the pipeline for the selected period."
 	>
 		{#snippet actions()}
+			<RealtimeStatus scope="dashboard" tables={['leads', 'tasks', 'quotes']} />
 			<a class="header-link" href={resolve('/reports')}>Reports</a>
 		{/snippet}
 	</PageHeader>

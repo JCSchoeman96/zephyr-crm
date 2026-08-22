@@ -8,6 +8,7 @@
 	import ErrorState from '$lib/components/ui/ErrorState.svelte';
 	import PageHeader from '$lib/components/ui/PageHeader.svelte';
 	import QuoteEditor from '$lib/components/quotes/QuoteEditor.svelte';
+	import RealtimeStatus from '$lib/realtime/RealtimeStatus.svelte';
 
 	let { data, form }: { data: PageData; form: ActionData } = $props();
 	const editableStatuses = ['draft', 'ready'];
@@ -41,6 +42,12 @@
 			? String(value.email ?? '')
 			: 'recipient unavailable';
 	}
+
+	function actionErrorTitle(message: string | undefined) {
+		return message?.startsWith('Conflict:')
+			? 'Conflict — reload before saving'
+			: 'Quote action could not be completed';
+	}
 </script>
 
 <svelte:head
@@ -52,10 +59,13 @@
 <AppShell userEmail={data.auth.user?.email}>
 	<a class="back-link" href={resolve('/quotes')}>← Back to Quotes</a>
 	<PageHeader title={quoteNumber()} description={data.quote.subject}>
-		{#snippet actions()}<Badge tone={tone(data.quote.status)}>{data.quote.status}</Badge>{/snippet}
+		{#snippet actions()}
+			<RealtimeStatus scope={`quote-${data.quote.id}`} tables={['quotes']} />
+			<Badge tone={tone(data.quote.status)}>{data.quote.status}</Badge>
+		{/snippet}
 	</PageHeader>
 	{#if form?.message}<ErrorState
-			title="Quote action could not be completed"
+			title={actionErrorTitle(form.message)}
 			message={form.message}
 		/>{/if}
 

@@ -19,12 +19,14 @@ export const load: PageServerLoad = async (event) => {
 				.select('*')
 				.eq('client_id', event.params.id)
 				.order('is_primary', { ascending: false })
-				.order('created_at', { ascending: true }),
+				.order('created_at', { ascending: true })
+				.limit(100),
 			supabase
 				.from('activities')
 				.select('*')
 				.eq('client_id', event.params.id)
-				.order('occurred_at', { ascending: false }),
+				.order('occurred_at', { ascending: false })
+				.limit(100),
 			clientResponse.data.source_lead_id
 				? supabase
 						.from('leads')
@@ -38,6 +40,7 @@ export const load: PageServerLoad = async (event) => {
 						.select('*')
 						.eq('lead_id', clientResponse.data.source_lead_id)
 						.order('occurred_at', { ascending: false })
+						.limit(100)
 				: Promise.resolve({ data: [], error: null })
 		]);
 

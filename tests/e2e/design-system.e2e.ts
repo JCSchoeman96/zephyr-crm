@@ -2,7 +2,7 @@ import { expect, test } from '@playwright/test';
 
 test.describe('design system and application shell', () => {
 	test.beforeEach(async ({ page }) => {
-		await page.goto('/system');
+		await page.goto('/system', { waitUntil: 'networkidle' });
 	});
 
 	test('renders primitive states and labelled controls', async ({ page }) => {
@@ -31,7 +31,7 @@ test.describe('design system and application shell', () => {
 
 	test('supports keyboard navigation and mobile navigation', async ({ page }) => {
 		await page.setViewportSize({ width: 390, height: 844 });
-		await page.reload();
+		await page.reload({ waitUntil: 'networkidle' });
 		await page.getByRole('button', { name: 'Open navigation' }).focus();
 		await page.keyboard.press('Enter');
 		await expect(page.getByRole('navigation', { name: 'Primary navigation' })).toBeVisible();
@@ -48,7 +48,7 @@ test.describe('design system and application shell', () => {
 			{ width: 1280, height: 900 }
 		]) {
 			await page.setViewportSize(viewport);
-			await page.reload();
+			await page.reload({ waitUntil: 'networkidle' });
 			const dimensions = await page.evaluate(() => ({
 				viewport: window.innerWidth,
 				document: document.documentElement.scrollWidth

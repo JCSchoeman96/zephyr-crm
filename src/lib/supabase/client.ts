@@ -2,7 +2,7 @@ import { browser } from '$app/environment';
 import { env } from '$env/dynamic/public';
 import { createBrowserClient } from '@supabase/ssr';
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { parsePublicEnv } from '$lib/config/env';
+import { parsePublicEnv } from '$lib/config/public-env';
 import type { Database } from '$lib/types/database';
 
 let browserClient: SupabaseClient<Database> | undefined;

@@ -12,6 +12,7 @@
 	import SectionHeader from '$lib/components/ui/SectionHeader.svelte';
 	import Select from '$lib/components/ui/Select.svelte';
 	import Textarea from '$lib/components/ui/Textarea.svelte';
+	import RealtimeStatus from '$lib/realtime/RealtimeStatus.svelte';
 
 	let { data, form }: { data: PageData; form: ActionData } = $props();
 
@@ -35,6 +36,12 @@
 	function quoteNumber(quote: PageData['quotes'][number]) {
 		return quote.quote_number ?? `#${quote.base_quote_number}`;
 	}
+
+	function actionErrorTitle(message: string | undefined) {
+		return message?.startsWith('Conflict:')
+			? 'Conflict — reload before saving'
+			: 'Action could not be completed';
+	}
 </script>
 
 <svelte:head>
@@ -49,6 +56,7 @@
 		description={data.lead.email ?? 'Lead detail'}
 	>
 		{#snippet actions()}
+			<RealtimeStatus scope={`lead-${data.lead.id}`} tables={['leads', 'quotes', 'tasks']} />
 			<Badge tone={stageTone(data.lead.pipeline_stage)}>{data.lead.pipeline_stage}</Badge>
 		{/snippet}
 	</PageHeader>
@@ -60,7 +68,7 @@
 	</nav>
 
 	{#if form?.message}<ErrorState
-			title="Action could not be completed"
+			title={actionErrorTitle(form.message)}
 			message={form.message}
 		/>{/if}
 

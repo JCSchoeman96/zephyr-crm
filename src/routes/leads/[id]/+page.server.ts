@@ -2,7 +2,14 @@ import { error, fail, redirect } from '@sveltejs/kit';
 import type { Actions, PageServerLoad } from './$types';
 import { sendQuote } from '$lib/server/quote-actions';
 import { decimalValue } from '$lib/server/quote-form';
+import { actionFailureStatus, userFacingActionMessage } from '$lib/server/action-errors';
 import { requireActiveStaff } from '$lib/server/require-auth';
+
+function actionFailure(errorValue: unknown, fallback = 'Could not complete Lead action') {
+	return fail(actionFailureStatus(errorValue), {
+		message: userFacingActionMessage(errorValue, fallback)
+	});
+}
 
 function lockVersion(formData: FormData) {
 	const value = Number(formData.get('lock_version'));
@@ -25,24 +32,28 @@ export const load: PageServerLoad = async (event) => {
 			.from('quotes')
 			.select('*')
 			.eq('lead_id', event.params.id)
-			.order('created_at', { ascending: false }),
+			.order('created_at', { ascending: false })
+			.limit(100),
 		supabase
 			.from('tasks')
 			.select('*')
 			.eq('lead_id', event.params.id)
-			.order('created_at', { ascending: false }),
+			.order('created_at', { ascending: false })
+			.limit(100),
 		supabase
 			.from('activities')
 			.select('*')
 			.eq('lead_id', event.params.id)
-			.order('occurred_at', { ascending: false }),
-		supabase.from('lost_reasons').select('*').eq('active', true).order('sort_order'),
+			.order('occurred_at', { ascending: false })
+			.limit(100),
+		supabase.from('lost_reasons').select('*').eq('active', true).order('sort_order').limit(100),
 		supabase
 			.from('profiles')
 			.select('id,full_name,email,role,status')
 			.eq('status', 'active')
 			.in('role', ['owner', 'admin', 'sales'])
 			.order('full_name')
+			.limit(100)
 	]);
 	if (leadResponse.error) throw error(500, leadResponse.error.message);
 	if (!leadResponse.data) throw error(404, 'Lead not found');
@@ -75,11 +86,9 @@ export const actions: Actions = {
 				p_to_stage: 'QUALIFICATION',
 				p_lock_version: lockVersion(await event.request.formData())
 			});
-			if (response.error) return fail(422, { message: response.error.message });
+			if (response.error) return actionFailure(response.error, 'Could not qualify Lead');
 		} catch (actionError) {
-			return fail(422, {
-				message: actionError instanceof Error ? actionError.message : 'Could not qualify lead'
-			});
+			return actionFailure(actionError, 'Could not qualify Lead');
 		}
 		throw redirect(303, `/leads/${event.params.id}`);
 	},
@@ -91,11 +100,9 @@ export const actions: Actions = {
 				p_to_stage: 'PROPOSAL',
 				p_lock_version: lockVersion(await event.request.formData())
 			});
-			if (response.error) return fail(422, { message: response.error.message });
+			if (response.error) return actionFailure(response.error, 'Could not move Lead to proposal');
 		} catch (actionError) {
-			return fail(422, {
-				message: actionError instanceof Error ? actionError.message : 'Could not move lead'
-			});
+			return actionFailure(actionError, 'Could not move Lead');
 		}
 		throw redirect(303, `/leads/${event.params.id}`);
 	},
@@ -114,11 +121,9 @@ export const actions: Actions = {
 				p_unit_price: unitPrice,
 				p_tax_rate: taxRate
 			});
-			if (response.error) return fail(422, { message: response.error.message });
+			if (response.error) return actionFailure(response.error, 'Could not create Quote');
 		} catch (actionError) {
-			return fail(422, {
-				message: actionError instanceof Error ? actionError.message : 'Could not create quote'
-			});
+			return actionFailure(actionError, 'Could not create Quote');
 		}
 		throw redirect(303, `/leads/${event.params.id}`);
 	},
@@ -128,9 +133,7 @@ export const actions: Actions = {
 		try {
 			await sendQuote(supabase, String(form.get('quote_id') ?? ''), lockVersion(form));
 		} catch (actionError) {
-			return fail(422, {
-				message: actionError instanceof Error ? actionError.message : 'Could not send quote'
-			});
+			return actionFailure(actionError, 'Could not send Quote');
 		}
 		throw redirect(303, `/leads/${event.params.id}`);
 	},
@@ -141,11 +144,9 @@ export const actions: Actions = {
 				p_lead_id: event.params.id,
 				p_lock_version: lockVersion(await event.request.formData())
 			});
-			if (response.error) return fail(422, { message: response.error.message });
+			if (response.error) return actionFailure(response.error, 'Could not win Lead');
 		} catch (actionError) {
-			return fail(422, {
-				message: actionError instanceof Error ? actionError.message : 'Could not win lead'
-			});
+			return actionFailure(actionError, 'Could not win Lead');
 		}
 		throw redirect(303, `/leads/${event.params.id}`);
 	},
@@ -160,11 +161,9 @@ export const actions: Actions = {
 				p_lost_reason_id: String(form.get('lost_reason_id') ?? ''),
 				p_lost_notes: String(form.get('lost_notes') ?? '')
 			});
-			if (response.error) return fail(422, { message: response.error.message });
+			if (response.error) return actionFailure(response.error, 'Could not mark Lead lost');
 		} catch (actionError) {
-			return fail(422, {
-				message: actionError instanceof Error ? actionError.message : 'Could not mark lead lost'
-			});
+			return actionFailure(actionError, 'Could not mark Lead lost');
 		}
 		throw redirect(303, `/leads/${event.params.id}`);
 	},
@@ -179,11 +178,9 @@ export const actions: Actions = {
 				p_resume_at: String(form.get('attention_resume_at') ?? '') || undefined,
 				p_lock_version: lockVersion(form)
 			});
-			if (response.error) return fail(422, { message: response.error.message });
+			if (response.error) return actionFailure(response.error, 'Could not update Lead attention');
 		} catch (actionError) {
-			return fail(422, {
-				message: actionError instanceof Error ? actionError.message : 'Could not update attention'
-			});
+			return actionFailure(actionError, 'Could not update Lead attention');
 		}
 		throw redirect(303, `/leads/${event.params.id}`);
 	},
@@ -196,11 +193,9 @@ export const actions: Actions = {
 				p_assigned_to: (String(form.get('assigned_to') ?? '') || null) as string,
 				p_lock_version: lockVersion(form)
 			});
-			if (response.error) return fail(422, { message: response.error.message });
+			if (response.error) return actionFailure(response.error, 'Could not assign Lead');
 		} catch (actionError) {
-			return fail(422, {
-				message: actionError instanceof Error ? actionError.message : 'Could not assign lead'
-			});
+			return actionFailure(actionError, 'Could not assign Lead');
 		}
 		throw redirect(303, `/leads/${event.params.id}`);
 	},
@@ -213,11 +208,9 @@ export const actions: Actions = {
 				p_lock_version: lockVersion(form),
 				p_reason: String(form.get('reopen_reason') ?? '')
 			});
-			if (response.error) return fail(422, { message: response.error.message });
+			if (response.error) return actionFailure(response.error, 'Could not reopen Lead');
 		} catch (actionError) {
-			return fail(422, {
-				message: actionError instanceof Error ? actionError.message : 'Could not reopen lead'
-			});
+			return actionFailure(actionError, 'Could not reopen Lead');
 		}
 		throw redirect(303, `/leads/${event.params.id}`);
 	}

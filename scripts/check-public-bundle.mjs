@@ -14,6 +14,12 @@ const forbiddenNames = [
 	'BRICKS_WEBHOOK_SECRET'
 ];
 
+function exactNamePattern(name) {
+	return new RegExp(`(?<![A-Z0-9_])${name}(?![A-Z0-9_])`);
+}
+
+const forbiddenPatterns = forbiddenNames.map((name) => ({ name, pattern: exactNamePattern(name) }));
+
 function filesUnder(directory) {
 	if (!existsSync(directory)) return [];
 
@@ -26,7 +32,9 @@ function filesUnder(directory) {
 const outputFiles = outputRoots.flatMap(filesUnder);
 const violations = outputFiles.flatMap((file) => {
 	const contents = readFileSync(file, 'utf8');
-	return forbiddenNames.filter((name) => contents.includes(name)).map((name) => `${file}: ${name}`);
+	return forbiddenPatterns
+		.filter(({ pattern }) => pattern.test(contents))
+		.map(({ name }) => `${file}: ${name}`);
 });
 
 if (violations.length > 0) {

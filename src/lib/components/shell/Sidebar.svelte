@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { resolve } from '$app/paths';
+	import { page } from '$app/state';
 	import {
 		BarChart3,
 		CheckSquare,
@@ -52,6 +53,14 @@
 		// Feature routes are introduced in later phases; resolve still applies the configured base path.
 		return resolve(path as '/');
 	}
+
+	function isCurrentNavigationItem(path: string) {
+		const resolvedPath = resolveNavigationPath(path);
+		return (
+			page.url.pathname === resolvedPath ||
+			(resolvedPath !== resolve('/') && page.url.pathname.startsWith(`${resolvedPath}/`))
+		);
+	}
 </script>
 
 <aside class="app-shell__sidebar" data-open={open} aria-label="Sidebar navigation">
@@ -59,7 +68,7 @@
 		<span class="app-shell__brand-mark" aria-hidden="true">Z</span>
 		<span>Zephyr CRM</span>
 	</a>
-	<nav class="app-shell__navigation" aria-label="Primary navigation">
+	<nav id="primary-navigation" class="app-shell__navigation" aria-label="Primary navigation">
 		{#each navigation as group (group.id)}
 			<div class="app-shell__navigation-group">
 				{#if group.label}<p class="app-shell__navigation-label">{group.label}</p>{/if}
@@ -68,6 +77,7 @@
 					<a
 						class="app-shell__navigation-link"
 						href={resolveNavigationPath(item.href)}
+						aria-current={isCurrentNavigationItem(item.href) ? 'page' : undefined}
 						onclick={closeOnMobile}
 					>
 						<Icon size={17} strokeWidth={1.8} aria-hidden="true" />
