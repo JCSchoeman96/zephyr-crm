@@ -25,8 +25,11 @@ on conflict (code) do update set label = excluded.label, sort_order = excluded.s
 
 insert into public.app_settings (setting_key, setting_value, description)
 values
-	('company_identity', '{"name":"Zephyr CRM"}'::jsonb, 'Non-secret company identity'),
-	('locale', '{"language":"en-ZA","timezone":"Africa/Johannesburg","currency":"ZAR"}'::jsonb, 'Presentation and scheduling defaults'),
-	('quote_defaults', '{"validity_days":30,"tax_rate":0}'::jsonb, 'Initial quote defaults'),
+	('company_identity', '{"name":"Zephyr CRM","logo_path":"/favicon.svg","brand_tokens":{"primary":"#315cce","primary_strong":"#2649a8","accent":"#d9773b"}}'::jsonb, 'Non-secret company identity and client brand tokens'),
+	('locale', '{"language":"en-ZA","timezone":"Africa/Johannesburg","currency":"ZAR","date_format":"dd/MM/yyyy"}'::jsonb, 'Presentation and scheduling defaults'),
+	('quote_defaults', '{"prefix":"Q-","tax_label":"VAT","validity_days":30,"tax_rate":0,"terms":"","bank_details":""}'::jsonb, 'Non-secret commercial defaults for new quotes'),
+	('sales_rules', '{"follow_up_days":3,"stale_lead_days":14,"default_owner_email":""}'::jsonb, 'Lead follow-up and stale-opportunity rules'),
+	('email_defaults', '{"sender_email":"","sender_name":"Zephyr CRM","reply_to":"","template_ids":{}}'::jsonb, 'Non-secret sender identity and message template identifiers'),
+	('integration_identifiers', '{"bricks_form_id":"contact-form","sendpulse_api_base_url":"https://api.sendpulse.com","sendpulse_sender_domain":"","sendpulse_template_ids":{}}'::jsonb, 'Non-secret external integration identifiers'),
 	('owner_user', '{"profile_id":null,"provisioning":"invitation-only"}'::jsonb, 'Owner is assigned through trusted invitation provisioning')
 on conflict (setting_key) do update set setting_value = excluded.setting_value, description = excluded.description;

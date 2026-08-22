@@ -2,6 +2,7 @@
 	import type { Snippet } from 'svelte';
 	import Sidebar from './Sidebar.svelte';
 	import Topbar from './Topbar.svelte';
+	import { publicClientConfiguration } from '$lib/config/public-client-config';
 
 	let {
 		brandMode = $bindable('default'),
@@ -30,9 +31,15 @@
 	function closeNavigation() {
 		navigationOpen = false;
 	}
+
+	const brandStyle = [
+		`--client-brand-primary: ${publicClientConfiguration.brand.colors.primary}`,
+		`--client-brand-primary-strong: ${publicClientConfiguration.brand.colors.primaryStrong}`,
+		`--client-brand-accent: ${publicClientConfiguration.brand.colors.accent}`
+	].join(';');
 </script>
 
-<div class="app-shell" data-brand={brandMode} data-testid="app-shell">
+<div class="app-shell" style={brandStyle} data-brand={brandMode} data-testid="app-shell">
 	<Sidebar open={navigationOpen} {userRole} onclose={closeNavigation} />
 	<div
 		class="app-shell__mobile-backdrop"

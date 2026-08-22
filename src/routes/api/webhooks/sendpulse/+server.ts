@@ -1,5 +1,4 @@
 import { json } from '@sveltejs/kit';
-import { env } from '$env/dynamic/private';
 import type { RequestHandler } from './$types';
 import {
 	parseSendPulseEvents,
@@ -7,11 +6,12 @@ import {
 } from '$lib/domain/communications/sendpulse-events';
 import { createTrustedSupabaseClient } from '$lib/server/trusted-supabase';
 import { recordOperationalEvent } from '$lib/server/operational-events';
+import { loadTrustedClientConfiguration } from '$lib/server/client-config';
 
 const MAX_BODY_BYTES = 64 * 1024;
 
 export const POST: RequestHandler = async ({ request }) => {
-	const secret = env.SENDPULSE_WEBHOOK_SECRET?.trim();
+	const secret = loadTrustedClientConfiguration().secrets.sendpulseWebhookSecret;
 	if (!secret) return json({ error: 'SendPulse webhook is not configured' }, { status: 503 });
 	const body = new Uint8Array(await request.arrayBuffer());
 	if (body.byteLength === 0 || body.byteLength > MAX_BODY_BYTES) {

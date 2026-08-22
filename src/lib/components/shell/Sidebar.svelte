@@ -11,6 +11,7 @@
 		Users,
 		UserRound
 	} from 'lucide-svelte';
+	import { publicClientConfiguration } from '$lib/config/public-client-config';
 
 	type NavIcon = typeof LayoutDashboard;
 	type NavItem = { label: string; href: string; icon: NavIcon; adminOnly?: boolean };
@@ -79,7 +80,7 @@
 <aside class="app-shell__sidebar" data-open={open} aria-label="Sidebar navigation">
 	<a class="app-shell__brand" href={resolve('/')} onclick={closeOnMobile}>
 		<span class="app-shell__brand-mark" aria-hidden="true">Z</span>
-		<span>Zephyr CRM</span>
+		<span>{publicClientConfiguration.brand.companyName}</span>
 	</a>
 	<nav id="primary-navigation" class="app-shell__navigation" aria-label="Primary navigation">
 		{#each navigation as group (group.id)}

@@ -9,21 +9,24 @@
 	import PageHeader from '$lib/components/ui/PageHeader.svelte';
 	import StatCard from '$lib/components/ui/StatCard.svelte';
 	import RealtimeStatus from '$lib/realtime/RealtimeStatus.svelte';
+	import { publicClientConfiguration } from '$lib/config/public-client-config';
 
 	let { data }: { data: PageData } = $props();
 	let brandMode = $state<'default' | 'alternate'>('default');
 
 	function currency(value: number) {
-		return new Intl.NumberFormat('en-ZA', {
+		return new Intl.NumberFormat(publicClientConfiguration.locale.language, {
 			style: 'currency',
-			currency: 'ZAR',
+			currency: publicClientConfiguration.locale.currency,
 			minimumFractionDigits: 2,
 			maximumFractionDigits: 2
 		}).format(value);
 	}
 
 	function whole(value: number) {
-		return new Intl.NumberFormat('en-ZA', { maximumFractionDigits: 0 }).format(value);
+		return new Intl.NumberFormat(publicClientConfiguration.locale.language, {
+			maximumFractionDigits: 0
+		}).format(value);
 	}
 
 	function percentage(value: number) {
@@ -31,15 +34,19 @@
 	}
 
 	function taskDate(value: string | null) {
-		return value ? new Date(value).toLocaleString('en-ZA') : 'No due date';
+		return value
+			? new Date(value).toLocaleString(publicClientConfiguration.locale.language, {
+					timeZone: publicClientConfiguration.locale.timezone
+				})
+			: 'No due date';
 	}
 </script>
 
 <svelte:head>
-	<title>Dashboard | Zephyr CRM</title>
+	<title>Dashboard | {publicClientConfiguration.brand.companyName}</title>
 	<meta
 		name="description"
-		content="Bounded operational and management visibility for the Zephyr CRM pipeline"
+		content={`Bounded operational and management visibility for the ${publicClientConfiguration.brand.companyName} pipeline`}
 	/>
 </svelte:head>
 
@@ -50,7 +57,7 @@
 	signOutAction={data.auth.user ? '?/logout' : null}
 >
 	<PageHeader
-		title="Zephyr CRM"
+		title={publicClientConfiguration.brand.companyName}
 		description="Start with the work that needs attention, then reconcile the pipeline for the selected period."
 	>
 		{#snippet actions()}

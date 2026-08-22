@@ -27,6 +27,11 @@ The browser receives only `PUBLIC_SUPABASE_URL`, `PUBLIC_SUPABASE_PUBLISHABLE_KE
 
 The hosted environment must use the frozen Bun/SvelteKit/Vite/Svelte 5/Supabase/Cloudflare toolchain, canonical migrations and the exact `bun.lock`. Cloudflare uses Workers with Static Assets and the SvelteKit Cloudflare adapter. Supabase must have an approved paid managed backup plan or the automated encrypted external backup described in `docs/OPERATIONS.md`; free-tier database existence is not recovery proof.
 
+For repeatable isolated client instances, use the typed non-secret configuration and
+local provisioning contract in `docs/CLIENT_DEPLOYMENT.md`. The application remains
+one codebase with one Supabase/Cloudflare/SendPulse stack per client; credentials are
+trusted environment values and never client configuration source.
+
 ## Migration and backup release sequence
 
 1. Verify the authority hashes and inspect the migration list.

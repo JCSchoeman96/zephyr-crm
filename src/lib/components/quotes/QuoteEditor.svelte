@@ -5,6 +5,7 @@
 	import Input from '$lib/components/ui/Input.svelte';
 	import Select from '$lib/components/ui/Select.svelte';
 	import Textarea from '$lib/components/ui/Textarea.svelte';
+	import { publicClientConfiguration } from '$lib/config/public-client-config';
 
 	type EditorItem = {
 		name: string;
@@ -24,11 +25,11 @@
 		clientOptions = [],
 		subject = $bindable(''),
 		introduction = $bindable(''),
-		terms = $bindable(''),
-		taxLabel = $bindable('VAT'),
-		taxRate = $bindable('0'),
-		validUntil = $bindable(''),
-		currency = $bindable('ZAR'),
+		terms = $bindable(publicClientConfiguration.quotes.terms),
+		taxLabel = $bindable(publicClientConfiguration.quotes.taxLabel),
+		taxRate = $bindable(String(publicClientConfiguration.quotes.taxRate)),
+		validUntil = $bindable(defaultValidUntil()),
+		currency = $bindable(publicClientConfiguration.locale.currency),
 		lockVersion = 1,
 		initialItems = [],
 		readonly = false,
@@ -54,6 +55,12 @@
 		quoteNumber?: string;
 		status?: string;
 	} = $props();
+
+	function defaultValidUntil() {
+		const timestamp =
+			Date.now() + publicClientConfiguration.quotes.defaultValidityDays * 24 * 60 * 60 * 1000;
+		return new Date(timestamp).toISOString().slice(0, 10);
+	}
 
 	function normalizeItems(source: Partial<EditorItem>[]) {
 		return source.length

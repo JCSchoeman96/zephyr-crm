@@ -5,6 +5,7 @@ const outputRoots = ['.svelte-kit/output/client', '.svelte-kit/cloudflare', 'bui
 const forbiddenNames = [
 	'SUPABASE_URL',
 	'SUPABASE_SERVICE_ROLE_KEY',
+	'CLIENT_CONFIG_JSON',
 	'SENDPULSE_CLIENT_ID',
 	'SENDPULSE_CLIENT_SECRET',
 	'SENDPULSE_API_BASE_URL',

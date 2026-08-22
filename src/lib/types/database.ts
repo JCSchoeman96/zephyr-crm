@@ -858,6 +858,7 @@ export type Database = {
 					lead_id: string;
 					lock_version: number;
 					quote_number: string | null;
+					quote_prefix: string;
 					quote_snapshot: Json;
 					quote_year: number;
 					ready_at: string | null;
@@ -893,6 +894,7 @@ export type Database = {
 					lead_id: string;
 					lock_version?: number;
 					quote_number?: string | null;
+					quote_prefix?: string;
 					quote_snapshot?: Json;
 					quote_year?: number;
 					ready_at?: string | null;
@@ -928,6 +930,7 @@ export type Database = {
 					lead_id?: string;
 					lock_version?: number;
 					quote_number?: string | null;
+					quote_prefix?: string;
 					quote_snapshot?: Json;
 					quote_year?: number;
 					ready_at?: string | null;

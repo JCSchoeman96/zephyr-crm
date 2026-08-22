@@ -4,19 +4,24 @@
 	import Button from '$lib/components/ui/Button.svelte';
 	import ErrorState from '$lib/components/ui/ErrorState.svelte';
 	import Input from '$lib/components/ui/Input.svelte';
+	import { publicClientConfiguration } from '$lib/config/public-client-config';
 
 	let { form }: { form: ActionData } = $props();
 </script>
 
 <svelte:head>
-	<title>Sign in | Zephyr CRM</title>
-	<meta name="description" content="Sign in to the invitation-only Zephyr CRM workspace" />
+	<title>Sign in | {publicClientConfiguration.brand.companyName}</title>
+	<meta
+		name="description"
+		content={`Sign in to the invitation-only ${publicClientConfiguration.brand.companyName} workspace`}
+	/>
 </svelte:head>
 
 <main class="auth-page">
 	<section class="auth-card" aria-labelledby="auth-title">
-		<a class="auth-card__brand" href={resolve('/')}>Zephyr CRM</a>
-		<h1 id="auth-title">Sign in to Zephyr CRM</h1>
+		<a class="auth-card__brand" href={resolve('/')}>{publicClientConfiguration.brand.companyName}</a
+		>
+		<h1 id="auth-title">Sign in to {publicClientConfiguration.brand.companyName}</h1>
 		<p class="auth-card__intro">Use the credentials from your staff invitation.</p>
 		{#if form?.message}
 			<ErrorState title="Unable to sign in" message={form.message} />

@@ -3,6 +3,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import type { Database } from '$lib/types/database';
 import { SendPulseAdapter } from '$lib/domain/communications/sendpulse-adapter';
 import { bytesToBase64, ensureQuoteDocument } from '$lib/server/quote-documents';
+import { loadTrustedClientConfiguration } from '$lib/server/client-config';
 
 type ServerSupabaseClient = SupabaseClient<Database>;
 type JsonRecord = Record<string, unknown>;
@@ -51,17 +52,27 @@ export async function sendQuote(
 	if (prepared.already_submitted === true) return prepared;
 	if (prepared.in_flight === true) throw new Error('This quote is already being sent.');
 
-	const clientId = env.SENDPULSE_CLIENT_ID?.trim();
-	const clientSecret = env.SENDPULSE_CLIENT_SECRET?.trim();
+	const trusted = loadTrustedClientConfiguration();
+	const clientId = trusted.secrets.sendpulseClientId || env.SENDPULSE_CLIENT_ID?.trim();
+	const clientSecret = trusted.secrets.sendpulseClientSecret || env.SENDPULSE_CLIENT_SECRET?.trim();
 	if (!clientId || !clientSecret) throw new Error('SendPulse integration is not configured.');
 
 	const recipient = record(prepared.recipient);
 	const adapter = new SendPulseAdapter({
 		clientId,
 		clientSecret,
-		baseUrl: env.SENDPULSE_API_BASE_URL?.trim() || undefined,
-		senderEmail: env.SENDPULSE_SENDER_EMAIL?.trim() || undefined,
-		senderName: env.SENDPULSE_SENDER_NAME?.trim() || undefined
+		baseUrl:
+			(env.CLIENT_CONFIG_JSON?.trim()
+				? trusted.configuration.integrations.sendpulse.apiBaseUrl
+				: env.SENDPULSE_API_BASE_URL?.trim()) || undefined,
+		senderEmail:
+			(env.CLIENT_CONFIG_JSON?.trim()
+				? trusted.configuration.email.senderEmail
+				: env.SENDPULSE_SENDER_EMAIL?.trim()) || undefined,
+		senderName:
+			(env.CLIENT_CONFIG_JSON?.trim()
+				? trusted.configuration.email.senderName
+				: env.SENDPULSE_SENDER_NAME?.trim()) || undefined
 	});
 
 	let providerMessageId: string;

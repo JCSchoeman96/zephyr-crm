@@ -1,6 +1,7 @@
 import { env } from '$env/dynamic/private';
 import type { RequestEvent } from '@sveltejs/kit';
 import { createTrustedSupabaseClient } from '$lib/server/trusted-supabase';
+import { loadTrustedClientConfiguration } from '$lib/server/client-config';
 import { verifyBearerSecret } from '$lib/security/secrets';
 import { recordOperationalEvent } from '$lib/server/operational-events';
 
@@ -60,7 +61,8 @@ function normalizePayload(payload: Record<string, unknown>): Record<string, stri
 async function parseRequest(
 	event: RequestEvent
 ): Promise<{ formId: string; externalId: string; payload: Record<string, string> }> {
-	const secret = env.BRICKS_WEBHOOK_SECRET?.trim();
+	const trusted = loadTrustedClientConfiguration();
+	const secret = trusted.secrets.bricksWebhookSecret || env.BRICKS_WEBHOOK_SECRET?.trim();
 	if (!(await verifyBearerSecret(event.request.headers.get('authorization'), secret))) {
 		throw new BricksIntakeError('Invalid intake authorization', 401);
 	}
@@ -102,7 +104,9 @@ async function parseRequest(
 			context
 		);
 	}
-	const expectedFormId = env.BRICKS_FORM_ID?.trim() || 'contact-form';
+	const expectedFormId = env.CLIENT_CONFIG_JSON?.trim()
+		? trusted.configuration.integrations.bricks.formId
+		: env.BRICKS_FORM_ID?.trim() || trusted.configuration.integrations.bricks.formId;
 	if (formId !== expectedFormId) throw new BricksIntakeError('Unknown Bricks form', 422, context);
 	if (
 		payload.email.length > 320 ||

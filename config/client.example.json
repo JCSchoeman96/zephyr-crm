@@ -1,0 +1,57 @@
+{
+	"version": 1,
+	"brand": {
+		"companyName": "Example Client",
+		"logoPath": "/favicon.svg",
+		"colors": {
+			"primary": "#315cce",
+			"primaryStrong": "#2649a8",
+			"accent": "#d9773b"
+		}
+	},
+	"locale": {
+		"language": "en-ZA",
+		"timezone": "Africa/Johannesburg",
+		"currency": "ZAR",
+		"dateFormat": "dd/MM/yyyy"
+	},
+	"quotes": {
+		"prefix": "Q-",
+		"taxLabel": "VAT",
+		"taxRate": 0,
+		"defaultValidityDays": 30,
+		"terms": "Payment terms are confirmed with the client before acceptance.",
+		"bankDetails": ""
+	},
+	"sales": {
+		"followUpDays": 3,
+		"staleLeadDays": 14,
+		"defaultOwnerEmail": ""
+	},
+	"email": {
+		"senderEmail": "",
+		"senderName": "Example Client",
+		"replyTo": "",
+		"templateIds": {
+			"quote": "",
+			"task_reminder": ""
+		}
+	},
+	"integrations": {
+		"bricks": {
+			"formId": "contact-form",
+			"webhookSecretEnvKey": "BRICKS_WEBHOOK_SECRET"
+		},
+		"sendpulse": {
+			"apiBaseUrl": "https://api.sendpulse.com",
+			"senderDomain": "",
+			"templateIds": {
+				"quote": "",
+				"task_reminder": ""
+			},
+			"clientIdEnvKey": "SENDPULSE_CLIENT_ID",
+			"clientSecretEnvKey": "SENDPULSE_CLIENT_SECRET",
+			"webhookSecretEnvKey": "SENDPULSE_WEBHOOK_SECRET"
+		}
+	}
+}

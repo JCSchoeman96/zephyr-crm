@@ -37,11 +37,14 @@
 		"backup:create": "node scripts/create-backup.mjs",
 		"backup:restore": "node scripts/restore-backup.mjs",
 		"test:p12:hardening": "node scripts/test-p12-hardening.mjs",
+		"client:validate": "bun scripts/validate-client-config.mjs",
+		"client:provision": "bun scripts/provision-client.mjs",
+		"test:p13:template": "bun scripts/test-p13-template.mjs",
 		"diff:check": "git diff --check",
 		"authority:verify": "node scripts/verify-authority-hashes.mjs",
 		"security:bundle": "node scripts/check-public-bundle.mjs",
 		"tokens:check": "node scripts/check-design-tokens.mjs",
-		"quality": "bun run authority:verify && bun run format:check && bun run lint && bun run check && bun run tokens:check && bun run test && bun run build && bun run security:bundle && bun run db:test && bun run db:security && bun run auth:integration && bun run test:p4:domain && bun run test:p4:tracer && bun run test:p5:leads && bun run test:p6:clients && bun run test:p7:quotes && bun run test:p8:documents && bun run test:p9:automation && bun run test:p10:analytics && bun run test:p11:hardening && bun run test:p12:hardening && bun run diff:check"
+		"quality": "bun run authority:verify && bun run format:check && bun run lint && bun run check && bun run tokens:check && bun run test && bun run build && bun run security:bundle && bun run db:test && bun run db:security && bun run auth:integration && bun run test:p4:domain && bun run test:p4:tracer && bun run test:p5:leads && bun run test:p6:clients && bun run test:p7:quotes && bun run test:p8:documents && bun run test:p9:automation && bun run test:p10:analytics && bun run test:p11:hardening && bun run test:p12:hardening && bun run test:p13:template && bun run diff:check"
 	},
 	"devDependencies": {
 		"@eslint/js": "10.0.1",

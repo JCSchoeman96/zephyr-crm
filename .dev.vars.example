@@ -1,4 +1,7 @@
 # Wrangler local trusted-variable names only. Keep real values in an ignored .dev.vars file.
+# Optional private client configuration JSON; use a validated file and keep credential values in the
+# trusted variables below. The checked-in example contains environment-variable references only.
+CLIENT_CONFIG_JSON=
 SUPABASE_SERVICE_ROLE_KEY=
 SENDPULSE_CLIENT_ID=
 SENDPULSE_CLIENT_SECRET=

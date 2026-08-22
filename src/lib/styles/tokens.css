@@ -40,9 +40,9 @@
 	--color-text: #172334;
 	--color-text-muted: #66758a;
 	--color-text-inverse: #ffffff;
-	--color-brand-primary: #315cce;
-	--color-brand-primary-hover: #2649a8;
-	--color-brand-accent: #d9773b;
+	--color-brand-primary: var(--client-brand-primary, #315cce);
+	--color-brand-primary-hover: var(--client-brand-primary-strong, #2649a8);
+	--color-brand-accent: var(--client-brand-accent, #d9773b);
 	--color-brand-accent-soft: #fff0e7;
 	--color-success: #19734a;
 	--color-success-soft: #e5f5ec;
