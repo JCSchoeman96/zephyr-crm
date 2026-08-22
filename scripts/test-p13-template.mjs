@@ -212,13 +212,20 @@ function testStaticBoundaries() {
 		!tracked.some((file) => file === '.env' || file === '.dev.vars' || file.endsWith('.pem')),
 		'A trusted secret file is tracked.'
 	);
+	const clientForkMarkers = ['Client' + 'A', 'Client' + 'B'];
 	const branches = run('git', ['branch', '--format=%(refname:short)']);
-	assert(!/ClientA|ClientB/i.test(branches), 'A permanent client-specific branch exists.');
+	assert(
+		!clientForkMarkers.some((marker) => branches.includes(marker)),
+		'A permanent client-specific branch exists.'
+	);
 	const source = tracked
 		.filter((file) => /^(src|scripts|config|supabase)\//.test(file))
 		.map(read)
 		.join('\n');
-	assert(!/ClientA|ClientB/.test(source), 'A client fork marker exists in implementation source.');
+	assert(
+		!clientForkMarkers.some((marker) => source.includes(marker)),
+		'A client fork marker exists in implementation source.'
+	);
 	assert(
 		!read(exampleFile).includes('"clientSecret"'),
 		'A client secret value key exists in the source-controlled example.'

@@ -40,6 +40,8 @@
 		"client:validate": "bun scripts/validate-client-config.mjs",
 		"client:provision": "bun scripts/provision-client.mjs",
 		"test:p13:template": "bun scripts/test-p13-template.mjs",
+		"test:p14:release": "bun scripts/test-p14-release.mjs",
+		"release:state": "node scripts/check-release-state.mjs",
 		"diff:check": "git diff --check",
 		"authority:verify": "node scripts/verify-authority-hashes.mjs",
 		"security:bundle": "node scripts/check-public-bundle.mjs",
