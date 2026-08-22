@@ -1,7 +1,7 @@
 # Zephyr CRM State Machines
 
 **Status:** Frozen implementation authority (Phase 0)
-**Version:** 1.0.0
+**Version:** 1.2.1 (v1.3.1 reconciliation)
 
 These are the only canonical lifecycle states and legal transitions. Pipeline state, attention state, and Task state remain separate.
 
@@ -43,11 +43,9 @@ Attention values are lowercase and independent of pipeline state:
 none
 waiting_on_client
 waiting_on_us
-follow_up_scheduled
-paused
 ```
 
-An open Task determines the next action. `overdue` and `needs_follow_up` are derived conditions from Task due time; they are not Attention values. `paused` requires a reason and may include a resume time. Sending a Quote normally sets pipeline to `DECISION`, attention to `waiting_on_client`, and creates a follow-up Task.
+An open Task determines the next action. `overdue` and `needs_follow_up` are derived conditions from Task due time; they are not Attention values. A pause is orthogonal state represented by `paused_at`, `pause_reason`, and optional `resume_at`; it does not become an Attention value. A scheduled follow-up is a `Task` with `type = follow_up`, never an Attention value. Sending a Quote normally sets pipeline to `DECISION`, attention to `waiting_on_client`, and creates a follow-up Task.
 
 ## Quote lifecycle
 

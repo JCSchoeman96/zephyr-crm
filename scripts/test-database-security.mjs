@@ -1,3 +1,4 @@
+import { createHmac } from 'node:crypto';
 import { execFileSync } from 'node:child_process';
 
 const root = process.cwd();
@@ -39,11 +40,35 @@ const apiUrl = local.API_URL;
 const anonKey = local.ANON_KEY ?? local.PUBLISHABLE_KEY;
 const serviceRoleKey = local.SERVICE_ROLE_KEY;
 const databaseUrl = local.DB_URL;
+const jwtSecret = local.JWT_SECRET;
 
-if (!apiUrl || !anonKey || !serviceRoleKey || !databaseUrl) {
+if (!apiUrl || !anonKey || !serviceRoleKey || !databaseUrl || !jwtSecret) {
 	throw new Error(
 		'Local Supabase status is missing required test endpoints. Start Supabase first.'
 	);
+}
+
+function base64Url(value) {
+	return Buffer.from(value).toString('base64url');
+}
+
+function aal2Token(userId) {
+	const now = Math.floor(Date.now() / 1000);
+	const header = base64Url(JSON.stringify({ alg: 'HS256', typ: 'JWT' }));
+	const payload = base64Url(
+		JSON.stringify({
+			aud: 'authenticated',
+			role: 'authenticated',
+			sub: userId,
+			aal: 'aal2',
+			session_id: `v131-${runId}-${userId}`,
+			iat: now,
+			exp: now + 600
+		})
+	);
+	const unsigned = `${header}.${payload}`;
+	const signature = createHmac('sha256', jwtSecret).update(unsigned).digest('base64url');
+	return `${unsigned}.${signature}`;
 }
 
 function sqlLiteral(value) {
@@ -128,6 +153,8 @@ async function main() {
 	const sales = await createUser('sales', 'sales');
 	const viewer = await createUser('viewer', 'viewer');
 	const suspended = await createUser('suspended', 'sales');
+	const ownerAal2Token = aal2Token(owner.id);
+	const adminAal2Token = aal2Token(admin.id);
 
 	const leadExternalId = `${testPrefix}-lead`;
 	const leadPayload = {
@@ -144,7 +171,10 @@ async function main() {
 		token: sales.token,
 		body: leadPayload
 	});
-	assert(createdLead.ok && createdLead.body?.[0]?.id, 'Sales could not create a lead');
+	assert(
+		createdLead.ok && createdLead.body?.[0]?.id,
+		`Sales could not create a lead (${createdLead.status}): ${JSON.stringify(createdLead.body)}`
+	);
 	const leadId = createdLead.body[0].id;
 	const initialLockVersion = createdLead.body[0].lock_version;
 	assert(initialLockVersion === 1, 'New leads must start at lock_version 1');
@@ -202,7 +232,7 @@ async function main() {
 		token: sales.token,
 		body: { first_name: 'Grace', lock_version: initialLockVersion + 1 }
 	});
-	assert(salesUpdate.ok, 'Sales could not update an allowed lead field');
+	assertDenied(salesUpdate, 'direct Lead update without a trusted action');
 	assertDenied(
 		await request(`/rest/v1/leads?id=eq.${leadId}`, {
 			method: 'PATCH',
@@ -212,7 +242,7 @@ async function main() {
 		'stale lead update'
 	);
 
-	const settingKey = `${testPrefix}_setting`;
+	const settingKey = `${testPrefix.replaceAll('-', '_')}_setting`;
 	const adminSetting = await request('/rest/v1/app_settings', {
 		method: 'POST',
 		token: admin.token,
@@ -222,7 +252,30 @@ async function main() {
 			description: 'P3 test setting'
 		}
 	});
-	assert(adminSetting.ok, 'Admin cannot create an app setting');
+	assertDenied(adminSetting, 'direct app setting creation without trusted action');
+	const adminAal1SettingRpc = await request('/rest/v1/rpc/set_app_setting', {
+		method: 'POST',
+		token: admin.token,
+		body: {
+			p_setting_key: settingKey,
+			p_setting_value: { enabled: true },
+			p_description: 'AAL1 must be denied'
+		}
+	});
+	assertDenied(adminAal1SettingRpc, 'AAL1 admin configuration action');
+	const adminSettingRpc = await request('/rest/v1/rpc/set_app_setting', {
+		method: 'POST',
+		token: adminAal2Token,
+		body: {
+			p_setting_key: settingKey,
+			p_setting_value: { enabled: true },
+			p_description: 'P3 test setting'
+		}
+	});
+	assert(
+		adminSettingRpc.ok,
+		`AAL2 admin could not create an app setting through trusted action (HTTP ${adminSettingRpc.status}: ${JSON.stringify(adminSettingRpc.body)})`
+	);
 	const salesSetting = await request(`/rest/v1/app_settings?setting_key=eq.${settingKey}`, {
 		method: 'PATCH',
 		token: sales.token,
@@ -234,7 +287,20 @@ async function main() {
 		token: admin.token,
 		body: { setting_value: { enabled: false } }
 	});
-	assert(adminSettingUpdate.ok, 'Admin cannot update an app setting');
+	assertDenied(adminSettingUpdate, 'direct app setting update without trusted action');
+	const adminSettingRpcUpdate = await request('/rest/v1/rpc/set_app_setting', {
+		method: 'POST',
+		token: adminAal2Token,
+		body: {
+			p_setting_key: settingKey,
+			p_setting_value: { enabled: false },
+			p_description: 'P3 test setting updated'
+		}
+	});
+	assert(
+		adminSettingRpcUpdate.ok,
+		'AAL2 admin could not update an app setting through trusted action'
+	);
 
 	const adminProfileUpdate = await request(`/rest/v1/profiles?id=eq.${sales.id}`, {
 		method: 'PATCH',
@@ -255,12 +321,40 @@ async function main() {
 		token: owner.token,
 		body: { role: 'sales' }
 	});
-	assert(ownerRoleUpdate.ok, 'Owner cannot administer profile roles');
-	await request(`/rest/v1/profiles?id=eq.${viewer.id}`, {
-		method: 'PATCH',
+	assertDenied(ownerRoleUpdate, 'direct owner profile role update without trusted action');
+	const ownerAal1RoleRpc = await request('/rest/v1/rpc/set_profile_access', {
+		method: 'POST',
 		token: owner.token,
-		body: { role: 'viewer' }
+		body: {
+			p_user_id: viewer.id,
+			p_role: 'sales',
+			p_status: 'active',
+			p_reason: 'AAL1 must be denied'
+		}
 	});
+	assertDenied(ownerAal1RoleRpc, 'AAL1 owner profile administration');
+	const ownerRoleRpc = await request('/rest/v1/rpc/set_profile_access', {
+		method: 'POST',
+		token: ownerAal2Token,
+		body: {
+			p_user_id: viewer.id,
+			p_role: 'sales',
+			p_status: 'active',
+			p_reason: 'v1.3.1 security fixture'
+		}
+	});
+	assert(ownerRoleRpc.ok, 'AAL2 owner could not administer profile roles through trusted action');
+	const ownerRoleReset = await request('/rest/v1/rpc/set_profile_access', {
+		method: 'POST',
+		token: ownerAal2Token,
+		body: {
+			p_user_id: viewer.id,
+			p_role: 'viewer',
+			p_status: 'active',
+			p_reason: 'restore fixture'
+		}
+	});
+	assert(ownerRoleReset.ok, 'AAL2 owner could not restore profile role');
 
 	assertDenied(
 		await request('/rest/v1/leads', {

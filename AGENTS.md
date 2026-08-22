@@ -14,7 +14,7 @@ A phase handoff is an internal continuity checkpoint. It is **not** a reason to 
 
 Continue automatically until either:
 
-1. the complete roadmap is finished and the final project validation passes, or
+1. the complete local roadmap is finished, final validation passes, and state is `LOCAL_BUILD_COMPLETE` / `PILOT_READY`, or
 2. a defined **STOP CONDITION** in this file is reached.
 
 Do not stop merely because:
@@ -70,17 +70,37 @@ You MUST NOT, unless the `/goal` explicitly overrides this:
 - merge branches;
 - modify GitHub Actions solely to satisfy this loop;
 - wait for CI;
-- treat remote CI as a phase gate;
+- treat remote CI execution as a phase gate; local CI-configuration parity may be a required repository artifact;
 - use GitHub as the project state tracker;
 - publish or deploy;
 - mutate production or shared infrastructure.
 
 Local Git is for inspection, safety, and local recovery checkpoints. Local commits are **permitted and recommended** at clean sub-phase or phase boundaries unless the `/goal` explicitly forbids them. Never push them unless the `/goal` explicitly changes the local-only scope.
 
+### Deterministic Git bootstrap and checkpoint law
+
+Before modifying project files, establish a reproducible local Git safety boundary.
+
+If `.git` already exists:
+- capture `git status --short`, the current HEAD when one exists, and the pre-existing diff before making agent changes;
+- treat all pre-existing modifications/untracked files as user-owned unless repository evidence proves otherwise.
+
+If `.git` does not exist:
+- the agent MAY initialise local Git only when the current directory is clearly the intended Zephyr workspace and the authority-pack files are present;
+- do not add a remote;
+- preserve every existing file;
+- stage only the explicit authority-pack files required for the bootstrap baseline, never unknown workspace content;
+- inspect the staged file list and staged diff before creating the local baseline commit;
+- create a local baseline commit such as `bootstrap: Zephyr CRM v1.3.1 authority pack` so later phase diffs have deterministic provenance.
+
+If a safe baseline cannot be isolated from unrelated pre-existing work, use the applicable STOP CONDITION rather than guessing ownership.
+
 Before any automatic checkpoint commit:
 - capture the pre-existing working-tree state;
-- include only agent-owned changes that can be safely isolated;
+- stage only explicit agent-owned paths; **`git add -A` is prohibited for autonomous checkpoint commits**;
+- run `git diff --cached --check` and inspect `git diff --cached` before committing;
 - never commit, overwrite, discard, or rewrite unrelated pre-existing user work;
+- never push automatically;
 - if safe isolation is not possible, skip the commit and record the validated checkpoint in the local handoff instead.
 
 ---
@@ -159,9 +179,9 @@ For this repository, prefer authority paths in this order:
 
 1. `docs/ROADMAP.md` if Phase 0 has already normalized/frozen the documentation.
 2. `docs/phases/` if it exists as the current frozen phase-authority directory.
-3. `CRM_IMPLEMENTATION_ROADMAP_v1.1.0.md` as the bootstrap roadmap authority.
+3. `CRM_IMPLEMENTATION_ROADMAP_v1.3.1.md` as the bootstrap roadmap authority.
 4. `Phases/` as the bootstrap phase-authority directory.
-5. `Small Business CRM — Complete Architecture, Domain & Implementation Blueprint v1.0.0.md` as Phase 0 bootstrap architecture source material until frozen split authority documents exist.
+5. `Small Business CRM — Complete Architecture, Domain & Implementation Blueprint v1.2.1.md` as Phase 0 bootstrap architecture source material until frozen split authority documents exist.
 6. `ROADMAP.md`, `roadmap.md`, `PLAN.md`, `docs/roadmap/`, or filenames containing `phase`, `roadmap`, `implementation`, `plan`, `milestone`, or `slice` only as fallback discovery.
 
 Use file search rather than opening the entire repository indiscriminately.
@@ -198,10 +218,13 @@ If this is a Git repository, prefer excluding `.agent/` locally through `.git/in
 
 `STATE.json` is the authoritative machine-readable loop checkpoint. It MUST contain at least:
 
-- goal status;
-- goal summary;
-- roadmap authority path(s);
-- phase authority directory;
+- state schema version;
+- goal status and goal summary;
+- roadmap authority path(s), version and SHA-256;
+- architecture/bootstrap authority path and SHA-256;
+- a complete `authority_sha256` map for every currently frozen normative authority document;
+- phase authority directory and hashes for **all completed phase authorities plus the current phase authority**;
+- execution stage (`PHASE_LOOP`, `FINAL_PROJECT_VALIDATION`, or `COMPLETE`);
 - ordered phase list;
 - current phase;
 - current sub-phase, when the phase defines sub-phases;
@@ -212,15 +235,37 @@ If this is a Git repository, prefer excluding `.agent/` locally through `.git/in
 - discovered authoritative validation commands;
 - last successful validation;
 - next required action;
-- final-project status.
+- local-build status;
+- release status;
+- pilot status;
+- production status.
 
 Example shape:
 
 ```json
 {
+  "state_schema_version": 3,
   "goal_status": "IN_PROGRESS",
-  "roadmap": "CRM_IMPLEMENTATION_ROADMAP_v1.1.0.md",
+  "execution_stage": "PHASE_LOOP",
+  "roadmap": "CRM_IMPLEMENTATION_ROADMAP_v1.3.1.md",
+  "roadmap_version": "1.3.1",
+  "roadmap_sha256": "<sha256>",
+  "architecture": "Small Business CRM — Complete Architecture, Domain & Implementation Blueprint v1.2.1.md",
+  "architecture_sha256": "<sha256>",
+  "authority_sha256": {
+    "docs/ARCHITECTURE.md": "<sha256>",
+    "docs/DOMAIN_MODEL.md": "<sha256>",
+    "docs/STATE_MACHINES.md": "<sha256>",
+    "docs/SECURITY_MODEL.md": "<sha256>",
+    "docs/MONEY_CONTRACT.md": "<sha256>",
+    "docs/METRICS_CONTRACT.md": "<sha256>",
+    "docs/PRIVACY_OPERATIONS.md": "<sha256>",
+    "docs/RECOVERY_CONTRACT.md": "<sha256>",
+    "docs/ROADMAP.md": "<sha256>",
+    "DEPENDENCY_BASELINE_v1.0.0.md": "<sha256>"
+  },
   "phase_authority_dir": "Phases",
+  "phase_authority_sha256": {"P00": "<sha256>", "P01": "<sha256>", "P02": "<sha256>", "P03": "<sha256>", "P04": "<sha256>", "P05": "<sha256>", "P06": "<sha256>", "P07": "<sha256>"},
   "current_phase": "P07",
   "current_subphase": "P07.4",
   "phase_status": "IMPLEMENTING",
@@ -230,9 +275,29 @@ Example shape:
   "last_validation": {"status": "PASS", "scope": "P07.3"},
   "blocked": false,
   "next_action": "Implement P07.4 state actions",
-  "final_project_status": "IN_PROGRESS"
+  "local_build_status": "IN_PROGRESS",
+  "release_status": "NOT_READY",
+  "pilot_status": "NOT_STARTED",
+  "production_status": "NOT_LAUNCHED"
 }
 ```
+
+### Authority drift detection
+
+At loop startup, context recovery, and **before beginning every new phase**, recalculate and compare:
+
+1. the active/root roadmap hash;
+2. the bootstrap architecture hash until Phase 0 replaces it with frozen split authorities;
+3. every entry in `authority_sha256`;
+4. every completed phase authority hash; and
+5. the current phase authority hash.
+
+After Phase 0 freezes the split documents, `authority_sha256` MUST cover every normative authority, including at minimum `docs/ARCHITECTURE.md`, `docs/DOMAIN_MODEL.md`, `docs/STATE_MACHINES.md`, `docs/SECURITY_MODEL.md`, `docs/MONEY_CONTRACT.md`, `docs/METRICS_CONTRACT.md`, `docs/PRIVACY_OPERATIONS.md`, `docs/RECOVERY_CONTRACT.md`, `docs/ROADMAP.md`, and `DEPENDENCY_BASELINE_v1.0.0.md`. Any later document explicitly promoted to normative authority (for example `docs/TOOLCHAIN_PROOF.md`) MUST be added when it becomes authoritative.
+
+- If a hash changes because the current goal intentionally amended that authority, record the amendment, rerun affected consistency/regression gates, and only then update the recorded hash.
+- If a previously recorded authority hash changed unexpectedly and intent cannot be proven, invoke **EXECUTION STOP — Unexpected Authority Drift**.
+- Do not silently replace recorded hashes.
+- Do not classify simple unexpected drift as an ordinary authority-content conflict unless the contents also create a genuine equal-priority contradiction.
 
 ### `STATE.md` — human-readable recovery summary
 
@@ -339,6 +404,8 @@ Rules:
 
 Set the phase to `VALIDATING`.
 
+When the current phase is P14, before running `P14-T16`, persist the non-terminal final-gate readiness fields: `goal_status=IN_PROGRESS`, `local_build_status=FINAL_VALIDATION_PENDING`, `release_status=NOT_READY`, `pilot_status=NOT_STARTED`, `production_status=NOT_LAUNCHED`, with P0–P13 complete and P14 still `VALIDATING`.
+
 Validation must proceed from narrow to broad:
 
 1. syntax / formatter checks relevant to changed files;
@@ -353,6 +420,29 @@ Validation must proceed from narrow to broad:
 Do not run the broadest test suite after every tiny edit if a focused test can provide faster feedback.
 
 Do run the required broad suite before phase completion when the phase specification requires it.
+
+### Regression cadence — coverage is cumulative, execution is tiered
+
+Completed-phase tests remain frozen regression authority, but do not rerun every expensive historical test after every edit.
+
+```text
+During implementation:
+  focused affected tests first
+
+At every phase close:
+  current-phase mandatory tests
+  + core tracer/security/integrity regression relevant to changed surfaces
+  + static/type/lint/build/db/diff gates required by that phase
+
+At each milestone close:
+  all mandatory tests for every completed phase through that milestone
+
+At Phase 14 / final project gate:
+  complete mandatory suite P0–P14
+  + full project quality/security/build/database/browser/recovery gates
+```
+
+This changes cadence only, never coverage. A completed mandatory test may not be deleted, skipped, weakened or rewritten merely to reduce runtime.
 
 A failed validation means the phase remains incomplete.
 
@@ -497,23 +587,69 @@ If safety cannot be established, use the **STOP CONDITION: Unsafe or Unclear Des
 
 ---
 
-## 11. Dependency Changes
+## 11. Dependency & Toolchain Law
 
-Before adding a dependency, ask internally:
+`DEPENDENCY_BASELINE_v1.0.0.md` is binding authority.
 
-1. Is this required by the current phase?
-2. Does the repository already provide equivalent functionality?
-3. Can the framework or standard library solve it cleanly?
-4. Is adding the dependency smaller and safer than custom code?
-5. Does it fit existing project conventions?
+### Frozen responsibility split
 
-Do not add dependencies for convenience alone.
+- Bun is the sole JavaScript package manager/local script runner and owns `bun.lock`.
+- SvelteKit/Vite owns application dev/build bundling. Do not replace Vite with Bun's bundler.
+- Cloudflare deployment uses `@sveltejs/adapter-cloudflare`, Wrangler and committed `wrangler.jsonc`.
+- Supabase CLI is project-local once Phase 1 freezes the baseline.
+- Tailwind 4 + `@tailwindcss/vite`, shadcn-svelte, Lucide, Zod, Vitest, Playwright, svelte-check, ESLint and Prettier have the roles defined by the baseline.
+- SendPulse uses the project-owned REST adapter unless architecture law explicitly changes.
 
-If a required package is absent, normal package-manager resolution is allowed unless the `/goal` forbids network access.
+### Before adding any dependency
+
+A new production dependency is permitted only when all are true:
+
+1. the current requirement cannot reasonably be fulfilled by the approved stack;
+2. the dependency has one clearly defined responsibility;
+3. no approved dependency already fulfils that responsibility;
+4. security, maintenance health and licence are reviewed;
+5. the exact version is pinned;
+6. `bun.lock` is updated;
+7. affected tests and required regression gates pass;
+8. `DEPENDENCY_BASELINE_v1.0.0.md` is amended if the dependency creates a new architectural capability.
+
+Do not add a package merely because its API is convenient.
+
+### Pinning and lockfiles
+
+After Phase 1 compatibility freeze:
+
+- direct dependencies use exact versions only;
+- `^`, `~`, `latest`, `next`, prerelease tags and floating Git references are prohibited unless explicitly legislated;
+- `bun.lock` is the sole JavaScript lockfile;
+- `package-lock.json`, `pnpm-lock.yaml`, `yarn.lock` and legacy `bun.lockb` must not appear;
+- clean/frozen installs must not mutate the lockfile;
+- undocumented globally installed CLI versions are not build authority.
+
+### ShadCN
+
+Generated shadcn-svelte components are project-owned source. Never blindly overwrite a customised component. Treat component regeneration/upgrades as reviewed source migrations.
+
+### Default dependency restraint
+
+Do not introduce by default:
+
+- another UI/component system;
+- another icon library;
+- another schema-validation library;
+- Redux/Zustand/MobX/XState-style global state;
+- a large form framework;
+- Moment/dayjs/date-fns/Luxon;
+- Jest/Cypress as parallel primary test frameworks;
+- a SendPulse community SDK;
+- a competing `wrangler.toml`;
+- global Realtime infrastructure without a feature requirement.
+
+### Upgrades
 
 Do not perform unrelated dependency upgrades.
 
----
+Security and routine upgrades follow the baseline's classification/regression policy. Class A runtime/framework major changes require an architecture amendment, not ordinary cleanup.
 
 ## 12. Local Git Safety
 
@@ -539,6 +675,8 @@ Do not:
 Treat pre-existing user changes as protected.
 
 At a clean meaningful sub-phase boundary, a local checkpoint commit is recommended when agent-owned changes can be isolated safely. At phase closure, create a local phase checkpoint commit when safe unless the `/goal` forbids commits. Never push automatically.
+
+For autonomous checkpoint commits, prefer explicit-path staging. Do **not** use `git add -A` or broad staging as the default. Before commit, inspect `git diff --cached` and confirm every staged path is owned by the current phase/goal and no protected user work was swept in.
 
 If required work conflicts with unknown pre-existing modifications, preserve them where possible. Stop only if safe separation is impossible.
 
@@ -631,6 +769,16 @@ Do not call GitHub, PR, CI, deployment, or remote repository tools unless the `/
 ---
 
 ## 15. Framework and Repository Conventions
+
+Follow repository conventions first. In addition, the frozen Zephyr baseline requires:
+
+- canonical package scripts are invoked through Bun;
+- `package.json` exact pins + `bun.lock` + `docs/TOOLCHAIN_PROOF.md` are dependency authority after Phase 1;
+- `wrangler.jsonc` is Cloudflare configuration authority and its `compatibility_date` is not auto-advanced;
+- database schema authority is `supabase/config.toml` + ordered SQL migrations + generated types/tests;
+- generated shadcn-svelte source is ordinary owned source after generation;
+- Svelte-native state/forms and native/`Intl` date APIs are preferred until a legislated need justifies another dependency.
+
 
 Before introducing a new pattern, inspect at least one nearby example already used successfully in the repository.
 
@@ -810,7 +958,21 @@ Stop if continuing risks:
 
 Terminate agent-started runaway processes before stopping when safe.
 
-### STOP CONDITION 9 — Goal Requires Prohibited Remote Action
+### STOP CONDITION 9 — Unexpected Authority Drift
+
+Stop when a previously recorded authority hash changed, the change is not explained by an intentional current-goal authority amendment, and reconciliation cannot safely prove the new authority is intended.
+
+The blocker report MUST include:
+- changed file;
+- recorded SHA-256;
+- current SHA-256;
+- last known phase where it matched, when known;
+- whether the file is completed/frozen authority;
+- the minimum user decision required.
+
+Do not silently update the hash and do not mislabel hash drift as a source conflict unless an actual content conflict also exists.
+
+### STOP CONDITION 10 — Goal Requires Prohibited Remote Action
 
 Stop if project completion explicitly requires a prohibited remote action such as deployment, PR creation, or production mutation and the current `/goal` still requires local-only execution.
 
@@ -871,9 +1033,9 @@ Do not provide a vague “could not continue” message.
 
 ## 23. Final Project Completion Gate
 
-After the final roadmap phase is complete, do **not** immediately finish.
+After Phase 14 has passed **its own** mandatory tests/regression tier, has been marked `COMPLETE`, and its handoff is persisted, do **not** immediately finish.
 
-Run a final project-level validation.
+Set `execution_stage=FINAL_PROJECT_VALIDATION` and keep the project non-terminal (`goal_status=IN_PROGRESS`, `local_build_status=FINAL_VALIDATION_PENDING`, `release_status=NOT_READY`). Then run the global final project-level validation. Phase 14 completion MUST NOT depend on this global gate.
 
 At minimum:
 
@@ -898,9 +1060,10 @@ At minimum:
 
 If any required final check fails:
 - identify the responsible phase or cross-cutting defect;
-- reopen that phase logically;
+- reopen that phase logically and set `execution_stage=PHASE_LOOP`;
 - repair it;
-- rerun the necessary validation;
+- rerun the necessary validation and phase close;
+- once every P0–P14 phase is again `COMPLETE` (revalidating affected downstream gates where required), transition back to `FINAL_PROJECT_VALIDATION`;
 - repeat the final completion gate.
 
 The project is not complete until the final gate passes.
@@ -917,13 +1080,19 @@ The `/goal` is finished only when:
 - there are no known blocking defects;
 - no required phase work is silently deferred;
 - no temporary/debug implementation remains;
-- local state records the final status as `COMPLETE`.
+- local state records the local roadmap as complete and release readiness accurately without implying remote pilot/production completion.
 
-Then update `.agent/goal-loop/STATE.json` and `.agent/goal-loop/STATE.md` with:
+Only after the global final validation passes, set `execution_stage=COMPLETE` and update `.agent/goal-loop/STATE.json` and `.agent/goal-loop/STATE.md` with the distinct terminal fields:
 
 ```text
-FINAL_PROJECT_STATUS: COMPLETE
+goal_status: COMPLETE
+local_build_status: LOCAL_BUILD_COMPLETE
+release_status: PILOT_READY
+pilot_status: NOT_STARTED
+production_status: NOT_LAUNCHED
 ```
+
+`pilot_status` or `production_status` may change only under a separate explicit goal that actually performs and validates those external lifecycle steps.
 
 The final response should summarize:
 
@@ -955,7 +1124,7 @@ Phase specifications:
 Operating rules:
 - Follow AGENTS.md as the execution authority.
 - Work locally.
-- Do not use GitHub workflows, pull requests, remote CI, deployments, or remote repository operations.
+- Do not trigger or rely on remote GitHub workflows/remote CI, pull requests, deployments, or remote repository operations. Creating and locally validating the Phase 1 CI configuration is allowed and required.
 - Run continuously through:
   PHASE → PLAN → IMPLEMENT → VALIDATE → HANDOFF → NEXT PHASE.
 - Do not pause between phases.
@@ -1010,10 +1179,14 @@ if final_gate_fails:
     repair_and_revalidate()
     repeat_final_gate()
 
-set_final_project_status(COMPLETE)
+set_goal_status(COMPLETE)
+set_local_build_status(LOCAL_BUILD_COMPLETE)
+set_release_status(PILOT_READY)
+set_pilot_status(NOT_STARTED)
+set_production_status(NOT_LAUNCHED)
 report_completion()
 ```
 
-The loop terminates only on:
-- `FINAL_PROJECT_STATUS: COMPLETE`, or
+The local build loop terminates only on:
+- `goal_status: COMPLETE` + `local_build_status: LOCAL_BUILD_COMPLETE` + `release_status: PILOT_READY`, with `pilot_status: NOT_STARTED` and `production_status: NOT_LAUNCHED`; or
 - a documented `BLOCKED` state caused by an explicit STOP CONDITION.

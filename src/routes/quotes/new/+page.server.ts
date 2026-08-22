@@ -46,7 +46,10 @@ export const actions: Actions = {
 		const leadId = String(form.get('lead_id') ?? '').trim();
 		if (!leadId) return fail(422, { message: 'Select a Lead before saving the quote.' });
 		try {
-			const response = await supabase.rpc('save_quote_draft', quoteFormValues(form, leadId));
+			const response = await supabase.rpc(
+				'save_quote_draft',
+				quoteFormValues(form, leadId) as never
+			);
 			if (response.error) return fail(422, { message: response.error.message });
 			const quoteId = String(record(response.data).quote_id ?? '');
 			if (!quoteId) return fail(500, { message: 'Quote was saved without an identifier.' });

@@ -1,4 +1,5 @@
 import { execFileSync, spawn } from 'node:child_process';
+import { createHmac } from 'node:crypto';
 
 const root = process.cwd();
 const runId = `${Date.now()}`;
@@ -37,9 +38,25 @@ const apiUrl = local.API_URL;
 const anonKey = local.ANON_KEY ?? local.PUBLISHABLE_KEY;
 const serviceRoleKey = local.SERVICE_ROLE_KEY;
 const dbUrl = local.DB_URL;
+const jwtSecret = local.JWT_SECRET;
 
 function assert(condition, message) {
 	if (!condition) throw new Error(message);
+}
+
+function aal2Token(userId) {
+	const now = Math.floor(Date.now() / 1000);
+	const encode = (value) => Buffer.from(JSON.stringify(value)).toString('base64url');
+	const unsigned = `${encode({ alg: 'HS256', typ: 'JWT' })}.${encode({
+		aud: 'authenticated',
+		role: 'authenticated',
+		sub: userId,
+		aal: 'aal2',
+		session_id: `p5-${runId}-${userId}`,
+		iat: now,
+		exp: now + 600
+	})}`;
+	return `${unsigned}.${createHmac('sha256', jwtSecret).update(unsigned).digest('base64url')}`;
 }
 
 async function parseBody(response) {
@@ -223,6 +240,31 @@ async function setAttention(
 	);
 }
 
+async function pauseLead(lead, user, reason, resumeAt) {
+	const current = await leadById(lead.id);
+	return mustRpc(
+		'pause_lead',
+		{
+			p_lead_id: lead.id,
+			p_reason: reason,
+			p_resume_at: resumeAt,
+			p_lock_version: current.lock_version
+		},
+		anonKey,
+		await signIn(user)
+	);
+}
+
+async function resumeLead(lead, user) {
+	const current = await leadById(lead.id);
+	return mustRpc(
+		'resume_lead',
+		{ p_lead_id: lead.id, p_lock_version: current.lock_version },
+		anonKey,
+		await signIn(user)
+	);
+}
+
 async function waitFor(url) {
 	for (let attempt = 0; attempt < 80; attempt += 1) {
 		try {
@@ -394,15 +436,19 @@ async function testAttention(sales) {
 		current.pipeline_stage === 'PROPOSAL' && current.attention_state === 'waiting_on_client',
 		'Attention changed pipeline position'
 	);
-	await setAttention(lead, 'paused', sales, 'Waiting for budget approval', '2030-01-01T09:00:00Z');
+	await pauseLead(lead, sales, 'Waiting for budget approval', '2030-01-01T09:00:00Z');
 	current = await leadById(lead.id);
 	assert(
-		current.pipeline_stage === 'PROPOSAL' && current.attention_state === 'paused',
-		'Pause did not preserve pipeline stage'
+		current.pipeline_stage === 'PROPOSAL' &&
+			current.attention_state === 'waiting_on_client' &&
+			current.paused_at &&
+			current.pause_reason === 'Waiting for budget approval' &&
+			current.resume_at,
+		'Pause did not remain orthogonal to pipeline and attention'
 	);
 	await expectRpcFailure(
-		'set_lead_attention',
-		{ p_lead_id: lead.id, p_attention_state: 'paused', p_lock_version: current.lock_version },
+		'pause_lead',
+		{ p_lead_id: lead.id, p_reason: '', p_lock_version: current.lock_version },
 		anonKey,
 		await signIn(sales),
 		'pause without a reason'
@@ -410,8 +456,14 @@ async function testAttention(sales) {
 	await setAttention(lead, 'none', sales);
 	current = await leadById(lead.id);
 	assert(
-		current.attention_state === 'none' && current.attention_reason === null,
-		'Clearing attention retained pause metadata'
+		current.attention_state === 'none' && current.paused_at && current.pause_reason,
+		'Clearing attention incorrectly cleared pause metadata'
+	);
+	await resumeLead(lead, sales);
+	current = await leadById(lead.id);
+	assert(
+		!current.paused_at && !current.pause_reason && !current.resume_at,
+		'Resume did not clear pause facts'
 	);
 	console.log('P5-T02 attention independence passed');
 }
@@ -472,7 +524,7 @@ async function testLostAndReopen(sales, owner) {
 			p_reason: 'Customer asked us to revisit the opportunity'
 		},
 		anonKey,
-		await signIn(owner)
+		aal2Token(owner.id)
 	);
 	current = await leadById(lead.id);
 	assert(

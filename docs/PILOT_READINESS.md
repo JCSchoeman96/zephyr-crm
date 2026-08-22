@@ -1,4 +1,4 @@
-# Zephyr CRM v1.0.0 local release candidate — pilot readiness
+# Zephyr CRM v1.3.1 local release candidate — pilot readiness
 
 Status: `LOCAL_BUILD_COMPLETE` / `PILOT_READY`
 
@@ -61,7 +61,8 @@ handoff; the local build does not mark these items complete.
 - [ ] Apply the validated client configuration and trusted secrets through the
       approved secret manager. Never commit `.env`, `.dev.vars`, or credential
       values.
-- [ ] Create the client-owned Cloudflare Pages project, bind the build output and
+- [ ] Create the client-owned Cloudflare Workers project, bind Static Assets from
+      `wrangler.jsonc`, and configure
       approved environment/secrets, and record the deployed release/configuration
       versions.
 - [ ] Choose and test the client-owned encrypted backup destination, retention,

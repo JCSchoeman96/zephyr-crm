@@ -7,6 +7,8 @@ export type QuoteDocumentQuote = {
 	terms: string | null;
 	tax_label: string | null;
 	tax_rate: string | number;
+	document_template_version?: string | null;
+	document_generator_version?: string | null;
 	currency: string;
 	valid_until: string | null;
 	subtotal: string | number;
@@ -121,6 +123,13 @@ function renderContent(input: QuoteDocumentInput): string {
 	lines.push(...identityLines('RECIPIENT', recipient), '');
 	lines.push(`Valid until: ${text(quote.valid_until) || 'Not specified'}`);
 	lines.push(`Currency: ${text(quote.currency)}`, '');
+	if (text(quote.document_template_version) || text(quote.document_generator_version)) {
+		lines.push(
+			`Document template: ${text(quote.document_template_version) || 'unspecified'}`,
+			`Document generator: ${text(quote.document_generator_version) || 'unspecified'}`,
+			''
+		);
+	}
 	if (text(quote.introduction)) lines.push('INTRODUCTION', ...wrap(text(quote.introduction)), '');
 	lines.push('ITEMS');
 	for (const item of [...input.items].sort((a, b) => a.position - b.position)) {
@@ -132,7 +141,7 @@ function renderContent(input: QuoteDocumentInput): string {
 	lines.push(
 		'',
 		`Subtotal: ${money(text(quote.currency), quote.subtotal)}`,
-		`${text(quote.tax_label) || 'Tax'} (${decimal(quote.tax_rate, 4)}%): ${money(text(quote.currency), quote.tax_amount)}`,
+		`${text(quote.tax_label) || 'Tax'} (${decimal(quote.tax_rate, 6)}%): ${money(text(quote.currency), quote.tax_amount)}`,
 		`TOTAL: ${money(text(quote.currency), quote.total)}`,
 		''
 	);

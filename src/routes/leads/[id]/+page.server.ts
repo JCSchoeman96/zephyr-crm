@@ -111,8 +111,9 @@ export const actions: Actions = {
 		const form = await event.request.formData();
 		try {
 			const quantity = decimalValue(form, 'quantity', /^(?:0|[1-9]\d*)(?:\.\d{1,4})?$/);
-			const unitPrice = decimalValue(form, 'unit_price', /^(?:0|[1-9]\d*)(?:\.\d{1,2})?$/);
-			const taxRate = decimalValue(form, 'tax_rate', /^(?:0|[1-9]\d*)(?:\.\d{1,4})?$/);
+			const unitPrice = decimalValue(form, 'unit_price', /^(?:0|[1-9]\d*)(?:\.\d{1,4})?$/);
+			const taxRate = decimalValue(form, 'tax_rate', /^(?:0|[1-9]\d*)(?:\.\d{1,6})?$/);
+			// Keep exact decimal text on the JSON wire; the database owns numeric parsing and rounding.
 			const response = await supabase.rpc('create_minimal_quote', {
 				p_lead_id: event.params.id,
 				p_subject: String(form.get('subject') ?? ''),
@@ -120,7 +121,7 @@ export const actions: Actions = {
 				p_quantity: quantity,
 				p_unit_price: unitPrice,
 				p_tax_rate: taxRate
-			});
+			} as never);
 			if (response.error) return actionFailure(response.error, 'Could not create Quote');
 		} catch (actionError) {
 			return actionFailure(actionError, 'Could not create Quote');
@@ -174,13 +175,40 @@ export const actions: Actions = {
 			const response = await supabase.rpc('set_lead_attention', {
 				p_lead_id: event.params.id,
 				p_attention_state: String(form.get('attention_state') ?? 'none'),
-				p_reason: String(form.get('attention_reason') ?? '') || undefined,
-				p_resume_at: String(form.get('attention_resume_at') ?? '') || undefined,
 				p_lock_version: lockVersion(form)
 			});
 			if (response.error) return actionFailure(response.error, 'Could not update Lead attention');
 		} catch (actionError) {
 			return actionFailure(actionError, 'Could not update Lead attention');
+		}
+		throw redirect(303, `/leads/${event.params.id}`);
+	},
+	pause: async (event) => {
+		const { supabase } = await requireActiveStaff(event);
+		const form = await event.request.formData();
+		try {
+			const response = await supabase.rpc('pause_lead', {
+				p_lead_id: event.params.id,
+				p_reason: String(form.get('pause_reason') ?? ''),
+				p_resume_at: String(form.get('resume_at') ?? '') || undefined,
+				p_lock_version: lockVersion(form)
+			});
+			if (response.error) return actionFailure(response.error, 'Could not pause Lead');
+		} catch (actionError) {
+			return actionFailure(actionError, 'Could not pause Lead');
+		}
+		throw redirect(303, `/leads/${event.params.id}`);
+	},
+	resume: async (event) => {
+		const { supabase } = await requireActiveStaff(event);
+		try {
+			const response = await supabase.rpc('resume_lead', {
+				p_lead_id: event.params.id,
+				p_lock_version: lockVersion(await event.request.formData())
+			});
+			if (response.error) return actionFailure(response.error, 'Could not resume Lead');
+		} catch (actionError) {
+			return actionFailure(actionError, 'Could not resume Lead');
 		}
 		throw redirect(303, `/leads/${event.params.id}`);
 	},

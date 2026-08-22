@@ -1,11 +1,11 @@
 # Phase 4 — Complete CRM Tracer Bullet
 
 **Project:** Small Business CRM  
-**Roadmap Version:** 1.1.0  
+**Roadmap Version:** 1.3.1
 **Phase:** 4  
 **Milestone:** M1 — Workflow Proof  
 **Status:** Implementation Authority  
-**Architecture:** SvelteKit + TypeScript + Cloudflare Pages + Supabase PostgreSQL/Auth/RLS/Storage/Edge Functions/Cron + SendPulse + WordPress/Bricks  
+**Architecture:** SvelteKit + TypeScript + Cloudflare Workers with Static Assets + Supabase PostgreSQL/Auth/RLS/Storage/Edge Functions/Cron + SendPulse + WordPress/Bricks  
 **Deployment model:** One isolated stack per client
 
 > This document is the execution authority for this phase. The coding agent must not expand beyond this boundary without an explicit architecture decision.
@@ -93,7 +93,7 @@ Phase 5 begins horizontal hardening of Lead Management while preserving the prov
 - [ ] All MUST items are implemented or documented exactly as required.
 - [ ] No MUST NOT item was introduced.
 - [ ] Every mandatory phase test passes.
-- [ ] All prior-phase regression tests still pass and none were weakened, skipped, or removed merely to make this phase pass.
+- [ ] The AGENTS.md-required regression tier for this phase passes; completed-phase tests remain frozen and none were weakened, skipped, or removed merely to make this phase pass.
 - [ ] Project-wide format/lint/type/test/build/database/diff gates pass.
 - [ ] Migrations are deterministic and clean where applicable.
 - [ ] Security/RLS assumptions are test-backed where applicable.
@@ -115,7 +115,9 @@ The following rules apply to every phase:
 7. **Do not introduce Redis, microservices, Kafka, background infrastructure, or a separate analytics system unless a measured requirement proves they are necessary.**
 8. **Use the smallest number of tools and dependencies necessary.**
 9. **Do not implement functionality allocated to a later phase.**
-10. **Every phase closes with focused tests plus the complete existing project quality gate.**
+10. **Regression coverage is cumulative, but cadence is tiered: focused/affected + phase/core regression at each phase close; all completed-phase mandatory tests at milestone gates; the complete suite at Phase 14/final release. Completed tests are never weakened or deleted merely to obtain green status.**
+11. **`DEPENDENCY_BASELINE_v1.0.0.md` is binding: do not change the approved package manager, framework/build/UI/platform/test responsibilities or introduce unapproved dependencies merely for convenience.**
+12. **Once Phase 1 freezes exact pins, package/toolchain upgrades must follow the dependency governance and regression policy rather than floating semver drift.**
 
 # Standard Agent Tool Policy
 
@@ -140,7 +142,7 @@ Execution may stop only under a genuine `AGENTS.md` **EXECUTION STOP** condition
 
 # Phase Close Condition
 
-Once all required outcomes in this document are implemented, every mandatory phase test passes, all completed-phase regression gates still pass, the project-wide quality gate passes, migrations are clean, and no unrelated scope was introduced:
+Once all required outcomes in this document are implemented, every mandatory phase test passes, the AGENTS.md-required phase regression tier passes, the project-wide quality gate passes, migrations are clean, and no unrelated scope was introduced:
 
 1. **STOP WORK ON THIS PHASE.**
 2. Mark the phase `COMPLETE`.

@@ -85,7 +85,7 @@ export const actions: Actions = {
 		try {
 			const response = await supabase.rpc(
 				'save_quote_draft',
-				quoteFormValues(form, String(form.get('lead_id') ?? ''), event.params.id)
+				quoteFormValues(form, String(form.get('lead_id') ?? ''), event.params.id) as never
 			);
 			if (response.error) return actionFailure(response.error, 'Could not save Quote');
 		} catch (actionError) {

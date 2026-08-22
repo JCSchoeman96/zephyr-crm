@@ -11,8 +11,15 @@ bun.lockb
 # Frozen authority documents retain their canonical formatting and hashes
 AGENTS.md
 CRM_IMPLEMENTATION_ROADMAP_v1.1.0.md
+CRM_IMPLEMENTATION_ROADMAP_v1.3.1.md
+DEPENDENCY_BASELINE_v1.0.0.md
+FILE_MANIFEST_v1.3.1.sha256
+PATCH_REGISTER_v1.3.1.md
 POST_BUILD_PILOT_PROGRAMME.md
+RELEASE_NOTES_v1.3.1.md
+VALIDATION_REPORT_v1.3.1.md
 Small Business CRM — Complete Architecture, Domain & Implementation Blueprint v1.0.0.md
+Small Business CRM — Complete Architecture, Domain & Implementation Blueprint v1.2.1.md
 Phases/
 docs/
 .agent/

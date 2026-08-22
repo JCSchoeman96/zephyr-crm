@@ -8,7 +8,9 @@ const fixture: QuoteDocumentInput = {
 		introduction: 'A fixed commercial snapshot.',
 		terms: 'Payment due within 30 days.',
 		tax_label: 'VAT',
-		tax_rate: '15.0000',
+		tax_rate: '15.123456',
+		document_template_version: 'quote-document-v1.3.1',
+		document_generator_version: 'zephyr-crm-v1.3.1',
 		currency: 'ZAR',
 		valid_until: '2099-12-31',
 		subtotal: '100.00',
@@ -41,5 +43,7 @@ describe('quote document generator', () => {
 		expect([...first.bytes]).toEqual([...second.bytes]);
 		expect(first.bytes.slice(0, 8)).toEqual(new TextEncoder().encode('%PDF-1.4'));
 		expect(first.content).toContain('TOTAL: ZAR 115.00');
+		expect(first.content).toContain('VAT (15.123456%): ZAR 15.00');
+		expect(first.content).toContain('Document template: quote-document-v1.3.1');
 	});
 });

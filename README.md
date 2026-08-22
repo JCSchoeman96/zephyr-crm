@@ -1,6 +1,6 @@
 # Zephyr CRM
 
-Zephyr CRM is a SvelteKit 2 + Svelte 5 application built by Vite for Cloudflare Pages. The current foundation includes the tokenized design system, responsive application shell, invitation-only Supabase Auth, PostgreSQL schema, role-aware RLS, and a complete local Lead → Quote → SendPulse → Task → Client tracer bullet.
+Zephyr CRM is a SvelteKit 2 + Svelte 5 application built by Vite for Cloudflare Workers with Static Assets. The current foundation includes the tokenized design system, responsive application shell, invitation-only Supabase Auth, PostgreSQL schema, role-aware RLS, and a complete local Lead → Quote → SendPulse → Task → Client tracer bullet.
 
 ## Requirements
 
@@ -62,7 +62,7 @@ bun run test:p7:quotes          # Quote money, numbering, lifecycle, immutabilit
 bun run diff:check
 ```
 
-The complete local gate is `bun run quality` after Supabase is running and the Playwright Chromium browser is installed. `bun run build` generates/checks Cloudflare Worker types and writes the Cloudflare Pages output to `.svelte-kit/cloudflare`.
+The complete local gate is `bun run quality` after Supabase is running and the Playwright Chromium browser is installed. `bun run build` generates/checks Cloudflare Worker types and writes the Worker plus Static Assets artifact to `.svelte-kit/cloudflare`.
 
 The design-system component lab is available at `/system`. The invitation-only login is available at `/login` when the three browser-safe Supabase variables are configured. Authenticated staff can review the bounded Lead workflow at `/leads`, create and manage durable Quotes at `/quotes`, and review converted customers at `/clients`. Lead search, filters, assignment, attention, pause/resume, controlled reopen actions, Client conversion, contact primary semantics, source-Lead history, exact Quote money, trusted Quote state actions, immutable sent snapshots, and revisions are enforced through server actions and PostgreSQL functions. The full local Lead hardening contract is `bun run test:p5:leads`, the Client/contact contract is `bun run test:p6:clients`, and the Quote contract is `bun run test:p7:quotes`. See `docs/QUOTE_MANAGEMENT.md` for the Quote lifecycle boundary.
 
@@ -81,11 +81,11 @@ supabase/{migrations,functions}
 
 No service-role key, SendPulse credential, Bricks secret, database password, or client data belongs in browser source control or public variables. The database security contract is documented in `docs/DATABASE_SECURITY.md`.
 
-## Cloudflare Pages smoke preview
+## Cloudflare Workers smoke preview
 
 ```sh
 bun run build
 bun run preview
 ```
 
-The preview uses Wrangler Pages locally and does not publish or mutate remote infrastructure.
+The preview uses Wrangler's local Worker runtime with Static Assets and does not publish or mutate remote infrastructure.

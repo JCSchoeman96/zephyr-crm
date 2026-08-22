@@ -72,6 +72,6 @@ Operational event messages must not include passwords, tokens, service keys or u
 
 ## Client handoff and offboarding
 
-The handoff packet must name the CRM owner, operations administrator, backup destination, retention, restore-test date, secret rotation owner, Supabase project, Cloudflare site, SendPulse account and Bricks form owner. It must state that pilot and production launch are separate approvals.
+The handoff packet must name the CRM owner, operations administrator, backup destination, retention, restore-test date, secret rotation owner, Supabase project, Cloudflare Workers project/Static Assets binding, SendPulse account and Bricks form owner. It must state that pilot and production launch are separate approvals.
 
 On offboarding, export only the approved client data, revoke staff and provider access, rotate trusted secrets, retain or delete backups according to the signed retention policy, and record deletion evidence. Never leave a service-role key or private document copy in the repository, local workspace or an unowned backup location.

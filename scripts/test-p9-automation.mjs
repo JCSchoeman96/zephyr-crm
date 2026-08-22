@@ -378,6 +378,7 @@ async function cleanup() {
 
 let passed = 0;
 try {
+	run('bun', ['run', 'db:reset']);
 	assert(apiUrl && anonKey && serviceRoleKey && dbUrl, 'Local Supabase status is incomplete');
 	const sales = await createUser('sales', 'sales');
 	const viewer = await createUser('viewer', 'viewer');
@@ -664,6 +665,11 @@ try {
 	if (app) app.kill('SIGTERM');
 	if (provider) await new Promise((resolve) => provider.close(resolve));
 	await cleanup();
+	try {
+		run('bun', ['run', 'db:reset']);
+	} catch {
+		// The next local reset remains the recovery path for an interrupted run.
+	}
 }
 
 assert(passed === 9, `Expected 9 focused P9 tests, received ${passed}`);

@@ -6,7 +6,7 @@ Phase 5 completes the operational Lead domain without changing the frozen distin
 
 - Leads retain source, attribution, contact, ownership, pipeline, attention, lost, conversion, lock, and last-activity data in PostgreSQL.
 - Pipeline transitions are validated by `transition_lead` and `convert_lead`; `LOST` requires an active reason and `other` requires notes.
-- Attention is independent from pipeline state. `paused` requires a reason and may include a resume time; overdue and follow-up conditions remain Task-derived.
+- Attention is independent from pipeline state and is limited to `none`, `waiting_on_client`, and `waiting_on_us`. Pause facts (`paused_at`, `pause_reason`, and optional `resume_at`) are orthogonal; overdue and follow-up conditions remain Task-derived.
 - Owner/Admin-only `reopen_lead` returns a lost Lead to `QUALIFICATION`, clears lost metadata, and appends `lead_reopened` Activity.
 - Material trusted actions advance `last_activity_at` and append immutable Activity evidence.
 

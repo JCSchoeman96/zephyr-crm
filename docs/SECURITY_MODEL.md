@@ -1,7 +1,7 @@
 # Zephyr CRM Security Model
 
 **Status:** Frozen implementation authority (Phase 0)
-**Version:** 1.0.0
+**Version:** 1.2.1 (v1.3.1 reconciliation)
 
 Security is enforced at the database and trusted-operation boundaries. UI hiding is not authorization.
 
@@ -9,7 +9,7 @@ Security is enforced at the database and trusted-operation boundaries. UI hiding
 
 Supabase Auth is the identity authority. Staff accounts are invitation-only; public self-registration is not part of the product. Each Auth user has one Profile with role and status metadata. Initial Profile statuses are `invited`, `active`, and `suspended`; initial roles are `owner`, `admin`, `sales`, and `viewer`.
 
-Owner/Admin privileged actions require AAL2/MFA enforcement when the action is classified as privileged. The application must verify current authenticated identity and claims server-side; a browser-supplied role or status is never trusted.
+Owner/Admin privileged actions require the current session's AAL2/MFA claim when the action is classified as privileged. The application must verify current authenticated identity and claims server-side; a browser-supplied role, status, or `raw_user_meta_data` value is never trusted.
 
 Suspended users are denied normal CRM access even if a previously issued session exists. Logout, session expiry, password reset/re-invite, and MFA re-enrollment expectations are documented in operational procedures and tested at the release gate.
 
@@ -47,7 +47,7 @@ RLS is enabled on every exposed business table, including Profiles, configuratio
 - Viewer is read-only for business data and cannot invoke mutation actions.
 - Sales cannot mutate Profiles, AppSetting, integration configuration, or secrets.
 - Admin and Owner access follows the matrix exactly.
-- Activity is append-only to ordinary users; updates/deletes are denied.
+- Activity is append-only to ordinary users; updates/deletes are denied. Privileged corrections are represented by separate `security_audit_events` evidence.
 - Reports expose only authorized rows/aggregates and use bounded date/limit parameters.
 - Storage buckets containing Quote documents are private; access uses authorized signed URLs or trusted download actions.
 
@@ -55,7 +55,7 @@ Policies use database-derived identity and role from the authenticated JWT/profi
 
 ## Trusted mutation boundaries
 
-Use `SECURITY INVOKER` by default. Any `SECURITY DEFINER` function must be narrowly scoped, have a fixed safe `search_path`, fully qualified database objects, explicit input validation, and restricted `EXECUTE` grants. No broad public or authenticated execute privilege is granted to privileged functions.
+Use `SECURITY INVOKER` by default. Any `SECURITY DEFINER` function must be narrowly scoped, have a fixed safe `search_path`, fully qualified database objects, explicit input validation, explicit internal actor/role/status/domain checks, and restricted `EXECUTE` grants. No broad public or authenticated execute privilege is granted to privileged functions.
 
 Trusted actions are the only place for cross-resource or secret-bearing operations:
 
@@ -107,7 +107,7 @@ SendPulse calls run only through the project-owned adapter with trusted credenti
 
 ## Input, output, and browser security
 
-Zod or equivalent schema validation runs at untrusted boundaries. Untrusted names, messages, notes, and provider metadata are escaped according to rendering context. Rich HTML is not accepted unless sanitized by an explicitly approved path. The build emits a CSP and secure headers appropriate for Cloudflare Pages. No bulk CRM PII is intentionally persisted in localStorage or IndexedDB.
+Zod or equivalent schema validation runs at untrusted boundaries. Untrusted names, messages, notes, and provider metadata are escaped according to rendering context. Rich HTML is not accepted unless sanitized by an explicitly approved path. The build emits a CSP and secure headers appropriate for the Cloudflare Worker + Static Assets runtime. No bulk CRM PII is intentionally persisted in localStorage or IndexedDB.
 
 ## Audit and POPIA operations
 
@@ -115,7 +115,7 @@ Material actions append Activity and privileged corrections append audit evidenc
 
 ## Recovery security
 
-A valid recovery proof includes PostgreSQL data/schema, private Storage artifacts and mappings, Quote PDFs and hashes, configuration, Auth identity/profile/role/status reconstruction, password reset/re-invite expectations, MFA re-enrollment requirements, and secret restoration procedures. A database dump alone is not recovery proof. Restore tests use disposable local environments and do not expose secrets.
+A valid recovery proof includes PostgreSQL data/schema, private Storage artifacts and mappings, Quote PDFs and hashes, configuration, Auth identity/profile/role/status reconstruction, suspension semantics, password reset/re-invite expectations, MFA re-enrollment requirements, and secret restoration procedures. A database dump alone is not recovery proof. Restore tests use disposable local environments and do not expose secrets.
 
 ## Security review gates
 

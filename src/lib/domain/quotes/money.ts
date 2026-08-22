@@ -1,5 +1,7 @@
 const QUANTITY_SCALE = 10_000n;
-const TAX_RATE_SCALE = 10_000n;
+const UNIT_PRICE_SCALE = 10_000n;
+const TAX_RATE_SCALE = 1_000_000n;
+const LINE_ROUND_DENOMINATOR = (QUANTITY_SCALE * UNIT_PRICE_SCALE) / 100n;
 
 export type QuoteMoneyLine = {
 	quantity: string | number;
@@ -47,9 +49,10 @@ export function calculateQuoteTotals(
 	const taxRateUnits = scaledInteger(taxRate, TAX_RATE_SCALE);
 	const lineValues = lines.map((line) => {
 		const quantity = scaledInteger(line.quantity, QUANTITY_SCALE);
-		const unitPrice = scaledInteger(line.unitPrice, 100n);
+		const unitPrice = scaledInteger(line.unitPrice, UNIT_PRICE_SCALE);
 		if (quantity <= 0n) throw new Error('Quantity must be greater than zero');
-		const lineSubtotal = roundHalfUp(quantity * unitPrice, QUANTITY_SCALE);
+		if (unitPrice < 0n) throw new Error('Unit price must not be negative');
+		const lineSubtotal = roundHalfUp(quantity * unitPrice, LINE_ROUND_DENOMINATOR);
 		return { lineSubtotal, taxable: line.taxable };
 	});
 	const subtotalCents = lineValues.reduce((sum, line) => sum + line.lineSubtotal, 0n);

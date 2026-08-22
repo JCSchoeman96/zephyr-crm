@@ -36,6 +36,20 @@ describe('quote money contract', () => {
 		});
 	});
 
+	it('accepts the frozen four-decimal price and six-decimal tax scales', () => {
+		expect(
+			calculateQuoteTotals(
+				[{ quantity: '1.2345', unitPrice: '2.3456', taxable: true }],
+				'15.125001'
+			)
+		).toEqual({
+			lineSubtotals: ['2.90'],
+			subtotal: '2.90',
+			taxAmount: '0.44',
+			total: '3.34'
+		});
+	});
+
 	it('rejects empty, negative, zero, and over-precision values', () => {
 		expect(() => calculateQuoteTotals([], '15')).toThrow('At least one quote line');
 		expect(() =>
@@ -46,6 +60,12 @@ describe('quote money contract', () => {
 		).toThrow('Invalid non-negative decimal');
 		expect(() =>
 			calculateQuoteTotals([{ quantity: '1.00001', unitPrice: '1', taxable: true }], '15')
+		).toThrow('too many fractional places');
+		expect(() =>
+			calculateQuoteTotals([{ quantity: '1', unitPrice: '1.00001', taxable: true }], '15')
+		).toThrow('too many fractional places');
+		expect(() =>
+			calculateQuoteTotals([{ quantity: '1', unitPrice: '1', taxable: true }], '15.1234567')
 		).toThrow('too many fractional places');
 	});
 });

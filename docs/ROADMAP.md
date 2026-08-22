@@ -1,7 +1,7 @@
 # Zephyr CRM Frozen Roadmap
 
 **Status:** Frozen implementation authority (Phase 0)
-**Roadmap source:** `CRM_IMPLEMENTATION_ROADMAP_v1.1.0.md`
+**Roadmap source:** `CRM_IMPLEMENTATION_ROADMAP_v1.3.1.md`
 **Execution controller:** `AGENTS.md`
 **Deployment model:** One isolated stack per client
 

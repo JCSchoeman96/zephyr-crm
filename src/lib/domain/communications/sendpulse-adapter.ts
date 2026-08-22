@@ -26,6 +26,13 @@ type SendPulseAdapterOptions = {
 type TokenResponse = { access_token?: string };
 type SendResponse = { result?: boolean; id?: string | number; message_id?: string | number };
 
+export class SendPulseSubmissionUnknownError extends Error {
+	constructor(message = 'SendPulse submission acknowledgement was not received') {
+		super(message);
+		this.name = 'SendPulseSubmissionUnknownError';
+	}
+}
+
 export class SendPulseAdapter {
 	private readonly options: Required<
 		Pick<
@@ -71,15 +78,25 @@ export class SendPulseAdapter {
 		};
 		if (input.attachments?.length) email.attachments = input.attachments;
 
-		const sendResponse = await this.options.fetcher(`${this.options.baseUrl}/smtp/emails`, {
-			method: 'POST',
-			headers: {
-				Authorization: `Bearer ${tokenBody.access_token}`,
-				'content-type': 'application/json'
-			},
-			body: JSON.stringify({ email })
-		});
-		const sendBody = (await sendResponse.json()) as SendResponse;
+		let sendResponse: Response;
+		try {
+			sendResponse = await this.options.fetcher(`${this.options.baseUrl}/smtp/emails`, {
+				method: 'POST',
+				headers: {
+					Authorization: `Bearer ${tokenBody.access_token}`,
+					'content-type': 'application/json'
+				},
+				body: JSON.stringify({ email })
+			});
+		} catch (error) {
+			throw new SendPulseSubmissionUnknownError(error instanceof Error ? error.message : undefined);
+		}
+		let sendBody: SendResponse;
+		try {
+			sendBody = (await sendResponse.json()) as SendResponse;
+		} catch {
+			throw new SendPulseSubmissionUnknownError();
+		}
 		const providerMessageId = sendBody.id ?? sendBody.message_id;
 		if (!sendResponse.ok || sendBody.result !== true || providerMessageId === undefined) {
 			throw new Error('SendPulse email submission failed');

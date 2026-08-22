@@ -1,7 +1,7 @@
 # Zephyr CRM Domain Model
 
 **Status:** Frozen implementation authority (Phase 0)
-**Version:** 1.0.0
+**Version:** 1.2.1 (v1.3.1 reconciliation)
 
 This document is the single definition of Zephyr CRM resources, relationships, invariants, ownership, and authoritative actions. Lifecycle state names and transitions are defined only in `docs/STATE_MACHINES.md`.
 
@@ -37,7 +37,7 @@ Roles are exactly `owner`, `admin`, `sales`, and `viewer`. No public registratio
 
 ### Lead
 
-`Lead` is an enquiry or sales opportunity before explicit commercial conversion. It has `id`, `lead_number`, optional `source_id`, optional `external_submission_id`, contact fields (`first_name`, `last_name`, `email`, `phone`, `company`, `message`), attribution fields (`landing_page`, `referrer`, `utm_source`, `utm_medium`, `utm_campaign`, `utm_content`, `utm_term`), `pipeline_stage`, `attention_state`, optional `assigned_to`, optional `lost_reason_id`, optional `lost_notes`, optional `converted_client_id`, `last_activity_at`, `lock_version`, `created_at`, and `updated_at`.
+`Lead` is an enquiry or sales opportunity before explicit commercial conversion. It has `id`, `lead_number`, optional `source_id`, optional `external_submission_id`, contact fields (`first_name`, `last_name`, `email`, `phone`, `phone_normalized`, `company`, `message`), attribution fields (`landing_page`, `referrer`, `utm_source`, `utm_medium`, `utm_campaign`, `utm_content`, `utm_term`), `pipeline_stage`, `attention_state`, optional pause facts (`paused_at`, `pause_reason`, `resume_at`), optional `assigned_to`, optional `lost_reason_id`, optional `lost_notes`, optional `converted_client_id`, `last_activity_at`, `lock_version`, `created_at`, and `updated_at`.
 
 The unique external submission identifier prevents integration retries from creating duplicate Leads. Email is not an idempotency or deduplication key. Two distinct submission identifiers may create two legitimate Leads with the same email.
 
@@ -65,7 +65,7 @@ Client `type` is `individual` or `company`; Client `status` is `active`, `inacti
 
 ### Quote
 
-`Quote` is a commercial proposal linked to a Lead and optionally a Client. It has `id`, `base_quote_number`, `revision_number`, `lead_id`, optional `client_id`, `status`, `currency`, `subject`, `introduction`, `terms`, `tax_label`, `tax_rate`, exact decimal `subtotal`, `tax_amount`, and `total`, `valid_until`, lifecycle timestamps, optional `supersedes_quote_id`, optional private `document_path`, `document_hash`, `created_by`, `lock_version`, `created_at`, and `updated_at`.
+`Quote` is a commercial proposal linked to a Lead and optionally a Client. It has `id`, `base_quote_number`, `revision_number`, `lead_id`, optional `client_id`, `status`, `currency`, `subject`, `introduction`, `terms`, `tax_label`, exact decimal `tax_rate`, exact decimal `subtotal`, `tax_amount`, and `total`, `valid_until`, lifecycle timestamps, optional `supersedes_quote_id`, optional private `document_path`, `document_hash`, `document_template_version`, `document_generator_version`, complete seller/recipient/commercial snapshots, `created_by`, `lock_version`, `created_at`, and `updated_at`.
 
 Commercial settings are copied into the Quote snapshot when it becomes ready/finalized. Later setting changes cannot change a sent Quote.
 
@@ -137,9 +137,9 @@ The following actions are atomic, authorization-checked, idempotent where retrya
 ## Domain invariants
 
 1. A Lead remains distinct from a Client until explicit conversion.
-2. Pipeline stage is not attention state and neither is a Task lifecycle.
-3. Sent Quote commercial data cannot be edited in place.
-4. Quote totals use exact decimal arithmetic and server authority.
+2. Pipeline stage is not attention state and neither is a Task lifecycle; pause facts are orthogonal and follow-up is Task-derived.
+3. Sent Quote commercial data cannot be edited in place; revisions are new records with lineage.
+4. Quote totals use exact decimal arithmetic, explicit scales, half-up line/tax rounding, and server authority.
 5. Retry identifiers are unique at the database boundary.
 6. A stale `lock_version` rejects a write.
 7. A Lost Lead has a valid LostReason; `other` has notes.

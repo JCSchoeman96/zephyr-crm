@@ -1,11 +1,11 @@
 # Phase 5 — Lead Management Hardening
 
 **Project:** Small Business CRM  
-**Roadmap Version:** 1.1.0  
+**Roadmap Version:** 1.3.1
 **Phase:** 5  
 **Milestone:** M2 — Production CRM Core  
 **Status:** Implementation Authority  
-**Architecture:** SvelteKit + TypeScript + Cloudflare Pages + Supabase PostgreSQL/Auth/RLS/Storage/Edge Functions/Cron + SendPulse + WordPress/Bricks  
+**Architecture:** SvelteKit + TypeScript + Cloudflare Workers with Static Assets + Supabase PostgreSQL/Auth/RLS/Storage/Edge Functions/Cron + SendPulse + WordPress/Bricks  
 **Deployment model:** One isolated stack per client
 
 > This document is the execution authority for this phase. The coding agent must not expand beyond this boundary without an explicit architecture decision.
@@ -28,17 +28,25 @@ This phase owns only the work described below. Any adjacent capability not liste
 
 - Complete Lead fields including source, attribution, contact details, ownership, stage, attention, lost metadata, conversion link, and last activity.
 - Fully enforce the Lead pipeline state machine.
-- Fully implement attention states independently from pipeline stage.
-- Implement pausing with required reason and optional resume date.
+- Fully implement `attention_state` strictly as `none`, `waiting_on_client`, or `waiting_on_us`, independently from pipeline stage and from Task scheduling.
+- Implement pausing orthogonally with `paused_at`, required `pause_reason`, optional `resume_at`, trusted pause/resume transitions, and Activity; pausing must not overwrite meaningful attention ownership.
 - Implement lost reason requirements and controlled reopen action.
-- Harden Bricks validation, normalization, form-ID checks, submission idempotency, inbound submission recording, and error handling.
+- Harden Bricks intake with Turnstile/honeypot production configuration, JSON payloads, a long random Bearer secret, strict POST/content-type, bounded body size, rate limiting, known form-ID checks, mandatory submission UUID idempotency, explicit unknown-field/schema policy, normalisation, minimal inbound submission recording, and deterministic failure handling.
+- Bricks saved submissions are not CRM truth; if enabled as a temporary failure spool, restrict access and define short retention. Otherwise document the chosen retry/failure-spool alternative.
 - Implement paginated Lead list, search, filters, sorting, assignment, and deterministic empty/loading/error states.
 - Implement Lead detail Overview/Quotes/Tasks/Activity navigation.
 - Update last activity consistently through trusted domain actions.
 - Add or verify indexes for stage, attention, owner, created time, last activity, and external submission ID.
 - Preserve Activity history for material Lead changes.
 
+- Preserve contact phone display text and store separately normalised E.164 form when validly determinable; ambiguous numbers must not receive invented country codes.
+- Derive follow-up/overdue projections from Tasks rather than persisting `follow_up_scheduled` or `overdue` on Lead.
+
 # MUST NOT Happen
+
+- Do not use email address as an idempotency key or rely on Turnstile/honeypot alone as API authentication.
+- Do not accept arbitrary form IDs, content types, unbounded request bodies, or unknown payload fields without the frozen policy.
+- Do not retain full raw Bricks payloads indefinitely merely for debugging.
 
 - Do not use email address as webhook idempotency key.
 - Do not encode overdue/follow-up due as permanent Lead statuses.
@@ -79,6 +87,9 @@ This phase owns only the work described below. Any adjacent capability not liste
 | `P5-T11` | Lead concurrency | Domain | A stale Lead update is rejected rather than silently overwriting newer data. |
 | `P5-T12` | Index/query review | DB | Critical list/detail queries use appropriate indexes at representative data volume. |
 | `P5-T13` | Project quality gate | Automated | All full-project gates and prior tracer-bullet E2E continue to pass. |
+| `P5-T14` | Attention/pause orthogonality | Domain/DB | A Lead can be waiting_on_client while paused or while a future follow-up Task exists; no follow-up/overdue value is persisted in `attention_state`. |
+| `P5-T15` | Phone normalisation | Unit/domain | Valid fixture numbers normalise to expected E.164 while original display values are preserved; ambiguous input remains un-invented. |
+| `P5-T16` | Bricks boundary hardening | Integration/security | Wrong method/content type/secret/form ID, oversized body, malformed/unknown-field payload and duplicate UUID cases follow the frozen rejection/idempotency policy; valid canonical JSON creates one Lead. |
 
 # Definition of Done
 
@@ -95,7 +106,7 @@ Phase 6 may harden Client/Contact and conversion semantics without changing the 
 - [ ] All MUST items are implemented or documented exactly as required.
 - [ ] No MUST NOT item was introduced.
 - [ ] Every mandatory phase test passes.
-- [ ] All prior-phase regression tests still pass and none were weakened, skipped, or removed merely to make this phase pass.
+- [ ] The AGENTS.md-required regression tier for this phase passes; completed-phase tests remain frozen and none were weakened, skipped, or removed merely to make this phase pass.
 - [ ] Project-wide format/lint/type/test/build/database/diff gates pass.
 - [ ] Migrations are deterministic and clean where applicable.
 - [ ] Security/RLS assumptions are test-backed where applicable.
@@ -117,7 +128,9 @@ The following rules apply to every phase:
 7. **Do not introduce Redis, microservices, Kafka, background infrastructure, or a separate analytics system unless a measured requirement proves they are necessary.**
 8. **Use the smallest number of tools and dependencies necessary.**
 9. **Do not implement functionality allocated to a later phase.**
-10. **Every phase closes with focused tests plus the complete existing project quality gate.**
+10. **Regression coverage is cumulative, but cadence is tiered: focused/affected + phase/core regression at each phase close; all completed-phase mandatory tests at milestone gates; the complete suite at Phase 14/final release. Completed tests are never weakened or deleted merely to obtain green status.**
+11. **`DEPENDENCY_BASELINE_v1.0.0.md` is binding: do not change the approved package manager, framework/build/UI/platform/test responsibilities or introduce unapproved dependencies merely for convenience.**
+12. **Once Phase 1 freezes exact pins, package/toolchain upgrades must follow the dependency governance and regression policy rather than floating semver drift.**
 
 # Standard Agent Tool Policy
 
@@ -142,7 +155,7 @@ Execution may stop only under a genuine `AGENTS.md` **EXECUTION STOP** condition
 
 # Phase Close Condition
 
-Once all required outcomes in this document are implemented, every mandatory phase test passes, all completed-phase regression gates still pass, the project-wide quality gate passes, migrations are clean, and no unrelated scope was introduced:
+Once all required outcomes in this document are implemented, every mandatory phase test passes, the AGENTS.md-required phase regression tier passes, the project-wide quality gate passes, migrations are clean, and no unrelated scope was introduced:
 
 1. **STOP WORK ON THIS PHASE.**
 2. Mark the phase `COMPLETE`.

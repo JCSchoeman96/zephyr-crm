@@ -3,45 +3,6 @@ export type Json = string | number | boolean | null | { [key: string]: Json | un
 export type Database = {
 	public: {
 		Tables: {
-			automation_runs: {
-				Row: {
-					claims_count: number;
-					created_tasks: number;
-					error_message: string | null;
-					expired_quotes: number;
-					failed_count: number;
-					finished_at: string | null;
-					run_id: string;
-					sent_count: number;
-					started_at: string;
-					status: string;
-				};
-				Insert: {
-					claims_count?: number;
-					created_tasks?: number;
-					error_message?: string | null;
-					expired_quotes?: number;
-					failed_count?: number;
-					finished_at?: string | null;
-					run_id: string;
-					sent_count?: number;
-					started_at?: string;
-					status?: string;
-				};
-				Update: {
-					claims_count?: number;
-					created_tasks?: number;
-					error_message?: string | null;
-					expired_quotes?: number;
-					failed_count?: number;
-					finished_at?: string | null;
-					run_id?: string;
-					sent_count?: number;
-					started_at?: string;
-					status?: string;
-				};
-				Relationships: [];
-			};
 			activities: {
 				Row: {
 					actor_id: string | null;
@@ -186,6 +147,45 @@ export type Database = {
 					}
 				];
 			};
+			automation_runs: {
+				Row: {
+					claims_count: number;
+					created_tasks: number;
+					error_message: string | null;
+					expired_quotes: number;
+					failed_count: number;
+					finished_at: string | null;
+					run_id: string;
+					sent_count: number;
+					started_at: string;
+					status: string;
+				};
+				Insert: {
+					claims_count?: number;
+					created_tasks?: number;
+					error_message?: string | null;
+					expired_quotes?: number;
+					failed_count?: number;
+					finished_at?: string | null;
+					run_id: string;
+					sent_count?: number;
+					started_at?: string;
+					status?: string;
+				};
+				Update: {
+					claims_count?: number;
+					created_tasks?: number;
+					error_message?: string | null;
+					expired_quotes?: number;
+					failed_count?: number;
+					finished_at?: string | null;
+					run_id?: string;
+					sent_count?: number;
+					started_at?: string;
+					status?: string;
+				};
+				Relationships: [];
+			};
 			client_contacts: {
 				Row: {
 					client_id: string;
@@ -197,6 +197,7 @@ export type Database = {
 					job_title: string | null;
 					last_name: string;
 					phone: string | null;
+					phone_normalized: string | null;
 					updated_at: string;
 				};
 				Insert: {
@@ -209,6 +210,7 @@ export type Database = {
 					job_title?: string | null;
 					last_name?: string;
 					phone?: string | null;
+					phone_normalized?: string | null;
 					updated_at?: string;
 				};
 				Update: {
@@ -221,6 +223,7 @@ export type Database = {
 					job_title?: string | null;
 					last_name?: string;
 					phone?: string | null;
+					phone_normalized?: string | null;
 					updated_at?: string;
 				};
 				Relationships: [
@@ -250,6 +253,7 @@ export type Database = {
 					email: string | null;
 					id: string;
 					phone: string | null;
+					phone_normalized: string | null;
 					registration_number: string | null;
 					source_lead_id: string | null;
 					status: string;
@@ -273,6 +277,7 @@ export type Database = {
 					email?: string | null;
 					id?: string;
 					phone?: string | null;
+					phone_normalized?: string | null;
 					registration_number?: string | null;
 					source_lead_id?: string | null;
 					status?: string;
@@ -296,6 +301,7 @@ export type Database = {
 					email?: string | null;
 					id?: string;
 					phone?: string | null;
+					phone_normalized?: string | null;
 					registration_number?: string | null;
 					source_lead_id?: string | null;
 					status?: string;
@@ -425,9 +431,13 @@ export type Database = {
 					lost_notes: string | null;
 					lost_reason_id: string | null;
 					message: string | null;
+					pause_reason: string | null;
+					paused_at: string | null;
 					phone: string | null;
+					phone_normalized: string | null;
 					pipeline_stage: string;
 					referrer: string | null;
+					resume_at: string | null;
 					source_id: string | null;
 					updated_at: string;
 					utm_campaign: string | null;
@@ -456,9 +466,13 @@ export type Database = {
 					lost_notes?: string | null;
 					lost_reason_id?: string | null;
 					message?: string | null;
+					pause_reason?: string | null;
+					paused_at?: string | null;
 					phone?: string | null;
+					phone_normalized?: string | null;
 					pipeline_stage?: string;
 					referrer?: string | null;
+					resume_at?: string | null;
 					source_id?: string | null;
 					updated_at?: string;
 					utm_campaign?: string | null;
@@ -487,9 +501,13 @@ export type Database = {
 					lost_notes?: string | null;
 					lost_reason_id?: string | null;
 					message?: string | null;
+					pause_reason?: string | null;
+					paused_at?: string | null;
 					phone?: string | null;
+					phone_normalized?: string | null;
 					pipeline_stage?: string;
 					referrer?: string | null;
+					resume_at?: string | null;
 					source_id?: string | null;
 					updated_at?: string;
 					utm_campaign?: string | null;
@@ -633,6 +651,53 @@ export type Database = {
 				};
 				Relationships: [];
 			};
+			outbound_message_attempts: {
+				Row: {
+					attempt_number: number;
+					created_at: string;
+					error_message: string | null;
+					id: string;
+					idempotency_key: string;
+					outbound_message_id: string;
+					provider_message_id: string | null;
+					request_finished_at: string | null;
+					request_started_at: string;
+					state: string;
+				};
+				Insert: {
+					attempt_number: number;
+					created_at?: string;
+					error_message?: string | null;
+					id?: string;
+					idempotency_key: string;
+					outbound_message_id: string;
+					provider_message_id?: string | null;
+					request_finished_at?: string | null;
+					request_started_at?: string;
+					state: string;
+				};
+				Update: {
+					attempt_number?: number;
+					created_at?: string;
+					error_message?: string | null;
+					id?: string;
+					idempotency_key?: string;
+					outbound_message_id?: string;
+					provider_message_id?: string | null;
+					request_finished_at?: string | null;
+					request_started_at?: string;
+					state?: string;
+				};
+				Relationships: [
+					{
+						foreignKeyName: 'outbound_message_attempts_outbound_message_id_fkey';
+						columns: ['outbound_message_id'];
+						isOneToOne: false;
+						referencedRelation: 'outbound_messages';
+						referencedColumns: ['id'];
+					}
+				];
+			};
 			outbound_messages: {
 				Row: {
 					attempt_count: number;
@@ -645,12 +710,14 @@ export type Database = {
 					id: string;
 					last_error: string | null;
 					lead_id: string | null;
+					logical_key: string;
 					provider: string;
 					provider_message_id: string | null;
 					purpose: string;
 					quote_id: string | null;
 					recipient_snapshot: Json;
 					subject: string | null;
+					submission_unknown_at: string | null;
 					submitted_at: string | null;
 					task_id: string | null;
 					updated_at: string;
@@ -666,12 +733,14 @@ export type Database = {
 					id?: string;
 					last_error?: string | null;
 					lead_id?: string | null;
+					logical_key: string;
 					provider?: string;
 					provider_message_id?: string | null;
 					purpose: string;
 					quote_id?: string | null;
 					recipient_snapshot?: Json;
 					subject?: string | null;
+					submission_unknown_at?: string | null;
 					submitted_at?: string | null;
 					task_id?: string | null;
 					updated_at?: string;
@@ -687,12 +756,14 @@ export type Database = {
 					id?: string;
 					last_error?: string | null;
 					lead_id?: string | null;
+					logical_key?: string;
 					provider?: string;
 					provider_message_id?: string | null;
 					purpose?: string;
 					quote_id?: string | null;
 					recipient_snapshot?: Json;
 					subject?: string | null;
+					submission_unknown_at?: string | null;
 					submitted_at?: string | null;
 					task_id?: string | null;
 					updated_at?: string;
@@ -841,7 +912,10 @@ export type Database = {
 			};
 			quotes: {
 				Row: {
+					acceptance_evidence: string | null;
+					acceptance_source: string | null;
 					accepted_at: string | null;
+					accepted_by: string | null;
 					base_quote_number: number;
 					cancelled_at: string | null;
 					client_id: string | null;
@@ -850,8 +924,10 @@ export type Database = {
 					currency: string;
 					declined_at: string | null;
 					document_generated_at: string | null;
+					document_generator_version: string | null;
 					document_hash: string | null;
 					document_path: string | null;
+					document_template_version: string | null;
 					expired_at: string | null;
 					id: string;
 					introduction: string | null;
@@ -877,7 +953,10 @@ export type Database = {
 					valid_until: string | null;
 				};
 				Insert: {
+					acceptance_evidence?: string | null;
+					acceptance_source?: string | null;
 					accepted_at?: string | null;
+					accepted_by?: string | null;
 					base_quote_number?: number;
 					cancelled_at?: string | null;
 					client_id?: string | null;
@@ -886,8 +965,10 @@ export type Database = {
 					currency?: string;
 					declined_at?: string | null;
 					document_generated_at?: string | null;
+					document_generator_version?: string | null;
 					document_hash?: string | null;
 					document_path?: string | null;
+					document_template_version?: string | null;
 					expired_at?: string | null;
 					id?: string;
 					introduction?: string | null;
@@ -913,7 +994,10 @@ export type Database = {
 					valid_until?: string | null;
 				};
 				Update: {
+					acceptance_evidence?: string | null;
+					acceptance_source?: string | null;
 					accepted_at?: string | null;
+					accepted_by?: string | null;
 					base_quote_number?: number;
 					cancelled_at?: string | null;
 					client_id?: string | null;
@@ -922,8 +1006,10 @@ export type Database = {
 					currency?: string;
 					declined_at?: string | null;
 					document_generated_at?: string | null;
+					document_generator_version?: string | null;
 					document_hash?: string | null;
 					document_path?: string | null;
+					document_template_version?: string | null;
 					expired_at?: string | null;
 					id?: string;
 					introduction?: string | null;
@@ -949,6 +1035,13 @@ export type Database = {
 					valid_until?: string | null;
 				};
 				Relationships: [
+					{
+						foreignKeyName: 'quotes_accepted_by_fkey';
+						columns: ['accepted_by'];
+						isOneToOne: false;
+						referencedRelation: 'profiles';
+						referencedColumns: ['id'];
+					},
 					{
 						foreignKeyName: 'quotes_client_id_fkey';
 						columns: ['client_id'];
@@ -989,6 +1082,44 @@ export type Database = {
 						columns: ['supersedes_quote_id'];
 						isOneToOne: false;
 						referencedRelation: 'quotes';
+						referencedColumns: ['id'];
+					}
+				];
+			};
+			security_audit_events: {
+				Row: {
+					action: string;
+					actor_id: string | null;
+					id: string;
+					metadata: Json;
+					occurred_at: string;
+					target_id: string | null;
+					target_type: string;
+				};
+				Insert: {
+					action: string;
+					actor_id?: string | null;
+					id?: string;
+					metadata?: Json;
+					occurred_at?: string;
+					target_id?: string | null;
+					target_type: string;
+				};
+				Update: {
+					action?: string;
+					actor_id?: string | null;
+					id?: string;
+					metadata?: Json;
+					occurred_at?: string;
+					target_id?: string | null;
+					target_type?: string;
+				};
+				Relationships: [
+					{
+						foreignKeyName: 'security_audit_events_actor_id_fkey';
+						columns: ['actor_id'];
+						isOneToOne: false;
+						referencedRelation: 'profiles';
 						referencedColumns: ['id'];
 					}
 				];
@@ -1138,9 +1269,12 @@ export type Database = {
 					attention_state: string | null;
 					converted_client_id: string | null;
 					created_at: string | null;
+					has_follow_up: boolean | null;
 					id: string | null;
+					is_overdue: boolean | null;
 					last_activity_at: string | null;
 					lost_reason_id: string | null;
+					next_task_due_at: string | null;
 					pipeline_stage: string | null;
 					source_code: string | null;
 					source_label: string | null;
@@ -1351,14 +1485,20 @@ export type Database = {
 			};
 		};
 		Functions: {
-			operational_diagnostics: {
-				Args: never;
-				Returns: Json;
-			};
-			accept_quote: {
-				Args: { p_lock_version: number; p_quote_id: string };
-				Returns: Json;
-			};
+			accept_quote:
+				| {
+						Args: { p_lock_version: number; p_quote_id: string };
+						Returns: Json;
+				  }
+				| {
+						Args: {
+							p_acceptance_evidence?: string;
+							p_acceptance_source: string;
+							p_lock_version: number;
+							p_quote_id: string;
+						};
+						Returns: Json;
+				  };
 			assign_lead: {
 				Args: {
 					p_assigned_to: string;
@@ -1400,10 +1540,10 @@ export type Database = {
 				Args: {
 					p_item_name: string;
 					p_lead_id: string;
-					p_quantity: number | string;
+					p_quantity: number;
 					p_subject: string;
-					p_tax_rate?: number | string;
-					p_unit_price: number | string;
+					p_tax_rate?: number;
+					p_unit_price: number;
 				};
 				Returns: Json;
 			};
@@ -1461,6 +1601,20 @@ export type Database = {
 				Args: { p_lock_version: number; p_quote_id: string };
 				Returns: Json;
 			};
+			mark_quote_send_unknown: {
+				Args: { p_error: string; p_outbound_message_id: string };
+				Returns: Json;
+			};
+			operational_diagnostics: { Args: never; Returns: Json };
+			pause_lead: {
+				Args: {
+					p_lead_id: string;
+					p_lock_version?: number;
+					p_reason: string;
+					p_resume_at?: string;
+				};
+				Returns: Json;
+			};
 			prepare_quote_send: {
 				Args: { p_lock_version: number; p_quote_id: string };
 				Returns: Json;
@@ -1480,12 +1634,16 @@ export type Database = {
 					p_metadata: Json;
 					p_occurred_at: string;
 					p_provider_event_id: string;
-					p_provider_message_id: string | null;
+					p_provider_message_id: string;
 				};
 				Returns: Json;
 			};
 			provision_invited_profile: {
 				Args: { p_role?: string; p_status?: string; p_user_id: string };
+				Returns: Json;
+			};
+			reconcile_quote_submission: {
+				Args: { p_logical_key: string; p_provider_message_id: string };
 				Returns: Json;
 			};
 			record_bricks_rejection: {
@@ -1514,24 +1672,36 @@ export type Database = {
 				Args: { p_due_at: string; p_lock_version: number; p_task_id: string };
 				Returns: Json;
 			};
+			resume_lead: {
+				Args: { p_lead_id: string; p_lock_version?: number };
+				Returns: Json;
+			};
 			revise_quote: {
 				Args: { p_lock_version: number; p_quote_id: string };
 				Returns: Json;
 			};
 			save_quote_draft: {
 				Args: {
-					p_client_id: string | null;
+					p_client_id: string;
 					p_currency: string;
-					p_introduction: string | null;
+					p_introduction: string;
 					p_items: Json;
 					p_lead_id: string;
-					p_lock_version: number | null;
-					p_quote_id: string | null;
+					p_lock_version: number;
+					p_quote_id: string;
 					p_subject: string;
-					p_tax_label: string | null;
-					p_tax_rate: number | string;
-					p_terms: string | null;
-					p_valid_until: string | null;
+					p_tax_label: string;
+					p_tax_rate: number;
+					p_terms: string;
+					p_valid_until: string;
+				};
+				Returns: Json;
+			};
+			set_app_setting: {
+				Args: {
+					p_description?: string;
+					p_setting_key: string;
+					p_setting_value: Json;
 				};
 				Returns: Json;
 			};
@@ -1542,6 +1712,15 @@ export type Database = {
 					p_lock_version?: number;
 					p_reason?: string;
 					p_resume_at?: string;
+				};
+				Returns: Json;
+			};
+			set_profile_access: {
+				Args: {
+					p_reason?: string;
+					p_role: string;
+					p_status: string;
+					p_user_id: string;
 				};
 				Returns: Json;
 			};

@@ -1,7 +1,10 @@
 import { env } from '$env/dynamic/private';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { Database } from '$lib/types/database';
-import { SendPulseAdapter } from '$lib/domain/communications/sendpulse-adapter';
+import {
+	SendPulseAdapter,
+	SendPulseSubmissionUnknownError
+} from '$lib/domain/communications/sendpulse-adapter';
 import { bytesToBase64, ensureQuoteDocument } from '$lib/server/quote-documents';
 import { loadTrustedClientConfiguration } from '$lib/server/client-config';
 
@@ -50,6 +53,11 @@ export async function sendQuote(
 
 	const prepared = record(preparedResponse.data);
 	if (prepared.already_submitted === true) return prepared;
+	if (prepared.submission_unknown === true) {
+		throw new Error(
+			'Provider acknowledgement is uncertain; reconcile the existing submission before retrying.'
+		);
+	}
 	if (prepared.in_flight === true) throw new Error('This quote is already being sent.');
 
 	const trusted = loadTrustedClientConfiguration();
@@ -92,10 +100,17 @@ export async function sendQuote(
 		});
 		providerMessageId = result.providerMessageId;
 	} catch (error) {
-		await supabase.rpc('fail_quote_send', {
-			p_outbound_message_id: stringValue(prepared.outbound_message_id),
-			p_error: error instanceof Error ? error.message : 'Provider error'
-		});
+		if (error instanceof SendPulseSubmissionUnknownError) {
+			await supabase.rpc('mark_quote_send_unknown', {
+				p_outbound_message_id: stringValue(prepared.outbound_message_id),
+				p_error: error.message
+			});
+		} else {
+			await supabase.rpc('fail_quote_send', {
+				p_outbound_message_id: stringValue(prepared.outbound_message_id),
+				p_error: error instanceof Error ? error.message : 'Provider error'
+			});
+		}
 		throw error;
 	}
 

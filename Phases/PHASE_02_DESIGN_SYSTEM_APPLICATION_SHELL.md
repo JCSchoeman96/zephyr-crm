@@ -1,11 +1,11 @@
 # Phase 2 — Design System & Application Shell
 
 **Project:** Small Business CRM  
-**Roadmap Version:** 1.1.0  
+**Roadmap Version:** 1.3.1
 **Phase:** 2  
 **Milestone:** M0 — Foundation  
 **Status:** Implementation Authority  
-**Architecture:** SvelteKit + TypeScript + Cloudflare Pages + Supabase PostgreSQL/Auth/RLS/Storage/Edge Functions/Cron + SendPulse + WordPress/Bricks  
+**Architecture:** SvelteKit + TypeScript + Cloudflare Workers with Static Assets + Supabase PostgreSQL/Auth/RLS/Storage/Edge Functions/Cron + SendPulse + WordPress/Bricks  
 **Deployment model:** One isolated stack per client
 
 > This document is the execution authority for this phase. The coding agent must not expand beyond this boundary without an explicit architecture decision.
@@ -26,6 +26,9 @@ This phase owns only the work described below. Any adjacent capability not liste
 
 # MUST Happen
 
+- Implement the visual system on the frozen Tailwind CSS 4 + `@tailwindcss/vite` baseline.
+- Initialise/use the approved shadcn-svelte `new-york` source kit where it reduces primitive boilerplate; generated components immediately become project-owned source.
+- Use `@lucide/svelte` as the sole general icon system.
 - Define semantic tokens for typography, spacing, radii, surfaces, borders, text, primary/accent, success/warning/danger/info.
 - Define semantic pipeline-state tokens without hard-coding feature colours throughout components.
 - Create a small primitive component set: Button, IconButton, Input, Textarea, Select, Checkbox, Badge, Card, StatCard, DataTable shell, FilterBar shell, Modal/Drawer, PageHeader, SectionHeader, Empty/Loading/Error states.
@@ -42,6 +45,9 @@ This phase owns only the work described below. Any adjacent capability not liste
 - Do not create dozens of speculative components before real feature demand exists.
 - Do not use raw arbitrary colours where a semantic token exists.
 - Do not make desktop-only layouts.
+- Do not add a second general component library or icon set.
+- Do not blindly overwrite/regenerate a customised shadcn-svelte component.
+- Do not introduce a large form framework or global state library merely to build primitives; SvelteKit/Svelte-native mechanisms remain the default.
 
 # Detailed Execution Breakdown
 
@@ -67,6 +73,10 @@ This phase owns only the work described below. Any adjacent capability not liste
 | `P2-T05` | Token compliance | Static review | Core primitives do not duplicate client brand values where semantic tokens exist. |
 | `P2-T06` | Brand swap proof | Browser/manual | Changing the configured brand tokens visibly updates the shell/primitives without editing component source. |
 | `P2-T07` | Project quality gate | Automated | All Phase 1 quality commands still pass. |
+| `P2-T08` | ShadCN source ownership | Static/diff | `components.json` uses the approved configuration; generated components are committed project source and no customised component is destructively regenerated without reviewed migration. |
+| `P2-T09` | Tailwind 4/Vite contract | Static/build | Tailwind 4 is integrated through `@tailwindcss/vite`; no parallel legacy Tailwind/PostCSS styling authority is introduced. |
+| `P2-T10` | Single icon system | Static | General application icons use `@lucide/svelte`; no second icon library is introduced without architecture amendment. |
+| `P2-T11` | UI dependency restraint | Static | No second UI kit, large form framework, global state framework or duplicate validation system has been added. |
 
 # Definition of Done
 
@@ -83,7 +93,7 @@ Phase 3 may implement identity, persistence, and permissions. It should reuse th
 - [ ] All MUST items are implemented or documented exactly as required.
 - [ ] No MUST NOT item was introduced.
 - [ ] Every mandatory phase test passes.
-- [ ] All prior-phase regression tests still pass and none were weakened, skipped, or removed merely to make this phase pass.
+- [ ] The AGENTS.md-required regression tier for this phase passes; completed-phase tests remain frozen and none were weakened, skipped, or removed merely to make this phase pass.
 - [ ] Project-wide format/lint/type/test/build/database/diff gates pass.
 - [ ] Migrations are deterministic and clean where applicable.
 - [ ] Security/RLS assumptions are test-backed where applicable.
@@ -105,7 +115,9 @@ The following rules apply to every phase:
 7. **Do not introduce Redis, microservices, Kafka, background infrastructure, or a separate analytics system unless a measured requirement proves they are necessary.**
 8. **Use the smallest number of tools and dependencies necessary.**
 9. **Do not implement functionality allocated to a later phase.**
-10. **Every phase closes with focused tests plus the complete existing project quality gate.**
+10. **Regression coverage is cumulative, but cadence is tiered: focused/affected + phase/core regression at each phase close; all completed-phase mandatory tests at milestone gates; the complete suite at Phase 14/final release. Completed tests are never weakened or deleted merely to obtain green status.**
+11. **`DEPENDENCY_BASELINE_v1.0.0.md` is binding: do not change the approved package manager, framework/build/UI/platform/test responsibilities or introduce unapproved dependencies merely for convenience.**
+12. **Once Phase 1 freezes exact pins, package/toolchain upgrades must follow the dependency governance and regression policy rather than floating semver drift.**
 
 # Standard Agent Tool Policy
 
@@ -130,7 +142,7 @@ Execution may stop only under a genuine `AGENTS.md` **EXECUTION STOP** condition
 
 # Phase Close Condition
 
-Once all required outcomes in this document are implemented, every mandatory phase test passes, all completed-phase regression gates still pass, the project-wide quality gate passes, migrations are clean, and no unrelated scope was introduced:
+Once all required outcomes in this document are implemented, every mandatory phase test passes, the AGENTS.md-required phase regression tier passes, the project-wide quality gate passes, migrations are clean, and no unrelated scope was introduced:
 
 1. **STOP WORK ON THIS PHASE.**
 2. Mark the phase `COMPLETE`.

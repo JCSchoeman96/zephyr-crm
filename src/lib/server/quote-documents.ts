@@ -44,6 +44,8 @@ function quoteInput(quote: QuoteRow, items: QuoteDocumentItem[]): QuoteDocumentI
 			terms: quote.terms,
 			tax_label: quote.tax_label,
 			tax_rate: quote.tax_rate,
+			document_template_version: quote.document_template_version,
+			document_generator_version: quote.document_generator_version,
 			currency: quote.currency,
 			valid_until: quote.valid_until,
 			subtotal: quote.subtotal,
@@ -62,7 +64,7 @@ async function loadQuote(
 	const quoteResponse = await supabase
 		.from('quotes')
 		.select(
-			'id,quote_number,subject,introduction,terms,tax_label,tax_rate,currency,valid_until,subtotal,tax_amount,total,quote_snapshot,lock_version,document_path,document_hash,document_generated_at,status'
+			'id,quote_number,subject,introduction,terms,tax_label,tax_rate,currency,valid_until,subtotal,tax_amount,total,quote_snapshot,document_template_version,document_generator_version,lock_version,document_path,document_hash,document_generated_at,status'
 		)
 		.eq('id', quoteId)
 		.maybeSingle();

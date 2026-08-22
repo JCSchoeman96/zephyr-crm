@@ -288,6 +288,10 @@ function startProvider() {
 		if (request.url === '/smtp/emails') {
 			providerAttempt += 1;
 			lastProviderBody = JSON.parse(body);
+			if (providerMode === 'unknown') {
+				request.socket.destroy();
+				return;
+			}
 			if (providerMode === 'failure') {
 				response.writeHead(502, { 'content-type': 'application/json' });
 				response.end(JSON.stringify({ result: false, error: 'deterministic provider failure' }));
@@ -567,13 +571,96 @@ try {
 	);
 	console.log('P8-T10 sender-domain authentication readiness passed');
 	passed += 1;
+
+	const uncertainLead = await createLead('uncertain');
+	await reachDecision(uncertainLead, user);
+	const uncertainQuote = await createReadyQuote(uncertainLead, user, 'uncertain');
+	providerMode = 'unknown';
+	const uncertainSend = await sendQuoteThroughApp(uncertainQuote);
+	assert(!uncertainSend.response.ok, 'Lost provider acknowledgement unexpectedly succeeded');
+	let uncertainMessages = await messagesFor(uncertainQuote.id);
+	assert(
+		uncertainMessages.length === 1 && uncertainMessages[0].delivery_status === 'submission_unknown',
+		'Lost provider acknowledgement was not persisted as submission_unknown'
+	);
+	assert(
+		(await serviceQuote(uncertainQuote.id)).status === 'ready',
+		'Uncertain send changed Quote state'
+	);
+	const attemptsBeforeBlockedRetry = providerAttempt;
+	providerMode = 'success';
+	const blockedRetry = await sendQuoteThroughApp(await serviceQuote(uncertainQuote.id));
+	assert(!blockedRetry.response.ok, 'Uncertain submission was retried automatically');
+	assert(
+		providerAttempt === attemptsBeforeBlockedRetry,
+		'Blocked uncertainty retry called the provider'
+	);
+	console.log('P8-T12 ambiguous provider outcome and controlled retry passed');
+	passed += 1;
+
+	const logicalKey = uncertainMessages[0].logical_key;
+	const reconciled = await mustRpc(
+		'reconcile_quote_submission',
+		{ p_logical_key: logicalKey, p_provider_message_id: `${prefix}-reconciled-provider` },
+		serviceRoleKey
+	);
+	assert(
+		reconciled?.provider_message_id === `${prefix}-reconciled-provider`,
+		'Provider reconciliation did not map the ID'
+	);
+	uncertainMessages = await messagesFor(uncertainQuote.id);
+	assert(
+		uncertainMessages.length === 1 &&
+			uncertainMessages[0].delivery_status === 'submitted' &&
+			(await serviceQuote(uncertainQuote.id)).status === 'sent',
+		'Reconciliation did not complete the uncertain Quote send'
+	);
+	console.log('P8-T14 provider reconciliation passed');
+	passed += 1;
+
+	const hardBouncePayload = {
+		event_id: `${prefix}-hard-bounce`,
+		message_id: `${prefix}-reconciled-provider`,
+		event: 'hard_bounce',
+		timestamp: '2099-01-01T00:03:00.000Z'
+	};
+	let hardBounce = await signedWebhook(hardBouncePayload);
+	assert(
+		hardBounce.response.ok,
+		`Hard bounce webhook failed (${hardBounce.response.status}): ${JSON.stringify(hardBounce.body)}`
+	);
+	const bouncedLead = await leadById(uncertainLead.id);
+	assert(
+		bouncedLead.attention_state === 'waiting_on_us',
+		'Hard bounce did not return attention to waiting_on_us'
+	);
+	uncertainMessages = await messagesFor(uncertainQuote.id);
+	assert(
+		uncertainMessages[0].delivery_status === 'bounced',
+		'Hard bounce did not mark message bounced'
+	);
+	let remediationTasks = await serviceRest(
+		`/rest/v1/tasks?automation_key=eq.${encodeURIComponent(`hard-bounce:${uncertainMessages[0].id}`)}&select=id`
+	);
+	assert(remediationTasks.length === 1, 'Hard bounce did not create exactly one corrective Task');
+	hardBounce = await signedWebhook(hardBouncePayload);
+	assert(
+		hardBounce.response.ok && hardBounce.body?.results?.[0]?.idempotent === true,
+		'Hard bounce replay was not idempotent'
+	);
+	remediationTasks = await serviceRest(
+		`/rest/v1/tasks?automation_key=eq.${encodeURIComponent(`hard-bounce:${uncertainMessages[0].id}`)}&select=id`
+	);
+	assert(remediationTasks.length === 1, 'Hard bounce replay duplicated corrective Task');
+	console.log('P8-T18 hard-bounce remediation and idempotency passed');
+	passed += 1;
 } finally {
 	if (app) app.kill('SIGTERM');
 	if (provider) await new Promise((resolve) => provider.close(resolve));
 	await cleanup();
 }
 
-assert(passed === 10, `Expected 10 P8 focused tests, received ${passed}`);
+assert(passed === 13, `Expected 13 P8 focused tests, received ${passed}`);
 console.log(
-	`P8 focused integration tests passed (${passed} tests; P8-T11 is the project quality gate)`
+	`P8 focused integration tests passed (${passed} tests; P8-T11/P8-T13/P8-T15/P8-T16/P8-T17 are covered by adjacent unit/security gates)`
 );

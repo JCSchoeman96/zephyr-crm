@@ -275,10 +275,13 @@ async function main() {
 	run('bun', ['run', 'build']);
 	const wrangler = read('wrangler.jsonc');
 	assert(
-		wrangler.includes('pages_build_output_dir') && existsSync('.svelte-kit/cloudflare'),
-		'Cloudflare Pages artifact is missing.'
+		wrangler.includes('"main"') &&
+			wrangler.includes('"assets"') &&
+			wrangler.includes('"binding": "ASSETS"') &&
+			existsSync('.svelte-kit/cloudflare/_worker.js'),
+		'Cloudflare Workers + Static Assets artifact is missing.'
 	);
-	console.log('P13-T02 local Cloudflare Pages production artifact passed');
+	console.log('P13-T02 local Cloudflare Workers + Static Assets production artifact passed');
 
 	await testBrandInBrowser(local);
 	testConfigurationContracts();

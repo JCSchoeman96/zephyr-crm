@@ -1,7 +1,7 @@
 # Zephyr CRM Architecture
 
 **Status:** Frozen implementation authority (Phase 0)
-**Version:** 1.0.0
+**Version:** 1.2.1 (v1.3.1 reconciliation)
 **Deployment model:** One isolated stack per client
 
 ## Product boundary
@@ -22,7 +22,7 @@ Each client owns or is assigned one complete isolated stack:
 
 ```text
 one client
-  ├── one Cloudflare Pages deployment
+  ├── one Cloudflare Workers deployment with Static Assets
   ├── one Supabase project
   │     ├── PostgreSQL
   │     ├── Auth
@@ -36,7 +36,7 @@ The client owns the Cloudflare account/project, Supabase project, domains and DN
 
 ## Runtime topology
 
-The SvelteKit application is static-first and is built by Vite for Cloudflare Pages using the Cloudflare adapter. The browser uses the Supabase publishable key for ordinary RLS-secured reads and writes. Trusted operations run in Supabase Edge Functions or hardened PostgreSQL functions.
+The SvelteKit application is built by Vite with the Cloudflare adapter for a Cloudflare Worker backed by Static Assets. Wrangler owns the `wrangler.jsonc` binding and local Worker artifact. The browser uses the Supabase publishable key for ordinary RLS-secured reads and writes. Trusted operations run in Supabase Edge Functions or hardened PostgreSQL functions.
 
 ```text
 WordPress/Bricks form
@@ -48,7 +48,7 @@ ingest-bricks-lead Edge Function
 Supabase PostgreSQL + Activity
         ▲
         │ RLS-secured browser access
-SvelteKit CRM on Cloudflare Pages
+SvelteKit CRM Worker + Static Assets
         │ trusted action request
         ▼
 Edge Functions / PostgreSQL domain actions
@@ -106,7 +106,7 @@ Integrations are adapters around domain operations:
 - Supabase Storage: private quote-document artifacts.
 - Supabase Cron: scheduler that invokes trusted processors.
 
-Provider-specific request and response details stay within adapter modules. Core domain code consumes stable outcomes such as `submitted`, `delivered`, `bounced`, or `failed`; it does not call provider APIs directly.
+Provider-specific request and response details stay within adapter modules. Core domain code consumes stable outcomes such as `submitted`, `delivered`, `bounced`, `failed`, or `submission_unknown`; it does not call provider APIs directly. An uncertain acknowledgement is reconciled by provider correlation before any controlled retry.
 
 ## Data and document authority
 
@@ -114,14 +114,14 @@ PostgreSQL stores business records, relationships, lifecycle state, activity evi
 
 ## Operational invariants
 
-- Pipeline position, attention responsibility, and next task remain separate concepts.
+- Pipeline position, attention responsibility, and next task remain separate concepts. Attention is only `none`, `waiting_on_client`, or `waiting_on_us`; pause facts and follow-up Tasks are orthogonal.
 - A `Lead` precedes a `Client`; conversion is explicit and transactional.
 - Sent `Quote` records are immutable; revisions are new drafts linked to the prior quote.
-- Money uses exact decimal/numeric arithmetic and server-authoritative totals.
+- Money uses exact decimal/numeric arithmetic and server-authoritative totals. Quantity/unit price/tax scales, line rounding and document aggregation follow `docs/MONEY_CONTRACT.md`.
 - External events and retries are idempotent.
 - Concurrent writes use optimistic locking and reject stale updates.
 - All timestamps are stored in UTC; user-facing interpretation uses configured IANA time zones.
-- Activity is append-only evidence for material business actions.
+- Activity is append-only evidence for material business actions; privileged corrections also produce durable security audit evidence.
 - Private documents are never publicly accessible.
 
 ## Deferred scope

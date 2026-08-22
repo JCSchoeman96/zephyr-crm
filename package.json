@@ -2,13 +2,14 @@
 	"name": "zephyr-crm",
 	"private": true,
 	"version": "0.1.0",
+	"packageManager": "bun@1.2.22",
 	"type": "module",
 	"scripts": {
 		"dev": "vite dev",
-		"build": "bun run gen && wrangler types --check && vite build",
-		"preview": "wrangler pages dev .svelte-kit/cloudflare --port 4173",
+		"build": "bun run gen && wrangler types --include-env=false --check && vite build",
+		"preview": "wrangler dev --local --port 4173",
 		"prepare": "svelte-kit sync || echo ''",
-		"check": "bun run gen && wrangler types --check && svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
+		"check": "bun run gen && wrangler types --include-env=false --check && svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
 		"check:watch": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --watch",
 		"format": "prettier --write .",
 		"format:check": "prettier --check .",
@@ -17,7 +18,7 @@
 		"test:e2e": "playwright test",
 		"test:e2e:install": "playwright install chromium",
 		"test": "bun run test:unit -- --run && bun run test:e2e",
-		"gen": "wrangler types",
+		"gen": "wrangler types --include-env=false",
 		"db:start": "bunx supabase start",
 		"db:reset": "bunx supabase db reset",
 		"db:stop": "bunx supabase stop",
@@ -46,7 +47,12 @@
 		"authority:verify": "node scripts/verify-authority-hashes.mjs",
 		"security:bundle": "node scripts/check-public-bundle.mjs",
 		"tokens:check": "node scripts/check-design-tokens.mjs",
-		"quality": "bun run authority:verify && bun run format:check && bun run lint && bun run check && bun run tokens:check && bun run test && bun run build && bun run security:bundle && bun run db:test && bun run db:security && bun run auth:integration && bun run test:p4:domain && bun run test:p4:tracer && bun run test:p5:leads && bun run test:p6:clients && bun run test:p7:quotes && bun run test:p8:documents && bun run test:p9:automation && bun run test:p10:analytics && bun run test:p11:hardening && bun run test:p12:hardening && bun run test:p13:template && bun run diff:check"
+		"authority:registry": "node scripts/verify-v131-registry.mjs",
+		"authority:coverage": "node scripts/generate-v131-coverage.mjs",
+		"test:v131:security": "node scripts/test-v131-security.mjs",
+		"test:v131:communications": "node scripts/test-v131-communications.mjs",
+		"test:v131:recovery": "node scripts/test-v131-recovery.mjs",
+		"quality": "bun run authority:registry && bun run authority:coverage && bun run authority:verify && bun run format:check && bun run lint && bun run check && bun run tokens:check && bun run test && bun run build && bun run security:bundle && bun run db:test && bun run db:security && bun run test:v131:security && bun run test:v131:communications && bun run test:v131:recovery && bun run auth:integration && bun run test:p4:domain && bun run test:p4:tracer && bun run test:p5:leads && bun run test:p6:clients && bun run test:p7:quotes && bun run test:p8:documents && bun run test:p9:automation && bun run test:p10:analytics && bun run test:p11:hardening && bun run test:p12:hardening && bun run test:p13:template && bun run diff:check"
 	},
 	"devDependencies": {
 		"@eslint/js": "10.0.1",
@@ -63,6 +69,8 @@
 		"prettier": "3.9.6",
 		"prettier-plugin-svelte": "4.1.1",
 		"prettier-plugin-tailwindcss": "0.8.1",
+		"shadcn-svelte": "1.5.0",
+		"supabase": "2.115.0",
 		"svelte": "5.56.10",
 		"svelte-check": "4.7.6",
 		"tailwindcss": "4.3.3",
@@ -75,6 +83,7 @@
 	"dependencies": {
 		"@supabase/ssr": "0.12.4",
 		"@supabase/supabase-js": "2.112.3",
-		"lucide-svelte": "1.0.1"
+		"lucide-svelte": "1.0.1",
+		"zod": "4.0.0"
 	}
 }

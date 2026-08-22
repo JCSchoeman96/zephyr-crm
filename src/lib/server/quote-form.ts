@@ -7,8 +7,8 @@ export type QuoteFormItem = {
 };
 
 const quantityPattern = /^(?:0|[1-9]\d*)(?:\.\d{1,4})?$/;
-const pricePattern = /^(?:0|[1-9]\d*)(?:\.\d{1,2})?$/;
-const taxPattern = /^(?:0|[1-9]\d*)(?:\.\d{1,4})?$/;
+const pricePattern = /^(?:0|[1-9]\d*)(?:\.\d{1,4})?$/;
+const taxPattern = /^(?:0|[1-9]\d*)(?:\.\d{1,6})?$/;
 
 function textValue(form: FormData, name: string) {
 	return String(form.get(name) ?? '').trim();

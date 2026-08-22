@@ -29,10 +29,8 @@
 	}
 
 	function attentionTone(attention: string) {
-		if (attention === 'paused') return 'danger';
 		if (attention === 'waiting_on_client') return 'warning';
 		if (attention === 'waiting_on_us') return 'info';
-		if (attention === 'follow_up_scheduled') return 'primary';
 		return 'neutral';
 	}
 
@@ -100,8 +98,6 @@
 				<option value="none">None</option>
 				<option value="waiting_on_client">Waiting on client</option>
 				<option value="waiting_on_us">Waiting on us</option>
-				<option value="follow_up_scheduled">Follow-up scheduled</option>
-				<option value="paused">Paused</option>
 			</Select>
 			<Select id="lead-sort" name="sort" label="Sort by" value={data.filters.sort}>
 				<option value="updated_at">Recently updated</option>

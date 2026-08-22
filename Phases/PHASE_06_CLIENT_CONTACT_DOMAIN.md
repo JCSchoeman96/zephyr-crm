@@ -1,11 +1,11 @@
 # Phase 6 — Client & Contact Domain
 
 **Project:** Small Business CRM  
-**Roadmap Version:** 1.1.0  
+**Roadmap Version:** 1.3.1
 **Phase:** 6  
 **Milestone:** M2 — Production CRM Core  
 **Status:** Implementation Authority  
-**Architecture:** SvelteKit + TypeScript + Cloudflare Pages + Supabase PostgreSQL/Auth/RLS/Storage/Edge Functions/Cron + SendPulse + WordPress/Bricks  
+**Architecture:** SvelteKit + TypeScript + Cloudflare Workers with Static Assets + Supabase PostgreSQL/Auth/RLS/Storage/Edge Functions/Cron + SendPulse + WordPress/Bricks  
 **Deployment model:** One isolated stack per client
 
 > This document is the execution authority for this phase. The coding agent must not expand beyond this boundary without an explicit architecture decision.
@@ -34,6 +34,10 @@ This phase owns only the work described below. Any adjacent capability not liste
 - Define and enforce duplicate-detection strategy without incorrectly collapsing distinct people/businesses.
 - Implement Client list/detail minimum production UI.
 - Preserve original Lead history after conversion.
+
+- Enforce Client as account/customer aggregate and ClientContact as canonical person-level contact for company Clients; Client email/phone remains the account/general channel.
+- Enforce at most one primary active ClientContact per Client and deterministic promotion/replacement behavior.
+- On conversion/linking, populate eligible Quote `client_id` only through the trusted operation while preserving immutable originating `lead_id`; never rewrite quote lineage.
 
 # MUST NOT Happen
 
@@ -70,6 +74,9 @@ This phase owns only the work described below. Any adjacent capability not liste
 | `P6-T07` | Historical preservation | E2E | Converted Client links back to original Lead and original Lead Activity remains intact. |
 | `P6-T08` | No email-only dedupe | Domain | Distinct legitimate customers sharing an email pattern are not merged solely because of email. |
 | `P6-T09` | Project quality gate | Automated | All prior tests and tracer-bullet flow still pass. |
+| `P6-T10` | Contact authority | Domain/DB | Company Client person-level email/phone is resolved from ClientContact while account/general channels remain on Client with no ambiguous silent overwrite. |
+| `P6-T11` | Primary contact uniqueness | DB/concurrency | Concurrent attempts cannot leave more than one primary active ClientContact for one Client. |
+| `P6-T12` | Quote association on conversion | Domain/DB | Conversion may populate eligible Quote `client_id` exactly once while every existing Quote keeps its original `lead_id`. |
 
 # Definition of Done
 
@@ -86,7 +93,7 @@ Phase 7 may fully harden the Quote domain against the stable Lead/Client model.
 - [ ] All MUST items are implemented or documented exactly as required.
 - [ ] No MUST NOT item was introduced.
 - [ ] Every mandatory phase test passes.
-- [ ] All prior-phase regression tests still pass and none were weakened, skipped, or removed merely to make this phase pass.
+- [ ] The AGENTS.md-required regression tier for this phase passes; completed-phase tests remain frozen and none were weakened, skipped, or removed merely to make this phase pass.
 - [ ] Project-wide format/lint/type/test/build/database/diff gates pass.
 - [ ] Migrations are deterministic and clean where applicable.
 - [ ] Security/RLS assumptions are test-backed where applicable.
@@ -108,7 +115,9 @@ The following rules apply to every phase:
 7. **Do not introduce Redis, microservices, Kafka, background infrastructure, or a separate analytics system unless a measured requirement proves they are necessary.**
 8. **Use the smallest number of tools and dependencies necessary.**
 9. **Do not implement functionality allocated to a later phase.**
-10. **Every phase closes with focused tests plus the complete existing project quality gate.**
+10. **Regression coverage is cumulative, but cadence is tiered: focused/affected + phase/core regression at each phase close; all completed-phase mandatory tests at milestone gates; the complete suite at Phase 14/final release. Completed tests are never weakened or deleted merely to obtain green status.**
+11. **`DEPENDENCY_BASELINE_v1.0.0.md` is binding: do not change the approved package manager, framework/build/UI/platform/test responsibilities or introduce unapproved dependencies merely for convenience.**
+12. **Once Phase 1 freezes exact pins, package/toolchain upgrades must follow the dependency governance and regression policy rather than floating semver drift.**
 
 # Standard Agent Tool Policy
 
@@ -133,7 +142,7 @@ Execution may stop only under a genuine `AGENTS.md` **EXECUTION STOP** condition
 
 # Phase Close Condition
 
-Once all required outcomes in this document are implemented, every mandatory phase test passes, all completed-phase regression gates still pass, the project-wide quality gate passes, migrations are clean, and no unrelated scope was introduced:
+Once all required outcomes in this document are implemented, every mandatory phase test passes, the AGENTS.md-required phase regression tier passes, the project-wide quality gate passes, migrations are clean, and no unrelated scope was introduced:
 
 1. **STOP WORK ON THIS PHASE.**
 2. Mark the phase `COMPLETE`.

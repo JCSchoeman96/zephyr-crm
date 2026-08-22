@@ -289,7 +289,7 @@ async function sendQuote(id, user) {
 	return quoteById(id);
 }
 
-async function createClient() {
+async function createClient(sourceLeadId) {
 	const created = await serviceRest('/rest/v1/clients', {
 		method: 'POST',
 		headers: { 'content-type': 'application/json', Prefer: 'return=representation' },
@@ -297,7 +297,8 @@ async function createClient() {
 			type: 'company',
 			display_name: `${prefix} Client`,
 			company_name: `${prefix} Client`,
-			status: 'active'
+			status: 'active',
+			source_lead_id: sourceLeadId
 		})
 	});
 	const id = created[0]?.id;
@@ -434,7 +435,7 @@ async function main() {
 	const sales = await createUser('sales', 'sales');
 	const lead = await createLead('lifecycle', sales);
 	await reachDecision(lead, sales);
-	const clientId = await createClient();
+	const clientId = await createClient(lead.id);
 
 	const exact = await saveDraft(lead, sales, `${prefix} exact`, draftItems(), { clientId });
 	const exactRow = await quoteById(exact.quote_id);

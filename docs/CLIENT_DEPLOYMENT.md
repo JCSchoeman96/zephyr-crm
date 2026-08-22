@@ -8,7 +8,7 @@ one Zephyr CRM codebase + one validated client configuration + one isolated stac
 
 There is no multi-tenancy in the application database and no ClientA/ClientB source
 fork. Each client receives an independently owned Supabase project/database, Auth
-identity store, private Storage bucket, Cloudflare Pages project, domain/DNS zone,
+identity store, private Storage bucket, Cloudflare Workers project with Static Assets, domain/DNS zone,
 SendPulse account, credentials, billing relationship, and encrypted backup bundle.
 PostgreSQL remains the source of truth within each isolated stack.
 
@@ -70,7 +70,8 @@ bun run security:bundle
 ```
 
 The build uses Vite, SvelteKit, the Cloudflare adapter, Wrangler, and
-`pages_build_output_dir: .svelte-kit/cloudflare`. The local build proves artifact
+`wrangler.jsonc` with `main: .svelte-kit/cloudflare/_worker.js` plus an
+`assets.directory` binding for `.svelte-kit/cloudflare`. The local build proves artifact
 compatibility only. It does not prove hosted Cloudflare bindings, DNS, TLS, sender
 authentication, or real email delivery.
 
@@ -130,7 +131,7 @@ following remain explicit post-build/manual checks for a future authorised
 deployment and pilot:
 
 - create the client-owned hosted Supabase project and apply canonical migrations;
-- create the client-owned Cloudflare Pages project, bindings, secrets, and domain;
+    - create the client-owned Cloudflare Workers project, Static Assets binding, secrets, and domain;
 - publish DNS/TLS records and verify redirect/CSP origins;
 - authenticate the client sender domain in SendPulse, including SPF, DKIM, and DMARC;
 - configure the client Bricks webhook/form ID and verify the trusted secret;

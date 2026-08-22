@@ -285,25 +285,38 @@
 						<option value="none">None</option>
 						<option value="waiting_on_client">Waiting on client</option>
 						<option value="waiting_on_us">Waiting on us</option>
-						<option value="follow_up_scheduled">Follow-up scheduled</option>
-						<option value="paused">Paused</option>
 					</Select>
-					<Textarea
-						id="attention_reason"
-						name="attention_reason"
-						label="Pause reason"
-						rows={2}
-						value={data.lead.attention_reason ?? ''}
-					/>
-					<Input
-						id="attention_resume_at"
-						name="attention_resume_at"
-						label="Resume date (optional)"
-						type="datetime-local"
-						value={data.lead.attention_resume_at?.slice(0, 16) ?? ''}
-					/>
 					<Button type="submit" size="sm">Save attention</Button>
 				</form>
+				{#if data.lead.paused_at}
+					<form method="POST" action="?/resume" class="stack-form">
+						<input type="hidden" name="lock_version" value={data.lead.lock_version} />
+						<p class="muted-copy">
+							Paused: {data.lead.pause_reason}
+							{#if data.lead.resume_at}
+								· resumes {new Date(data.lead.resume_at).toLocaleString('en-ZA')}{/if}
+						</p>
+						<Button type="submit" size="sm">Resume Lead</Button>
+					</form>
+				{:else}
+					<form method="POST" action="?/pause" class="stack-form">
+						<input type="hidden" name="lock_version" value={data.lead.lock_version} />
+						<Textarea
+							id="pause_reason"
+							name="pause_reason"
+							label="Pause reason"
+							rows={2}
+							required
+						/>
+						<Input
+							id="resume_at"
+							name="resume_at"
+							label="Resume date (optional)"
+							type="datetime-local"
+						/>
+						<Button type="submit" size="sm">Pause Lead</Button>
+					</form>
+				{/if}
 			{/if}
 			{#if data.lead.pipeline_stage === 'LOST' && (data.profile.role === 'owner' || data.profile.role === 'admin')}
 				<form method="POST" action="?/reopen" class="stack-form reopen-form">

@@ -1,6 +1,6 @@
 # Zephyr CRM Dependency Baseline
 
-The candidate stack was installed and proven together before direct dependency versions were pinned. The proof consisted of a clean Svelte CLI scaffold, Bun installation, Svelte check, Vitest unit run, Wrangler type generation/check, Vite Cloudflare build, ESLint, Prettier, and Playwright browser smoke execution.
+The candidate stack was installed and proven together before direct dependency versions were pinned. The proof consisted of a clean Svelte CLI scaffold, Bun installation, Svelte check, Vitest unit run, Wrangler type generation/check, Vite Cloudflare Workers build, ESLint, Prettier, and Playwright browser smoke execution.
 
 Direct development dependencies are pinned exactly in `package.json` and resolved by `bun.lock`:
 
@@ -42,6 +42,6 @@ The Phase 3 Auth and database client dependencies are pinned exactly:
 | `@supabase/ssr` | `0.12.4` |
 | `@supabase/supabase-js` | `2.112.3` |
 
-The project uses Vite as the SvelteKit build pipeline, `@tailwindcss/vite` for Tailwind CSS 4, Cloudflare Pages output through `@sveltejs/adapter-cloudflare`, Lucide for ordinary icons, and Bun as package manager/runner. No second package manager, alternate bundler, UI system, state framework, form framework, or provider SDK is introduced.
+The project uses Vite as the SvelteKit build pipeline, `@tailwindcss/vite` for Tailwind CSS 4, Cloudflare Workers + Static Assets through `@sveltejs/adapter-cloudflare` and Wrangler, Lucide for ordinary icons, and Bun as package manager/runner. No second package manager, alternate bundler, UI system, state framework, form framework, or provider SDK is introduced. The authoritative exact-version proof and recorded candidate deviations are in `docs/TOOLCHAIN_PROOF.md`.
 
 Run `bun install --frozen-lockfile` to reproduce the dependency graph. Run `bun run authority:verify` before phase work to detect frozen authority drift. `db:types` generates the public Supabase schema types used by the server boundary; it does not introduce a second ORM or database client.

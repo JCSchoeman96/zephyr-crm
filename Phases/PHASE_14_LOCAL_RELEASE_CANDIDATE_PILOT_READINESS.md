@@ -1,11 +1,11 @@
 # Phase 14 — Local Release Candidate & Pilot Readiness
 
 **Project:** Small Business CRM  
-**Roadmap Version:** 1.1.0  
+**Roadmap Version:** 1.3.1
 **Phase:** 14  
 **Milestone:** M4 — Productisation  
 **Status:** Implementation Authority  
-**Architecture:** SvelteKit + TypeScript + Cloudflare Pages + Supabase PostgreSQL/Auth/RLS/Storage/Edge Functions/Cron + SendPulse + WordPress/Bricks  
+**Architecture:** SvelteKit + TypeScript + Cloudflare Workers with Static Assets + Supabase PostgreSQL/Auth/RLS/Storage/Edge Functions/Cron + SendPulse + WordPress/Bricks  
 **Deployment model:** One isolated stack per client
 
 > This document is the final execution authority inside the autonomous **local-only** build loop. Actual remote deployment, live DNS mutation, real-client pilot observation, and production launch belong to the separate post-build pilot programme unless the `/goal` explicitly authorizes them.
@@ -14,9 +14,9 @@
 
 # Exact Goal
 
-Produce and prove a complete **local v1.0.0 release candidate** that is ready for real client deployment and pilot use: fresh local provisioning, production build artifact, full synthetic/contract end-to-end workflows, security, migration, backup/restore, diagnostics, requirements coverage, and complete pilot/deployment instructions.
+Produce and prove a complete **local pre-release candidate for `v1.0.0`** (conceptually `v1.0.0-rc.1`, or the next RC number) that is ready for real client deployment and pilot use: fresh local provisioning, production build artifact, full synthetic/contract end-to-end workflows, security, migration, backup/restore, diagnostics, requirements coverage, and complete pilot/deployment instructions.
 
-The successful terminal state of this phase is **LOCAL_BUILD_COMPLETE / PILOT_READY**, not a false claim that a real pilot has already occurred.
+The successful state of **Phase 14 itself** is `P14=COMPLETE` with the project still non-terminal and ready for `FINAL_PROJECT_VALIDATION`. `LOCAL_BUILD_COMPLETE / PILOT_READY` is persisted only after the separate global final gate passes. A stable production `v1.0.0` tag/version is outside this local phase and may be frozen only after the post-build pilot/release gate.
 
 # Preconditions
 
@@ -27,6 +27,8 @@ Phase 13 local productisation and deployment-readiness tests pass completely.
 This phase owns final local release-candidate validation and preparation of the external pilot package. It does not own real staff observation, live client data, production DNS changes, remote Cloudflare/Supabase provisioning, or production launch under the default local-only goal.
 
 # MUST Happen
+
+- Verify final dependency/toolchain drift against `DEPENDENCY_BASELINE_v1.0.0.md`, `docs/TOOLCHAIN_PROOF.md`, exact `package.json`, `bun.lock`, and `wrangler.jsonc`.
 
 - Provision a fresh local/disposable client instance from the Phase 13 procedure.
 - Run the complete Lead → Quote → Send/communication-contract → Follow-up → Won → Client path with deterministic local/synthetic integration inputs.
@@ -40,7 +42,11 @@ This phase owns final local release-candidate validation and preparation of the 
 - Reconcile every roadmap/phase MUST, MUST NOT, and mandatory test against implementation truth.
 - Produce a `PILOT_READINESS.md` (or equivalent documented path) that lists exact remote steps still required: client-owned accounts, remote Supabase/Cloudflare provisioning, DNS, SendPulse sender-domain authentication, Bricks connection, backup choice, smoke tests, staff onboarding, observation, feedback classification, and production launch criteria.
 - Create a post-v1 backlog area/template without implementing future features.
-- Mark the local loop complete only after all local release-candidate gates pass.
+- Before P14 closes, persist the final-gate readiness state: `P0–P13=COMPLETE`, `P14=VALIDATING`, `blocked=false`, `goal_status=IN_PROGRESS`, `local_build_status=FINAL_VALIDATION_PENDING`, `release_status=NOT_READY`, `pilot_status=NOT_STARTED`, `production_status=NOT_LAUNCHED`. After P14 tests pass, mark **P14 only** `COMPLETE`, write its handoff, and let `AGENTS.md` transition into `FINAL_PROJECT_VALIDATION`.
+
+- Re-run the frozen money edge-case, protected-mutation, Activity immutability, Quote snapshot/provenance, provider-uncertainty, metric-definition and timezone regressions.
+- Validate the complete recovery set includes representative private Storage documents and Auth reconstruction, not database rows alone.
+- Ensure pilot readiness explicitly includes Owner/Admin MFA and POPIA-oriented privacy/incident/cross-border/retention responsibilities.
 
 # MUST NOT Happen
 
@@ -48,7 +54,7 @@ This phase owns final local release-candidate validation and preparation of the 
 - Do not deploy/publish or mutate production/shared infrastructure under the default local-only goal.
 - Do not require unavailable external credentials to pass tests that can be correctly proven through local contract/fixture validation.
 - Do not treat contract tests as proof of DNS authentication, live provider deliverability, or human workflow observation; those remain explicit pilot checks.
-- Do not add v1.1 features during release-candidate stabilization.
+- Do not add post-v1.2 scope during release-candidate stabilization.
 - Do not weaken completed-phase tests to obtain a green final gate.
 - Do not ignore data-integrity, security, migration, backup/restore, or requirements-coverage failures.
 
@@ -64,7 +70,7 @@ This phase owns final local release-candidate validation and preparation of the 
 | **P14.6 Final Security & Quality Gate** | Full RLS/security/static/test/build/db/browser/diff gate passes from clean state. |
 | **P14.7 Requirements Reconciliation** | Every P0–P14 MUST/MUST NOT/test is accounted for against implementation evidence. |
 | **P14.8 Pilot Readiness Package** | Exact remote deployment, pilot observation, feedback, and production-launch checklist is produced. |
-| **P14.9 Local Release Candidate Freeze** | Local build is marked `PILOT_READY` / `LOCAL_BUILD_COMPLETE`; no new v1 scope remains. |
+| **P14.9 Local Release-Candidate Freeze** | Local RC contents are frozen and P14 can close; project terminal state still awaits the global final validation gate. |
 
 # Mandatory Test Matrix
 
@@ -79,15 +85,20 @@ This phase owns final local release-candidate validation and preparation of the 
 | `P14-T05` | Duplicate/idempotency regression | Integration/concurrency | Bricks retries, provider-event retries, reminder overlaps, and conversion retries do not duplicate business state. |
 | `P14-T06` | Authorization regression | Security | Anonymous/Viewer/Sales/Admin/Owner behavior matches the frozen matrix across protected resources/actions. |
 | `P14-T07` | Bricks contract | Integration | Canonical Bricks-compatible payload, headers/authentication, invalid payloads, and duplicate submission cases pass against the real local ingestion function. |
-| `P14-T08` | SendPulse contract | Integration | Adapter request construction, provider acknowledgement/failure mapping, webhook mapping, and deduplication pass deterministic contract/fixture tests without exposing secrets. |
-| `P14-T09` | Backup/restore | Operations | Pilot-like synthetic database state is backed up and successfully restored into a disposable local environment with critical relationships intact. |
+| `P14-T08` | SendPulse contract | Integration | Adapter request construction, definitive/ambiguous provider outcome mapping including `submission_unknown`, webhook reconciliation, controlled retry and deduplication pass deterministic contract/fixture tests without exposing secrets. |
+| `P14-T09` | Complete recovery | Operations | Pilot-like database plus representative private Storage artifacts are restored into a disposable local environment; concrete Auth identity/profile/role/status reconstruction, suspension behavior, credential/MFA reset expectations and critical relationships/artifact hashes are proven. |
 | `P14-T10` | Migration rehearsal | DB | Representative prior local schema/data migrates forward to current without unintended loss and current tests pass afterward. |
 | `P14-T11` | Diagnostics | Operations | Documented diagnostics expose latest intake/send/webhook/reminder failures/status without requiring hidden manual database surgery. |
-| `P14-T12` | Production build artifact | Build | Cloudflare Pages-compatible production build succeeds locally from clean configuration; no publication is required. |
+| `P14-T12` | Production build artifact | Build | Cloudflare Workers-compatible production build succeeds locally from clean configuration; no publication is required. |
 | `P14-T13` | Full project quality gate | Automated | Authoritative format/lint/type/unit/integration/database/browser/build/`git diff --check` gates all pass. |
 | `P14-T14` | Requirements coverage reconciliation | Review/evidence | Every roadmap/phase MUST is satisfied, every MUST NOT remains respected, every mandatory test is accounted for, and no required work is silently deferred. |
 | `P14-T15` | Pilot readiness package | Documentation | Exact remote/client-owned steps and pass/fail pilot criteria exist, including DNS/email auth, deployment, real Bricks/SendPulse smoke, staff use observation, feedback classification, recovery ownership, and launch gate. |
-| `P14-T16` | Local completion state | Loop state | `STATE.json` and `STATE.md` record all P0–P14 phases complete, no blocker, and final local status `LOCAL_BUILD_COMPLETE` / `PILOT_READY`. |
+| `P14-T16` | Final-gate readiness state | Loop state | While P14 is `VALIDATING`, state records P0–P13 complete, no blocker, `goal_status=IN_PROGRESS`, `local_build_status=FINAL_VALIDATION_PENDING`, `release_status=NOT_READY`, `pilot_status=NOT_STARTED`, and `production_status=NOT_LAUNCHED`; this test does not require P14 or the project to be terminal. |
+| `P14-T17` | Cross-cutting law regression | Automated/DB | Money, mutation, Activity immutability, snapshot/provenance, association and attention/task separation tests all pass. |
+| `P14-T18` | Metric/time regression | DB/domain | Frozen KPI formulas and UTC/IANA timezone fixtures pass with no revision double-counting. |
+| `P14-T19` | Privacy/MFA pilot gate | Documentation/security | Pilot package blocks launch until named privacy/incident/cross-border/retention ownership and Owner/Admin MFA prerequisites are satisfied. |
+| `P14-T20` | Authority drift check | Static/loop state | Roadmap/bootstrap plus the complete frozen `authority_sha256` map and every completed/current phase authority hash match current files; unexpected drift invokes the dedicated stop and no hash is silently replaced. |
+| `P14-T21` | Final toolchain/dependency drift | Static/build | Dependency baseline, toolchain proof, exact package pins, Bun lockfile, Cloudflare config/compatibility date and installed build all agree; no unapproved package-manager/framework/tooling drift exists. |
 
 # Definition of Done
 
@@ -97,18 +108,18 @@ This phase owns final local release-candidate validation and preparation of the 
 - External deployment/pilot work is explicitly documented rather than falsely claimed complete.
 - The autonomous local build loop can terminate normally without requiring remote production mutation or elapsed human pilot observation.
 
-# Handoff After the Autonomous Local Roadmap
+# Handoff to Global Final Validation
 
-Write the final local project handoff and mark the loop `LOCAL_BUILD_COMPLETE` / `PILOT_READY`.
+Write the Phase 14 handoff, mark P14 `COMPLETE`, and return control to `AGENTS.md` with the project still non-terminal. `AGENTS.md` then runs `FINAL_PROJECT_VALIDATION`; only that passing global gate may persist `LOCAL_BUILD_COMPLETE` / `PILOT_READY`.
 
-The next lifecycle is the separate **Post-Build Pilot Programme**. It requires an explicit future goal because it may involve client-owned remote accounts, live DNS, real SendPulse/Bricks connectivity, real users, elapsed observation time, and production launch decisions.
+After global final validation succeeds, the next lifecycle is the separate **Post-Build Pilot Programme**. It requires an explicit future goal because it may involve client-owned remote accounts, live DNS, real SendPulse/Bricks connectivity, real users, elapsed observation time, and production launch decisions.
 
 # Phase Closure Checklist
 
 - [ ] All MUST items are implemented or documented exactly as required.
 - [ ] No MUST NOT item was introduced.
 - [ ] Every mandatory phase test passes.
-- [ ] All prior-phase regression tests still pass and none were weakened, skipped, or removed merely to make this phase pass.
+- [ ] The AGENTS.md-required regression tier for this phase passes; completed-phase tests remain frozen and none were weakened, skipped, or removed merely to make this phase pass.
 - [ ] Project-wide format/lint/type/test/build/database/browser/diff gates pass.
 - [ ] Migrations are deterministic and clean.
 - [ ] Security/RLS requirements remain proven.
@@ -116,7 +127,7 @@ The next lifecycle is the separate **Post-Build Pilot Programme**. It requires a
 - [ ] No secrets are exposed.
 - [ ] Requirements coverage P0–P14 is reconciled.
 - [ ] Pilot-readiness documentation is complete.
-- [ ] Local loop state records `LOCAL_BUILD_COMPLETE` / `PILOT_READY`.
+- [ ] P14 readiness state is non-terminal and satisfies `P14-T16`; terminal COMPLETE / LOCAL_BUILD_COMPLETE / PILOT_READY fields are reserved for the post-P14 global final gate in `AGENTS.md`.
 
 # Global Rules Inherited by This Phase
 
@@ -131,7 +142,9 @@ The following rules apply to every phase:
 7. **Do not introduce Redis, microservices, Kafka, background infrastructure, or a separate analytics system unless a measured requirement proves they are necessary.**
 8. **Use the smallest number of tools and dependencies necessary.**
 9. **Do not implement post-v1 functionality during release-candidate hardening.**
-10. **Every phase closes with focused tests plus the complete existing project quality gate.**
+10. **Regression coverage is cumulative, but cadence is tiered: focused/affected + phase/core regression at each phase close; all completed-phase mandatory tests at milestone gates; the complete suite at Phase 14/final release. Completed tests are never weakened or deleted merely to obtain green status.**
+11. **`DEPENDENCY_BASELINE_v1.0.0.md` is binding: do not change the approved package manager, framework/build/UI/platform/test responsibilities or introduce unapproved dependencies merely for convenience.**
+12. **Once Phase 1 freezes exact pins, package/toolchain upgrades must follow the dependency governance and regression policy rather than floating semver drift.**
 
 # Standard Agent Tool Policy
 
@@ -155,13 +168,12 @@ Execution may stop only under a genuine `AGENTS.md` **EXECUTION STOP** condition
 
 # Phase Close Condition
 
-Once all required outcomes in this document are implemented, every mandatory phase test passes, all completed-phase regression gates still pass, and the final project-level completion gate passes:
+Once all required outcomes in this document are implemented, every P14 mandatory test passes, and the required P14/completed-phase regression tier passes:
 
-1. **STOP WORK ON THE LOCAL ROADMAP.**
-2. Mark Phase 14 `COMPLETE`.
-3. Persist the final handoff and loop state.
+1. Stop adding Phase 14 scope.
+2. Mark **Phase 14 `COMPLETE`**.
+3. Persist the P14 handoff and non-terminal readiness state.
 4. Create a safe local release-candidate checkpoint commit when permitted and isolatable.
-5. Mark final local status `LOCAL_BUILD_COMPLETE` / `PILOT_READY`.
-6. End the autonomous local build loop normally.
+5. Return control to `AGENTS.md`, which MUST transition to `FINAL_PROJECT_VALIDATION`.
 
-This is successful completion, not a blocker.
+Do **not** set `goal_status=COMPLETE`, `LOCAL_BUILD_COMPLETE`, or `PILOT_READY` inside the Phase 14 close. Those terminal fields are written only after the global final completion gate passes. This is successful phase completion, not a blocker.

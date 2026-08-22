@@ -4,8 +4,26 @@ import { createTrustedSupabaseClient } from '$lib/server/trusted-supabase';
 import { loadTrustedClientConfiguration } from '$lib/server/client-config';
 import { verifyBearerSecret } from '$lib/security/secrets';
 import { recordOperationalEvent } from '$lib/server/operational-events';
+import { z } from 'zod';
 
 const MAX_BODY_BYTES = 64 * 1024;
+
+const normalizedIntakeSchema = z.object({
+	first_name: z.string().trim().min(1).max(120),
+	last_name: z.string().max(120),
+	email: z.string().trim().email().max(320),
+	phone: z.string().max(80),
+	company: z.string().max(240),
+	message: z.string().max(10_000),
+	landing_page: z.string().max(2_000),
+	referrer: z.string().max(2_000),
+	utm_source: z.string().max(160),
+	utm_medium: z.string().max(160),
+	utm_campaign: z.string().max(160),
+	utm_content: z.string().max(160),
+	utm_term: z.string().max(160),
+	source: z.string().max(120)
+});
 
 export class BricksIntakeError extends Error {
 	status: number;
@@ -90,33 +108,32 @@ async function parseRequest(
 		if (error instanceof BricksIntakeError) throw error;
 		throw new BricksIntakeError('Malformed intake payload', 400);
 	}
+	if (typeof rawPayload.message === 'string' && rawPayload.message.length > 10_000) {
+		throw new BricksIntakeError('Intake message is too long', 422);
+	}
 
 	const formId =
 		textField(rawPayload, 'form_id') || event.request.headers.get('x-bricks-form-id')?.trim() || '';
 	const externalId =
 		textField(rawPayload, 'external_submission_id') || textField(rawPayload, 'submission_id');
-	const payload = normalizePayload(rawPayload);
-	const context = { formId, externalId, payload };
-	if (!formId || !externalId || !payload.first_name || !payload.email) {
+	const payloadCandidate = normalizePayload(rawPayload);
+	const context = { formId, externalId, payload: payloadCandidate };
+	if (!formId || !externalId) {
 		throw new BricksIntakeError(
 			'form_id, external_submission_id, first_name, and email are required',
 			422,
 			context
 		);
 	}
+	const parsedPayload = normalizedIntakeSchema.safeParse(payloadCandidate);
+	if (!parsedPayload.success) {
+		throw new BricksIntakeError('Intake payload schema is invalid', 422, context);
+	}
+	const payload = parsedPayload.data;
 	const expectedFormId = env.CLIENT_CONFIG_JSON?.trim()
 		? trusted.configuration.integrations.bricks.formId
 		: env.BRICKS_FORM_ID?.trim() || trusted.configuration.integrations.bricks.formId;
 	if (formId !== expectedFormId) throw new BricksIntakeError('Unknown Bricks form', 422, context);
-	if (
-		payload.email.length > 320 ||
-		payload.first_name.length > 120 ||
-		payload.message.length > 10_000
-	) {
-		throw new BricksIntakeError('Intake field length is invalid', 422, context);
-	}
-	if (!/^\S+@\S+\.\S+$/.test(payload.email))
-		throw new BricksIntakeError('Intake email is invalid', 422, context);
 	return { formId, externalId, payload };
 }
 
