@@ -65,6 +65,13 @@ export type Database = {
 						foreignKeyName: 'activities_lead_id_fkey';
 						columns: ['lead_id'];
 						isOneToOne: false;
+						referencedRelation: 'dashboard_lead_facts';
+						referencedColumns: ['id'];
+					},
+					{
+						foreignKeyName: 'activities_lead_id_fkey';
+						columns: ['lead_id'];
+						isOneToOne: false;
 						referencedRelation: 'leads';
 						referencedColumns: ['id'];
 					},
@@ -73,6 +80,13 @@ export type Database = {
 						columns: ['outbound_message_id'];
 						isOneToOne: false;
 						referencedRelation: 'outbound_messages';
+						referencedColumns: ['id'];
+					},
+					{
+						foreignKeyName: 'activities_quote_id_fkey';
+						columns: ['quote_id'];
+						isOneToOne: false;
+						referencedRelation: 'dashboard_quote_facts';
 						referencedColumns: ['id'];
 					},
 					{
@@ -255,6 +269,13 @@ export type Database = {
 						foreignKeyName: 'clients_source_lead_id_fkey';
 						columns: ['source_lead_id'];
 						isOneToOne: true;
+						referencedRelation: 'dashboard_lead_facts';
+						referencedColumns: ['id'];
+					},
+					{
+						foreignKeyName: 'clients_source_lead_id_fkey';
+						columns: ['source_lead_id'];
+						isOneToOne: true;
 						referencedRelation: 'leads';
 						referencedColumns: ['id'];
 					}
@@ -298,6 +319,13 @@ export type Database = {
 					source?: string;
 				};
 				Relationships: [
+					{
+						foreignKeyName: 'inbound_submissions_lead_id_fkey';
+						columns: ['lead_id'];
+						isOneToOne: false;
+						referencedRelation: 'dashboard_lead_facts';
+						referencedColumns: ['id'];
+					},
 					{
 						foreignKeyName: 'inbound_submissions_lead_id_fkey';
 						columns: ['lead_id'];
@@ -609,7 +637,21 @@ export type Database = {
 						foreignKeyName: 'outbound_messages_lead_id_fkey';
 						columns: ['lead_id'];
 						isOneToOne: false;
+						referencedRelation: 'dashboard_lead_facts';
+						referencedColumns: ['id'];
+					},
+					{
+						foreignKeyName: 'outbound_messages_lead_id_fkey';
+						columns: ['lead_id'];
+						isOneToOne: false;
 						referencedRelation: 'leads';
+						referencedColumns: ['id'];
+					},
+					{
+						foreignKeyName: 'outbound_messages_quote_id_fkey';
+						columns: ['quote_id'];
+						isOneToOne: false;
+						referencedRelation: 'dashboard_quote_facts';
 						referencedColumns: ['id'];
 					},
 					{
@@ -709,6 +751,13 @@ export type Database = {
 					updated_at?: string;
 				};
 				Relationships: [
+					{
+						foreignKeyName: 'quote_items_quote_id_fkey';
+						columns: ['quote_id'];
+						isOneToOne: false;
+						referencedRelation: 'dashboard_quote_facts';
+						referencedColumns: ['id'];
+					},
 					{
 						foreignKeyName: 'quote_items_quote_id_fkey';
 						columns: ['quote_id'];
@@ -843,7 +892,21 @@ export type Database = {
 						foreignKeyName: 'quotes_lead_id_fkey';
 						columns: ['lead_id'];
 						isOneToOne: false;
+						referencedRelation: 'dashboard_lead_facts';
+						referencedColumns: ['id'];
+					},
+					{
+						foreignKeyName: 'quotes_lead_id_fkey';
+						columns: ['lead_id'];
+						isOneToOne: false;
 						referencedRelation: 'leads';
+						referencedColumns: ['id'];
+					},
+					{
+						foreignKeyName: 'quotes_supersedes_quote_id_fkey';
+						columns: ['supersedes_quote_id'];
+						isOneToOne: false;
+						referencedRelation: 'dashboard_quote_facts';
 						referencedColumns: ['id'];
 					},
 					{
@@ -960,7 +1023,21 @@ export type Database = {
 						foreignKeyName: 'tasks_lead_id_fkey';
 						columns: ['lead_id'];
 						isOneToOne: false;
+						referencedRelation: 'dashboard_lead_facts';
+						referencedColumns: ['id'];
+					},
+					{
+						foreignKeyName: 'tasks_lead_id_fkey';
+						columns: ['lead_id'];
+						isOneToOne: false;
 						referencedRelation: 'leads';
+						referencedColumns: ['id'];
+					},
+					{
+						foreignKeyName: 'tasks_quote_id_fkey';
+						columns: ['quote_id'];
+						isOneToOne: false;
+						referencedRelation: 'dashboard_quote_facts';
 						referencedColumns: ['id'];
 					},
 					{
@@ -981,6 +1058,75 @@ export type Database = {
 			};
 		};
 		Views: {
+			dashboard_lead_facts: {
+				Row: {
+					attention_state: string | null;
+					converted_client_id: string | null;
+					created_at: string | null;
+					id: string | null;
+					last_activity_at: string | null;
+					lost_reason_id: string | null;
+					pipeline_stage: string | null;
+					source_code: string | null;
+					source_label: string | null;
+					updated_at: string | null;
+					utm_campaign: string | null;
+					utm_content: string | null;
+					utm_medium: string | null;
+					utm_source: string | null;
+					utm_term: string | null;
+				};
+				Relationships: [
+					{
+						foreignKeyName: 'leads_converted_client_id_fkey';
+						columns: ['converted_client_id'];
+						isOneToOne: false;
+						referencedRelation: 'clients';
+						referencedColumns: ['id'];
+					},
+					{
+						foreignKeyName: 'leads_lost_reason_id_fkey';
+						columns: ['lost_reason_id'];
+						isOneToOne: false;
+						referencedRelation: 'lost_reasons';
+						referencedColumns: ['id'];
+					}
+				];
+			};
+			dashboard_quote_facts: {
+				Row: {
+					accepted_at: string | null;
+					created_at: string | null;
+					currency: string | null;
+					id: string | null;
+					lead_id: string | null;
+					pipeline_stage: string | null;
+					sent_at: string | null;
+					source_code: string | null;
+					status: string | null;
+					total: number | null;
+					utm_campaign: string | null;
+					utm_medium: string | null;
+					utm_source: string | null;
+					valid_until: string | null;
+				};
+				Relationships: [
+					{
+						foreignKeyName: 'quotes_lead_id_fkey';
+						columns: ['lead_id'];
+						isOneToOne: false;
+						referencedRelation: 'dashboard_lead_facts';
+						referencedColumns: ['id'];
+					},
+					{
+						foreignKeyName: 'quotes_lead_id_fkey';
+						columns: ['lead_id'];
+						isOneToOne: false;
+						referencedRelation: 'leads';
+						referencedColumns: ['id'];
+					}
+				];
+			};
 			task_work_queue: {
 				Row: {
 					assigned_to: string | null;
@@ -1095,7 +1241,21 @@ export type Database = {
 						foreignKeyName: 'tasks_lead_id_fkey';
 						columns: ['lead_id'];
 						isOneToOne: false;
+						referencedRelation: 'dashboard_lead_facts';
+						referencedColumns: ['id'];
+					},
+					{
+						foreignKeyName: 'tasks_lead_id_fkey';
+						columns: ['lead_id'];
+						isOneToOne: false;
 						referencedRelation: 'leads';
+						referencedColumns: ['id'];
+					},
+					{
+						foreignKeyName: 'tasks_quote_id_fkey';
+						columns: ['quote_id'];
+						isOneToOne: false;
+						referencedRelation: 'dashboard_quote_facts';
 						referencedColumns: ['id'];
 					},
 					{
@@ -1180,6 +1340,22 @@ export type Database = {
 					p_title?: string;
 					p_type?: string;
 				};
+				Returns: Json;
+			};
+			dashboard_attribution: {
+				Args: { p_from?: string; p_limit?: number; p_to?: string };
+				Returns: Json;
+			};
+			dashboard_lost_analysis: {
+				Args: { p_from?: string; p_limit?: number; p_to?: string };
+				Returns: Json;
+			};
+			dashboard_operational_summary: {
+				Args: { p_from?: string; p_to?: string };
+				Returns: Json;
+			};
+			dashboard_sales_kpis: {
+				Args: { p_from?: string; p_to?: string };
 				Returns: Json;
 			};
 			decline_quote: {
