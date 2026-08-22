@@ -1,6 +1,8 @@
 import { env } from '$env/dynamic/private';
 import type { RequestEvent } from '@sveltejs/kit';
 import { createTrustedSupabaseClient } from '$lib/server/trusted-supabase';
+import { verifyBearerSecret } from '$lib/security/secrets';
+import { recordOperationalEvent } from '$lib/server/operational-events';
 
 const MAX_BODY_BYTES = 64 * 1024;
 
@@ -59,7 +61,7 @@ async function parseRequest(
 	event: RequestEvent
 ): Promise<{ formId: string; externalId: string; payload: Record<string, string> }> {
 	const secret = env.BRICKS_WEBHOOK_SECRET?.trim();
-	if (!secret || event.request.headers.get('authorization') !== `Bearer ${secret}`) {
+	if (!(await verifyBearerSecret(event.request.headers.get('authorization'), secret))) {
 		throw new BricksIntakeError('Invalid intake authorization', 401);
 	}
 
@@ -125,6 +127,12 @@ export async function handleBricksIntake(event: RequestEvent) {
 		if (error) throw new BricksIntakeError(error.message, 422, { formId, externalId, payload });
 		return data;
 	} catch (error) {
+		await recordOperationalEvent({
+			severity: error instanceof BricksIntakeError && error.status < 500 ? 'warning' : 'error',
+			source: 'bricks',
+			eventType: 'intake_failure',
+			message: error instanceof Error ? error.message : 'Intake failed'
+		});
 		if (error instanceof BricksIntakeError && error.context?.externalId) {
 			const context = error.context;
 			const externalId = context.externalId as string;

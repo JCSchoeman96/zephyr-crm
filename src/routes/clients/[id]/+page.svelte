@@ -30,7 +30,7 @@
 	<meta name="description" content="Client detail, contacts, and source Lead history" />
 </svelte:head>
 
-<AppShell userEmail={data.auth.user?.email}>
+<AppShell userEmail={data.auth.user?.email} userRole={data.auth.profile?.role}>
 	<a class="back-link" href={resolve('/clients')}>← Back to Clients</a>
 	<PageHeader
 		title={data.client.display_name}

@@ -3,6 +3,45 @@ export type Json = string | number | boolean | null | { [key: string]: Json | un
 export type Database = {
 	public: {
 		Tables: {
+			automation_runs: {
+				Row: {
+					claims_count: number;
+					created_tasks: number;
+					error_message: string | null;
+					expired_quotes: number;
+					failed_count: number;
+					finished_at: string | null;
+					run_id: string;
+					sent_count: number;
+					started_at: string;
+					status: string;
+				};
+				Insert: {
+					claims_count?: number;
+					created_tasks?: number;
+					error_message?: string | null;
+					expired_quotes?: number;
+					failed_count?: number;
+					finished_at?: string | null;
+					run_id: string;
+					sent_count?: number;
+					started_at?: string;
+					status?: string;
+				};
+				Update: {
+					claims_count?: number;
+					created_tasks?: number;
+					error_message?: string | null;
+					expired_quotes?: number;
+					failed_count?: number;
+					finished_at?: string | null;
+					run_id?: string;
+					sent_count?: number;
+					started_at?: string;
+					status?: string;
+				};
+				Relationships: [];
+			};
 			activities: {
 				Row: {
 					actor_id: string | null;
@@ -560,6 +599,39 @@ export type Database = {
 						referencedColumns: ['id'];
 					}
 				];
+			};
+			operational_events: {
+				Row: {
+					created_at: string;
+					event_type: string;
+					id: string;
+					message: string;
+					metadata: Json;
+					occurred_at: string;
+					severity: string;
+					source: string;
+				};
+				Insert: {
+					created_at?: string;
+					event_type: string;
+					id?: string;
+					message: string;
+					metadata?: Json;
+					occurred_at?: string;
+					severity: string;
+					source: string;
+				};
+				Update: {
+					created_at?: string;
+					event_type?: string;
+					id?: string;
+					message?: string;
+					metadata?: Json;
+					occurred_at?: string;
+					severity?: string;
+					source?: string;
+				};
+				Relationships: [];
 			};
 			outbound_messages: {
 				Row: {
@@ -1276,6 +1348,10 @@ export type Database = {
 			};
 		};
 		Functions: {
+			operational_diagnostics: {
+				Args: never;
+				Returns: Json;
+			};
 			accept_quote: {
 				Args: { p_lock_version: number; p_quote_id: string };
 				Returns: Json;

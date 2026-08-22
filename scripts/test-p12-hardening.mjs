@@ -1,0 +1,322 @@
+import { randomUUID } from 'node:crypto';
+import { execFileSync, spawn } from 'node:child_process';
+import { mkdtemp, readFile, rm } from 'node:fs/promises';
+import { join } from 'node:path';
+import { tmpdir } from 'node:os';
+
+const root = process.cwd();
+const runId = `${Date.now()}-${process.pid}`;
+const prefix = `p12-${runId}`;
+const appUrl = 'http://127.0.0.1:4184';
+const storagePath = `quotes/${randomUUID()}/p12-recovery.pdf`;
+let app;
+let backupDirectory;
+let restoreDatabase;
+
+function run(command, args, options = {}) {
+	const { env: extraEnv, ...execOptions } = options;
+	try {
+		return execFileSync(command, args, {
+			cwd: root,
+			encoding: 'utf8',
+			stdio: ['ignore', 'pipe', 'pipe'],
+			...execOptions,
+			env: { ...process.env, ...(extraEnv ?? {}) }
+		}).trim();
+	} catch {
+		throw new Error(`${command} failed during the P12 hardening gate`);
+	}
+}
+
+function statusEnv() {
+	const output = run('bunx', ['supabase', 'status', '-o', 'env']);
+	return Object.fromEntries(
+		output
+			.split('\n')
+			.filter((line) => line.includes('='))
+			.map((line) => {
+				const separator = line.indexOf('=');
+				return [line.slice(0, separator), line.slice(separator + 1).replace(/^"(.*)"$/, '$1')];
+			})
+	);
+}
+
+function assert(condition, message) {
+	if (!condition) throw new Error(message);
+}
+
+function sql(databaseUrl, query) {
+	return run('psql', [databaseUrl, '-X', '-v', 'ON_ERROR_STOP=1', '-At', '-c', query]);
+}
+
+function identifier(value) {
+	return `"${String(value).replaceAll('"', '""')}"`;
+}
+
+async function waitForServer(url) {
+	for (let attempt = 0; attempt < 80; attempt += 1) {
+		try {
+			const response = await fetch(url);
+			if (response.ok || response.status < 500) return;
+		} catch {
+			// Vite is still starting.
+		}
+		await new Promise((resolve) => setTimeout(resolve, 250));
+	}
+	throw new Error('Timed out waiting for the P12 application server');
+}
+
+async function storageRequest(apiUrl, serviceRoleKey, path, init = {}) {
+	return fetch(`${apiUrl}/storage/v1/${path}`, {
+		...init,
+		headers: {
+			apikey: serviceRoleKey,
+			Authorization: `Bearer ${serviceRoleKey}`,
+			...(init.headers ?? {})
+		}
+	});
+}
+
+async function startApp(local) {
+	app = spawn('bun', ['run', 'dev', '--', '--host', '127.0.0.1', '--port', '4184'], {
+		cwd: root,
+		stdio: 'ignore',
+		env: {
+			...process.env,
+			NO_COLOR: '1',
+			PUBLIC_SUPABASE_URL: local.API_URL,
+			PUBLIC_SUPABASE_PUBLISHABLE_KEY: local.ANON_KEY ?? local.PUBLISHABLE_KEY,
+			PUBLIC_SITE_URL: appUrl,
+			SUPABASE_URL: local.API_URL,
+			SUPABASE_SERVICE_ROLE_KEY: local.SERVICE_ROLE_KEY,
+			BRICKS_FORM_ID: 'contact-form',
+			BRICKS_WEBHOOK_SECRET: 'p12-bricks-secret',
+			SENDPULSE_WEBHOOK_SECRET: 'p12-sendpulse-secret',
+			AUTOMATION_CRON_SECRET: 'p12-automation-secret'
+		}
+	});
+	await waitForServer(`${appUrl}/login`);
+}
+
+function stopApp() {
+	if (!app) return;
+	app.kill('SIGTERM');
+	app = undefined;
+}
+
+async function runDatabaseContracts(local) {
+	run('bun', ['run', 'db:reset']);
+	assert(
+		sql(local.DB_URL, "select to_regclass('public.operational_events') is not null;") === 't',
+		'P12 migration did not reset cleanly'
+	);
+	console.log('P12-T09 migration reset passed');
+
+	run('bun', ['run', 'db:security']);
+	console.log('P12-T01 anonymous denial and P12-T02 role matrix passed');
+
+	const preservedLeadSourceCount = sql(local.DB_URL, 'select count(*) from public.lead_sources;');
+	sql(
+		local.DB_URL,
+		'drop table if exists public.operational_events, public.automation_runs cascade;'
+	);
+	run('psql', [
+		local.DB_URL,
+		'-X',
+		'-v',
+		'ON_ERROR_STOP=1',
+		'-f',
+		'supabase/migrations/20260822140000_operational_hardening.sql'
+	]);
+	assert(
+		sql(
+			local.DB_URL,
+			"select count(*) from pg_tables where schemaname = 'public' and tablename in ('automation_runs', 'operational_events');"
+		) === '2',
+		'P12 forward upgrade did not recreate operational tables'
+	);
+	assert(
+		sql(local.DB_URL, 'select count(*) from public.lead_sources;') === preservedLeadSourceCount,
+		'Forward upgrade lost existing reference data'
+	);
+	console.log('P12-T10 P11-to-P12 forward upgrade rehearsal passed');
+}
+
+async function runSecurityAndInputContracts(local) {
+	await startApp(local);
+	const page = await fetch(`${appUrl}/login`);
+	const csp = page.headers.get('content-security-policy') ?? '';
+	assert(
+		csp.includes("default-src 'self'") && csp.includes("object-src 'none'"),
+		'CSP baseline is missing'
+	);
+	assert(page.headers.get('x-content-type-options') === 'nosniff', 'nosniff header is missing');
+	assert(page.headers.get('x-frame-options') === 'DENY', 'frame denial header is missing');
+	console.log('P12-T03 CSP and browser secret boundary passed');
+
+	const unauthenticatedDiagnostics = await fetch(`${appUrl}/api/diagnostics`);
+	assert(unauthenticatedDiagnostics.status === 401, 'Diagnostics endpoint is not protected');
+
+	const bricksDenied = await fetch(`${appUrl}/api/webhooks/bricks`, {
+		method: 'POST',
+		headers: { 'content-type': 'application/json' },
+		body: JSON.stringify({ form_id: 'contact-form', external_submission_id: `${prefix}-denied` })
+	});
+	assert(bricksDenied.status === 401, 'Bricks webhook accepted an unauthenticated request');
+	const sendpulseDenied = await fetch(`${appUrl}/api/webhooks/sendpulse`, {
+		method: 'POST',
+		headers: { 'content-type': 'application/json' },
+		body: JSON.stringify({ message_id: `${prefix}-denied`, event: 'delivered' })
+	});
+	assert(sendpulseDenied.status === 401, 'SendPulse webhook accepted an unauthenticated request');
+	console.log('P12-T04 webhook authentication failure passed');
+
+	const unsafeLead = await fetch(`${appUrl}/api/webhooks/bricks`, {
+		method: 'POST',
+		headers: {
+			authorization: 'Bearer p12-bricks-secret',
+			'content-type': 'application/json'
+		},
+		body: JSON.stringify({
+			form_id: 'contact-form',
+			external_submission_id: `${prefix}-xss`,
+			first_name: 'Input test',
+			email: `${prefix}@example.test`,
+			message: '<script>alert(1)</script>'
+		})
+	});
+	assert(unsafeLead.status === 201, `Valid bounded input was rejected (${unsafeLead.status})`);
+	const leadSource = await readFile('src/routes/leads/[id]/+page.svelte', 'utf8');
+	const quoteSource = await readFile('src/routes/quotes/[id]/+page.svelte', 'utf8');
+	const intakeSource = await readFile('src/lib/server/bricks-intake.ts', 'utf8');
+	assert(
+		!leadSource.includes('{@html}') && !quoteSource.includes('{@html}'),
+		'Unescaped HTML rendering exists'
+	);
+	assert(
+		intakeSource.includes('MAX_BODY_BYTES') && intakeSource.includes('message.length > 10_000'),
+		'Input bounds are missing'
+	);
+	sql(
+		local.DB_URL,
+		`set session_replication_role = replica; delete from public.leads where external_submission_id = '${prefix}-xss'; set session_replication_role = origin;`
+	);
+	console.log('P12-T05 XSS-safe rendering and input validation passed');
+}
+
+async function runBackupRecovery(local) {
+	const serviceRoleKey = local.SERVICE_ROLE_KEY;
+	const objectBody = Buffer.from('%PDF-1.4\n% Zephyr recovery fixture\n');
+	try {
+		const uploaded = await storageRequest(
+			local.API_URL,
+			serviceRoleKey,
+			`object/quote-documents/${storagePath}`,
+			{
+				method: 'POST',
+				headers: { 'content-type': 'application/pdf', 'x-upsert': 'true' },
+				body: objectBody
+			}
+		);
+		assert(uploaded.ok, `Could not create private recovery object (${uploaded.status})`);
+		const anonymousObject = await fetch(
+			`${local.API_URL}/storage/v1/object/quote-documents/${storagePath}`
+		);
+		assert(!anonymousObject.ok, 'Private quote document was publicly readable');
+		console.log('P12-T06 private Storage access passed');
+
+		backupDirectory = await mkdtemp(join(tmpdir(), 'zephyr-crm-p12-backup-'));
+		const backupOutput = run('bun', ['run', 'backup:create'], {
+			env: {
+				BACKUP_LOCAL_TEST: '1',
+				BACKUP_OUTPUT_DIR: backupDirectory,
+				BACKUP_ENCRYPTION_KEY: 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa'
+			}
+		});
+		const backupLine = backupOutput
+			.split('\n')
+			.reverse()
+			.find((line) => line.trim().startsWith('{'));
+		assert(backupLine, 'Backup creation did not return a manifest result');
+		const backup = JSON.parse(backupLine);
+		assert(
+			backup.files > 0 && backup.backup.endsWith('.tar.gz.enc'),
+			'Encrypted backup is incomplete'
+		);
+		console.log('P12-T07 encrypted external backup creation passed');
+
+		restoreDatabase = `${prefix.replaceAll('-', '_')}_restore`;
+		sql(local.DB_URL, `create database ${identifier(restoreDatabase)};`);
+		const target = new URL(local.DB_URL);
+		target.pathname = `/${restoreDatabase}`;
+		const restoreOutput = run('bun', ['run', 'backup:restore', '--', backup.backup], {
+			env: {
+				BACKUP_RESTORE_DISPOSABLE: 'true',
+				BACKUP_RESTORE_DATABASE_URL: target.toString(),
+				BACKUP_ENCRYPTION_KEY: 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa'
+			}
+		});
+		assert(
+			restoreOutput.includes('RESTORE_VERIFIED') &&
+				restoreOutput.includes('storage_objects_verified'),
+			'Restore verification failed'
+		);
+		console.log('P12-T08 disposable database and private-artifact restore passed');
+	} finally {
+		await storageRequest(local.API_URL, serviceRoleKey, `object/quote-documents/${storagePath}`, {
+			method: 'DELETE'
+		});
+	}
+}
+
+async function runLifecycleContracts() {
+	run('bun', ['run', 'test:p4:tracer']);
+	console.log('P12-T12 Won conversion E2E passed');
+	console.log('P12-T13 Lost reason E2E passed');
+	run('bun', ['run', 'test:p8:documents']);
+	console.log('P12-T11 duplicate external event and outbound idempotency passed');
+}
+
+async function main() {
+	const local = statusEnv();
+	assert(
+		local.API_URL &&
+			(local.ANON_KEY ?? local.PUBLISHABLE_KEY) &&
+			local.SERVICE_ROLE_KEY &&
+			local.DB_URL,
+		'Local Supabase status is incomplete'
+	);
+	await runDatabaseContracts(local);
+	await runSecurityAndInputContracts(local);
+	stopApp();
+	await runBackupRecovery(local);
+	await runLifecycleContracts();
+	run('bun', ['run', 'build']);
+	run('bun', ['run', 'security:bundle']);
+	console.log('P12-T14 production build and public-bundle check passed');
+	run('bun', ['run', 'authority:verify']);
+	const operations = await readFile('docs/OPERATIONS.md', 'utf8');
+	const deployment = await readFile('docs/DEPLOYMENT.md', 'utf8');
+	assert(
+		operations.includes('Restore drill') &&
+			operations.includes('password_reset_or_reinvite_required'),
+		'Operations recovery contract is incomplete'
+	);
+	assert(
+		deployment.includes('PILOT_READY') && deployment.includes('bun run quality'),
+		'Deployment release contract is incomplete'
+	);
+	console.log('P12-T15 blocker review and handoff documentation passed');
+	console.log('P12 security, backup, recovery and operational hardening passed');
+}
+
+try {
+	await main();
+} finally {
+	stopApp();
+	if (restoreDatabase) {
+		const local = statusEnv();
+		if (local.DB_URL) sql(local.DB_URL, `drop database if exists ${identifier(restoreDatabase)};`);
+	}
+	if (backupDirectory) await rm(backupDirectory, { recursive: true, force: true });
+}

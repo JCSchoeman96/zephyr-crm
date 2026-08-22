@@ -46,6 +46,7 @@
 <AppShell
 	bind:brandMode
 	userEmail={data.auth.user?.email}
+	userRole={data.auth.profile?.role}
 	signOutAction={data.auth.user ? '?/logout' : null}
 >
 	<PageHeader

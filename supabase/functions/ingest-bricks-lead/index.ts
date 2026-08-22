@@ -1,3 +1,5 @@
+import { verifyBearerSecret } from '../_shared/security.ts';
+
 type BricksPayload = Record<string, unknown>;
 
 const maxBodyBytes = 64 * 1024;
@@ -65,7 +67,7 @@ async function recordRejection(
 Deno.serve(async (request) => {
 	if (request.method !== 'POST') return jsonResponse({ error: 'Method not allowed' }, 405);
 	const secret = Deno.env.get('BRICKS_WEBHOOK_SECRET')?.trim();
-	if (!secret || request.headers.get('authorization') !== `Bearer ${secret}`) {
+	if (!(await verifyBearerSecret(request.headers.get('authorization'), secret))) {
 		return jsonResponse({ error: 'Invalid intake authorization' }, 401);
 	}
 

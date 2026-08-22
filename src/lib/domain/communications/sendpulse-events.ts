@@ -1,3 +1,5 @@
+import { constantTimeEqual } from '$lib/security/secrets';
+
 export type SendPulseEvent = {
 	providerEventId: string | null;
 	providerMessageId: string;
@@ -112,5 +114,5 @@ export async function verifyWebhookSignature(
 		.trim()
 		.replace(/^sha256=/i, '')
 		.toLowerCase();
-	return received.length === expected.length && received === expected;
+	return constantTimeEqual(received, expected);
 }

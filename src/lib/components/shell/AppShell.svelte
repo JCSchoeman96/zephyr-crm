@@ -8,6 +8,7 @@
 		children,
 		context = 'Workspace',
 		userEmail = null,
+		userRole = null,
 		onSignOut,
 		signOutAction = null
 	}: {
@@ -15,6 +16,7 @@
 		children?: Snippet;
 		context?: string;
 		userEmail?: string | null;
+		userRole?: string | null;
 		onSignOut?: () => void;
 		signOutAction?: string | null;
 	} = $props();
@@ -31,7 +33,7 @@
 </script>
 
 <div class="app-shell" data-brand={brandMode} data-testid="app-shell">
-	<Sidebar open={navigationOpen} onclose={closeNavigation} />
+	<Sidebar open={navigationOpen} {userRole} onclose={closeNavigation} />
 	<div
 		class="app-shell__mobile-backdrop"
 		data-open={navigationOpen}

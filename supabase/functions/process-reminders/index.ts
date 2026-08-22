@@ -1,3 +1,5 @@
+import { verifyBearerSecret } from '../_shared/security.ts';
+
 type JsonRecord = Record<string, unknown>;
 
 function jsonResponse(body: JsonRecord, status = 200) {
@@ -76,7 +78,7 @@ async function sendPulseReminder(claim: JsonRecord) {
 Deno.serve(async (request) => {
 	if (request.method !== 'POST') return jsonResponse({ error: 'Method not allowed' }, 405);
 	const expectedSecret = text(Deno.env.get('AUTOMATION_CRON_SECRET'));
-	if (!expectedSecret || request.headers.get('authorization') !== `Bearer ${expectedSecret}`) {
+	if (!(await verifyBearerSecret(request.headers.get('authorization'), expectedSecret))) {
 		return jsonResponse({ error: 'Invalid automation authorization' }, 401);
 	}
 

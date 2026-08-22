@@ -6,6 +6,7 @@ import {
 	verifyWebhookSignature
 } from '$lib/domain/communications/sendpulse-events';
 import { createTrustedSupabaseClient } from '$lib/server/trusted-supabase';
+import { recordOperationalEvent } from '$lib/server/operational-events';
 
 const MAX_BODY_BYTES = 64 * 1024;
 
@@ -54,6 +55,12 @@ export const POST: RequestHandler = async ({ request }) => {
 		}
 		return json({ accepted: results.length, results });
 	} catch (error) {
+		await recordOperationalEvent({
+			severity: 'error',
+			source: 'sendpulse',
+			eventType: 'webhook_processing_failure',
+			message: 'SendPulse webhook processing failed'
+		});
 		return json(
 			{ error: error instanceof Error ? error.message : 'SendPulse webhook failed' },
 			{ status: 422 }

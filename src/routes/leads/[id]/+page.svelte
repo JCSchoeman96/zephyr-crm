@@ -49,7 +49,7 @@
 	<meta name="description" content="Lead detail and tracer-bullet workflow" />
 </svelte:head>
 
-<AppShell userEmail={data.auth.user?.email}>
+<AppShell userEmail={data.auth.user?.email} userRole={data.auth.profile?.role}>
 	<a class="back-link" href={resolve('/leads')}>← Back to Leads</a>
 	<PageHeader
 		title={`${data.lead.first_name} ${data.lead.last_name}`}

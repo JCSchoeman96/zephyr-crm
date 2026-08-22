@@ -54,7 +54,7 @@
 	<meta name="description" content="Create and manage durable commercial quotes" />
 </svelte:head>
 
-<AppShell userEmail={data.auth.user?.email}>
+<AppShell userEmail={data.auth.user?.email} userRole={data.auth.profile?.role}>
 	<PageHeader
 		title="Quotes"
 		description="Durable commercial snapshots with exact totals and controlled lifecycle actions."

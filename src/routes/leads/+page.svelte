@@ -65,7 +65,7 @@
 	<meta name="description" content="Review and qualify Zephyr CRM leads" />
 </svelte:head>
 
-<AppShell userEmail={data.auth.user?.email}>
+<AppShell userEmail={data.auth.user?.email} userRole={data.auth.profile?.role}>
 	<PageHeader
 		title="Leads"
 		description="Qualify enquiries and move the right opportunities forward."

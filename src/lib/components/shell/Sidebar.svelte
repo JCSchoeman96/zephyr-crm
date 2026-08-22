@@ -7,12 +7,13 @@
 		FileText,
 		LayoutDashboard,
 		Settings,
+		Activity,
 		Users,
 		UserRound
 	} from 'lucide-svelte';
 
 	type NavIcon = typeof LayoutDashboard;
-	type NavItem = { label: string; href: string; icon: NavIcon };
+	type NavItem = { label: string; href: string; icon: NavIcon; adminOnly?: boolean };
 	type NavGroup = { id: string; label: string; items: NavItem[] };
 
 	const navigation: NavGroup[] = [
@@ -39,11 +40,23 @@
 		{
 			id: 'administration',
 			label: 'Administration',
-			items: [{ label: 'Settings', href: '/settings', icon: Settings }]
+			items: [
+				{ label: 'Operations', href: '/operations', icon: Activity, adminOnly: true },
+				{ label: 'Settings', href: '/settings', icon: Settings }
+			]
 		}
 	];
 
-	let { open = false, onclose }: { open?: boolean; onclose?: () => void } = $props();
+	let {
+		open = false,
+		userRole = null,
+		onclose
+	}: {
+		open?: boolean;
+		userRole?: string | null;
+		onclose?: () => void;
+	} = $props();
+	const canViewOperations = $derived(userRole === 'owner' || userRole === 'admin');
 
 	function closeOnMobile() {
 		onclose?.();
@@ -72,7 +85,7 @@
 		{#each navigation as group (group.id)}
 			<div class="app-shell__navigation-group">
 				{#if group.label}<p class="app-shell__navigation-label">{group.label}</p>{/if}
-				{#each group.items as item (item.href)}
+				{#each group.items.filter((item) => !item.adminOnly || canViewOperations) as item (item.href)}
 					{@const Icon = item.icon}
 					<a
 						class="app-shell__navigation-link"

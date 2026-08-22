@@ -10,7 +10,7 @@
 </script>
 
 <svelte:head><title>New Quote | Zephyr CRM</title></svelte:head>
-<AppShell userEmail={data.auth.user?.email}>
+<AppShell userEmail={data.auth.user?.email} userRole={data.auth.profile?.role}>
 	<a class="back-link" href={resolve('/quotes')}>← Back to Quotes</a>
 	<PageHeader
 		title="New quote"

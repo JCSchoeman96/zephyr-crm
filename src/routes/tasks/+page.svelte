@@ -31,7 +31,7 @@
 	<meta name="description" content="Manage the next actions for active opportunities" />
 </svelte:head>
 
-<AppShell userEmail={data.auth.user?.email}>
+<AppShell userEmail={data.auth.user?.email} userRole={data.auth.profile?.role}>
 	<PageHeader
 		title="Tasks"
 		description="Every open Task is an explicit next action; overdue is derived from its due time."

@@ -47,7 +47,7 @@
 	<meta name="description" content="Review converted Zephyr CRM clients and their source leads" />
 </svelte:head>
 
-<AppShell userEmail={data.auth.user?.email}>
+<AppShell userEmail={data.auth.user?.email} userRole={data.auth.profile?.role}>
 	<PageHeader
 		title="Clients"
 		description="Recognized customers remain traceable to the Lead that created them."
