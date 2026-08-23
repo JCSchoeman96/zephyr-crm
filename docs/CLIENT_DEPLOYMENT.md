@@ -75,6 +75,14 @@ The build uses Vite, SvelteKit, the Cloudflare adapter, Wrangler, and
 compatibility only. It does not prove hosted Cloudflare bindings, DNS, TLS, sender
 authentication, or real email delivery.
 
+The shared application release candidate uses `v1.0.0-rc.N` semantics under
+the frozen `v1.3.1` authority. Stable `v1.0.0` is post-pilot and must not be
+claimed by this local build. The local Supabase Auth baseline is invitation-only
+with public signup disabled, a 12-character strong password policy, secure
+password changes, and TOTP enrollment/verification. The Owner/Admin AAL2
+boundary remains enforced in the database; `bun run auth:readiness` proves the
+local enrollment and privileged-action path.
+
 ## Deterministic onboarding and ownership
 
 For a separately authorised future client deployment:
@@ -93,6 +101,11 @@ For a separately authorised future client deployment:
 5. The operator hands over the project identifiers, configuration version, backup
    ownership, runbooks, recovery contacts, and unresolved pilot checks. The client
    accepts account ownership and support boundaries before pilot approval.
+
+Hosted abuse controls must be configured at the edge/platform boundary for
+Bricks intake, login/Auth, SendPulse webhooks, and scheduled automation. Do not
+add a process-local Worker rate limiter and do not treat local fixtures as
+proof of hosted WAF/rate-limit behavior.
 
 ## Updates and versioning
 
@@ -136,6 +149,8 @@ deployment and pilot:
 - authenticate the client sender domain in SendPulse, including SPF, DKIM, and DMARC;
 - configure the client Bricks webhook/form ID and verify the trusted secret;
 - configure scheduled reminder invocation and hosted Auth/AAL2/MFA policy;
+- configure password minimum/complexity, secure password changes, invitation-only
+  access, TOTP enrollment/verification, recovery devices and re-enrollment ownership;
 - send real controlled messages and observe provider uncertainty, bounces, and
   webhook idempotency;
 - complete client staff invitation, recovery, handoff, and pilot acceptance.

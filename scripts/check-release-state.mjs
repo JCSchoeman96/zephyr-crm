@@ -5,10 +5,16 @@ function assert(condition, message) {
 	if (!condition) throw new Error(`Release state: ${message}`);
 }
 
+function baselinePhases(state) {
+	return Array.isArray(state.completed_baseline_phases)
+		? state.completed_baseline_phases
+		: state.completed_phases;
+}
+
 function hasPhases(state, phases) {
 	return (
-		Array.isArray(state.completed_phases) &&
-		phases.every((phase) => state.completed_phases.includes(phase))
+		Array.isArray(baselinePhases(state)) &&
+		phases.every((phase) => baselinePhases(state).includes(phase))
 	);
 }
 
@@ -29,7 +35,7 @@ export function validateP14ReadinessState(state) {
 		'P0–P13 completion list is incomplete.'
 	);
 	assert(
-		!state.completed_phases.includes('P14'),
+		!baselinePhases(state).includes('P14'),
 		'P14 must not be recorded complete during its readiness test.'
 	);
 	assert(

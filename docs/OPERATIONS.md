@@ -8,6 +8,66 @@ The CRM owner is accountable for the business recovery decision. A named operati
 
 The approved baseline is an automated, encrypted backup outside the application repository and outside the primary database service. The minimum retention is 30 days, with the schedule, destination and encryption-key owner recorded in the client handoff. `BACKUP_RETENTION_DAYS` controls local tooling retention; a hosted scheduler must enforce the same or a longer policy. Backup output must be written to a durable external location and must not be a free-tier database backup presented as a recovery plan.
 
+## Auth and MFA pilot prerequisites
+
+The local Auth baseline is invitation-only: project-level public signup and
+anonymous sign-in are disabled, while the email provider remains available for
+admin-provisioned/invited users. The local configuration requires passwords of
+at least 12 characters with upper/lowercase letters, digits and symbols, uses
+secure password changes, and enables Supabase TOTP enrollment and verification.
+
+`bun run auth:integration` proves the application login server action returns a
+session cookie for an active invited user. `bun run auth:readiness` provisions a
+disposable Owner, proves a fresh AAL1 session is denied an AAL2-protected
+setting action, enrolls and verifies a real TOTP factor through local Supabase
+Auth, proves the resulting AAL2 session can execute that action, and proves
+logout clears the session. Synthetic AAL2 JWT tests remain database-boundary
+tests; they do not replace this local Auth flow.
+
+Before a hosted pilot, the named Owner/Admin must complete TOTP enrollment,
+verify a privileged action at AAL2, and record recovery devices and the
+re-enrollment owner. A password reset or re-invite is required after recovery
+because password hashes and MFA secrets are not portable in the backup bundle.
+Hosted Auth must retain invitation-only access, secure HTTPS cookies, disabled
+public signup, suspended-user denial, and explicit logout/session-expiry
+behavior. The browser cannot choose role or status.
+
+## Hosted edge controls and external evidence
+
+The local Worker deliberately does not implement an in-memory rate limiter.
+The hosted operator must configure and evidence edge/platform controls for
+Bricks intake abuse, login/Auth abuse, SendPulse webhook abuse, and scheduled
+automation invocation (for example Cloudflare WAF/rate limiting or the
+equivalent approved hosting controls). SPF, DKIM, DMARC, real deliverability,
+live DNS/TLS, human staff observation, and elapsed pilot evidence are external
+gates and are never represented as local PASS.
+
+All SendPulse side effects use the prepare/claim → external attempt →
+definitive-success, definitive-failure, or `submission_unknown` model.
+`submission_unknown` is a safe hold: reconciliation must establish provider
+identity before any further state transition, and normal retries must not issue
+a blind second send.
+
+## Durable input boundaries
+
+Ordinary authenticated Client, ClientContact, and Task CRUD remains available;
+trusted workflow/provenance/evidence fields remain action-owned. The database
+enforces the durable input contract after application/schema validation:
+
+- names are bounded to 120 characters, display/company names to 240, email to
+  320, phone display values to 80, and task/quote free text to 10,000;
+- Bricks attribution/URL fields retain their existing 120/160/2,000-character
+  limits, and external submission IDs remain UUID-style and at most 128;
+- billing and identity fields use broad finite limits appropriate to their
+  purpose; pause/lost/acceptance/note evidence is capped at 2,000 characters;
+- provider IDs are capped at 255, provider/error strings at 1,000, and stored
+  provider/activity metadata at 64 KiB.
+
+The forward migration `20260823120000_rh06_input_persistence.sql` applies these
+checks without changing ordinary field ownership or normal valid CRUD. The
+database security and P12 hardening tests exercise the allowed CRUD path and
+reject oversized durable values.
+
 ## What is backed up
 
 `bun run backup:create` creates an AES-256-GCM encrypted bundle containing:

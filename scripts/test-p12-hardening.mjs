@@ -129,6 +129,27 @@ async function runDatabaseContracts(local) {
 
 	run('bun', ['run', 'db:security']);
 	console.log('P12-T01 anonymous denial and P12-T02 role matrix passed');
+	const inputBoundaries = sql(
+		local.DB_URL,
+		`
+select count(*)
+from pg_constraint
+where conname = any(array[
+  'profiles_input_bounds', 'app_settings_input_bounds', 'leads_input_bounds',
+  'clients_input_bounds', 'client_contacts_input_bounds', 'tasks_input_bounds',
+  'quotes_input_bounds', 'quote_items_input_bounds', 'outbound_messages_input_bounds',
+  'message_events_input_bounds', 'inbound_submissions_input_bounds',
+  'activities_input_bounds', 'outbound_message_attempts_input_bounds',
+  'operational_events_input_bounds', 'automation_runs_input_bounds',
+  'security_audit_events_input_bounds'
+]);
+`
+	);
+	assert(
+		inputBoundaries === '16',
+		`RH06 durable input-boundary constraints are incomplete (${inputBoundaries}/16)`
+	);
+	console.log('RH06 durable input persistence bounds passed');
 
 	const preservedLeadSourceCount = sql(local.DB_URL, 'select count(*) from public.lead_sources;');
 	sql(

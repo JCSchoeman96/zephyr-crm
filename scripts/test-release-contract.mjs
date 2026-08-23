@@ -154,6 +154,15 @@ assert.doesNotThrow(
 	() => validateP14ReadinessState(p14Readiness),
 	'P14 readiness must be non-terminal before the global final gate.'
 );
+assert.doesNotThrow(
+	() =>
+		validateP14ReadinessState({
+			...p14Readiness,
+			completed_phases: ['RH01', 'RH02', 'RH03', 'RH04', 'RH05', 'RH06'],
+			completed_baseline_phases: Array.from({ length: 14 }, (_, index) => `P${index}`)
+		}),
+	'P14 readiness must use the separate baseline completion list when the hardening loop tracks RH phases.'
+);
 assert.throws(
 	() => validateP14ReadinessState({ ...p14Readiness, goal_status: 'COMPLETE' }),
 	/goal_status.*IN_PROGRESS/i,

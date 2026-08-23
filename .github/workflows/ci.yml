@@ -84,6 +84,8 @@ jobs:
         run: bun run test:v131:security
       - name: Run Auth integration
         run: bun run auth:integration
+      - name: Run Auth/MFA readiness contract
+        run: bun run auth:readiness
       - name: Run P4 domain contract
         run: bun run test:p4:domain
       - name: Run P4 tracer
@@ -135,6 +137,8 @@ jobs:
         run: bun run test:e2e
       - name: Build Worker and Static Assets artifact
         run: bun run build
+      - name: Verify production Worker CSRF boundary
+        run: bun run auth:csrf
       - name: Scan public build for trusted environment names
         run: bun run security:bundle
 

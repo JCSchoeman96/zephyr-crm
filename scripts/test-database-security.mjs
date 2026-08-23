@@ -234,6 +234,17 @@ async function main() {
 		`Permitted manual Client creation failed (${manualClient.status})`
 	);
 	const manualClientId = manualClient.body[0].id;
+	assertDenied(
+		await request('/rest/v1/clients', {
+			method: 'POST',
+			token: sales.token,
+			body: {
+				type: 'individual',
+				display_name: 'x'.repeat(241)
+			}
+		}),
+		'oversized Client display name'
+	);
 	const manualContact = await request('/rest/v1/client_contacts', {
 		method: 'POST',
 		token: sales.token,
@@ -247,6 +258,18 @@ async function main() {
 	assert(
 		manualContact.ok && manualContact.body?.[0]?.id,
 		`Permitted manual ClientContact creation failed (${manualContact.status})`
+	);
+	assertDenied(
+		await request('/rest/v1/client_contacts', {
+			method: 'POST',
+			token: sales.token,
+			body: {
+				client_id: manualClientId,
+				first_name: 'x'.repeat(121),
+				last_name: 'Contact'
+			}
+		}),
+		'oversized ClientContact first name'
 	);
 	assertDenied(
 		await request('/rest/v1/clients', {
@@ -280,6 +303,14 @@ async function main() {
 		`Permitted manual Task creation did not derive created_by (${manualTask.status})`
 	);
 	const manualTaskId = manualTask.body[0].id;
+	assertDenied(
+		await request('/rest/v1/tasks', {
+			method: 'POST',
+			token: sales.token,
+			body: { lead_id: leadId, type: 'custom', title: 'x'.repeat(241) }
+		}),
+		'oversized Task title'
+	);
 	assertDenied(
 		await request(`/rest/v1/tasks?id=eq.${manualTaskId}`, {
 			method: 'PATCH',

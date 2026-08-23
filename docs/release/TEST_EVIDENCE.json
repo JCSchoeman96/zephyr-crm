@@ -855,9 +855,9 @@
       "criterion": "An authorized Owner/Admin at AAL1 cannot execute an AAL2-protected privileged action; the same authorized actor at AAL2 can, while ordinary non-privileged access follows the frozen role matrix.",
       "classification": "AUTOMATED",
       "proof": {
-        "command": "bun run db:security",
-        "source": "scripts/test-database-security.mjs",
-        "assertion": "assert(changedRows === 0, `${label} unexpectedly succeeded with HTTP ${result.status}`);"
+        "command": "bun run auth:readiness",
+        "source": "scripts/test-auth-readiness.mjs",
+        "assertion": "assert(aal1.data?.currentLevel === 'aal1', 'fresh Owner session did not start at AAL1');"
       }
     },
     {
@@ -2266,14 +2266,11 @@
       "id": "P12-T18",
       "title": "MFA/AAL2 readiness gate",
       "criterion": "Pilot/production checklist blocks Owner/Admin readiness until MFA enrollment policy exists **and** representative privileged actions are proven to deny AAL1 and allow authorized AAL2 sessions.",
-      "classification": "STATIC",
+      "classification": "AUTOMATED",
       "proof": {
-        "command": "bun run test:p12:hardening",
-        "source": "Phases/PHASE_12_SECURITY_BACKUP_OPERATIONAL_HARDENING.md",
-        "contains": [
-          "P12-T18",
-          "MFA/AAL2 readiness gate"
-        ]
+        "command": "bun run auth:readiness",
+        "source": "scripts/test-auth-readiness.mjs",
+        "assertion": "assert(aal2.data?.currentLevel === 'aal2', 'verified TOTP session did not reach AAL2');"
       }
     },
     {
