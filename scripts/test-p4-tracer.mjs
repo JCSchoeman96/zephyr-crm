@@ -1,5 +1,6 @@
 import { createServer } from 'node:http';
 import { execFileSync, spawn } from 'node:child_process';
+import { randomUUID } from 'node:crypto';
 import fs from 'node:fs';
 
 const root = process.cwd();
@@ -212,7 +213,7 @@ async function main() {
 
 	const payload = {
 		form_id: 'contact-form',
-		external_submission_id: `tracer-${runId}`,
+		external_submission_id: randomUUID(),
 		first_name: 'Ada',
 		last_name: 'Tracer',
 		email: 'ada.tracer@example.test',
@@ -278,7 +279,7 @@ async function main() {
 
 	const lostPayload = {
 		...payload,
-		external_submission_id: `tracer-lost-${runId}`,
+		external_submission_id: randomUUID(),
 		email: 'lost.tracer@example.test'
 	};
 	const lostIntakeResponse = await fetch(`${appUrl}/api/webhooks/bricks`, {

@@ -195,8 +195,8 @@ async function main() {
 	assert(
 		normalizedLead.ok &&
 			normalizedLead.body?.[0]?.phone_normalized === '+27110000002' &&
-		!normalizedLead.body[0].created_at.startsWith('2000-') &&
-		!normalizedLead.body[0].updated_at.startsWith('2000-'),
+			!normalizedLead.body[0].created_at.startsWith('2000-') &&
+			!normalizedLead.body[0].updated_at.startsWith('2000-'),
 		'Server did not derive Lead phone/timestamp fields at the trusted boundary'
 	);
 	const forgedLeadInsert = await request('/rest/v1/leads', {
