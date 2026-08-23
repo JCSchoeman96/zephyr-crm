@@ -277,10 +277,6 @@ function dateOffset(days) {
 	return value.toISOString().slice(0, 10);
 }
 
-function timestampAt(time) {
-	return `${today}T${time}Z`;
-}
-
 function sqlLiteral(value) {
 	return `'${String(value).replaceAll("'", "''")}'`;
 }
