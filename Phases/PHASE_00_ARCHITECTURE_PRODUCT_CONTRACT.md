@@ -169,7 +169,15 @@ Execution may stop only under a genuine `AGENTS.md` **EXECUTION STOP** condition
 
 # Phase Close Condition
 
-Once all required outcomes in this document are implemented, every mandatory phase test passes, the AGENTS.md-required phase regression tier passes, the project-wide quality gate passes, migrations are clean, and no unrelated scope was introduced:
+Phase 0 closes only when all of the following are true:
+
+- all Phase 0 MUST requirements are implemented or documented exactly as required;
+- no Phase 0 MUST NOT requirement is violated;
+- `P0-T01` through `P0-T17` each pass, with none skipped or replaced by an unverified assumption;
+- applicable Phase-0 authority, document, static, and Git-integrity gates pass, including document integrity, authority consistency, roadmap dependency checks, manifest/static checks where present, and `git diff --check` where Git exists; and
+- no unrelated scope was introduced.
+
+Phase-1-created application format/lint/type/test/build and database lifecycle gates are not prerequisites to closing Phase 0 when those facilities do not yet exist. They become applicable when Phase 1 creates them and are validated under the later phase authorities.
 
 1. **STOP WORK ON THIS PHASE.**
 2. Mark the phase `COMPLETE`.

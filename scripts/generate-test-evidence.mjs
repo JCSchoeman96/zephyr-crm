@@ -49,7 +49,315 @@ const externalGates = new Map([
 	]
 ]);
 
+const p0Proofs = {
+	'P0-T01': {
+		command: phaseCommands.P0,
+		sources: [
+			{
+				source: 'docs/ARCHITECTURE.md',
+				contains: ['Each domain and its canonical resources are defined']
+			},
+			{
+				source: 'docs/DOMAIN_MODEL.md',
+				contains: ['This document is the single definition of Zephyr CRM resources']
+			},
+			{ source: 'docs/STATE_MACHINES.md', contains: ['## Lead attention'] },
+			{
+				source: 'docs/SECURITY_MODEL.md',
+				contains: ['## Protected-field/action mutation matrix']
+			},
+			{
+				source: 'docs/ROADMAP.md',
+				contains: ['No phase may introduce a competing definition']
+			}
+		]
+	},
+	'P0-T02': {
+		command: phaseCommands.P0,
+		sources: [
+			{ source: 'docs/ARCHITECTURE.md', contains: ['## Product boundary'] },
+			{ source: 'docs/DOMAIN_MODEL.md', contains: ['## Resource map'] },
+			{ source: 'docs/STATE_MACHINES.md', contains: ['Canonical values are lowercase'] },
+			{ source: 'docs/SECURITY_MODEL.md', contains: ['## Authorization matrix'] },
+			{
+				source: 'docs/ROADMAP.md',
+				contains: ['No phase may introduce a competing definition for Lead']
+			}
+		]
+	},
+	'P0-T03': {
+		command: phaseCommands.P0,
+		sources: [
+			{
+				source: 'docs/ARCHITECTURE.md',
+				contains: [
+					'## Deferred scope',
+					'future product decisions, not hidden current requirements.'
+				]
+			},
+			{
+				source: 'docs/ROADMAP.md',
+				contains: ['## Deferred v1 scope', 'outside P0–P14']
+			}
+		]
+	},
+	'P0-T05': {
+		command: phaseCommands.P0,
+		sources: [
+			{
+				source: 'docs/ROADMAP.md',
+				contains: ['Dependencies are strict and sequential.', '| P0 |', '| P1 |']
+			}
+		]
+	},
+	'P0-T06': {
+		command: phaseCommands.P0,
+		sources: [
+			{
+				source: 'docs/STATE_MACHINES.md',
+				contains: ['waiting_on_client', 'pause_reason', 'type = follow_up', 'overdue']
+			}
+		]
+	},
+	'P0-T07': {
+		command: phaseCommands.P0,
+		sources: [
+			{
+				source: 'docs/MONEY_CONTRACT.md',
+				contains: ['PostgreSQL `numeric` values and decimal', 'ROUND_HALF_UP', 'server-owned']
+			}
+		]
+	},
+	'P0-T08': {
+		command: phaseCommands.P0,
+		sources: [
+			{
+				source: 'docs/SECURITY_MODEL.md',
+				contains: [
+					'## Protected-field/action mutation matrix',
+					'Activity remains append-only evidence',
+					'ordinary UPDATE/DELETE'
+				]
+			}
+		]
+	},
+	'P0-T09': {
+		command: phaseCommands.P0,
+		sources: [
+			{
+				source: 'docs/DOMAIN_MODEL.md',
+				contains: [
+					'complete seller/recipient/commercial snapshots',
+					'Commercial settings are copied into the Quote snapshot'
+				]
+			},
+			{
+				source: 'docs/STATE_MACHINES.md',
+				contains: ['old Quote remains unchanged and historically readable']
+			},
+			{
+				source: 'docs/SECURITY_MODEL.md',
+				contains: ['acceptance fields', 'document path/hash/provenance']
+			}
+		]
+	},
+	'P0-T10': {
+		command: phaseCommands.P0,
+		sources: [
+			{
+				source: 'docs/STATE_MACHINES.md',
+				contains: [
+					'## Outbound Message lifecycle',
+					'submission_unknown',
+					'Each logical message keeps append-only attempt evidence',
+					'No automatic resend is allowed'
+				]
+			}
+		]
+	},
+	'P0-T11': {
+		command: phaseCommands.P0,
+		sources: [
+			{
+				source: 'docs/PRIVACY_OPERATIONS.md',
+				contains: ['data-subject access', 'POPIA/legal notification procedure']
+			},
+			{
+				source: 'docs/RECOVERY_CONTRACT.md',
+				contains: [
+					'A PostgreSQL dump alone is not recovery proof.',
+					'Auth identity reconstruction inputs',
+					'secret restoration procedures'
+				]
+			}
+		]
+	},
+	'P0-T12': {
+		command: phaseCommands.P0,
+		sources: [
+			{
+				source: 'docs/METRICS_CONTRACT.md',
+				contains: [
+					'inclusive UTC calendar dates',
+					'configured IANA timezone',
+					'Won / (Won + Lost) * 100'
+				]
+			},
+			{
+				source: 'docs/DOMAIN_MODEL.md',
+				contains: ['### ClientContact', '`ClientContact` belongs to one Client']
+			},
+			{
+				source: 'src/lib/domain/contacts/phone.ts',
+				contains: [
+					'Normalize only numbers that already declare an international country code.',
+					"startsWith('+')"
+				]
+			},
+			{
+				source: 'docs/TOOLCHAIN_PROOF.md',
+				contains: ['Bun package manager/runner', 'Every direct dependency is exact-pinned']
+			}
+		]
+	},
+	'P0-T13': {
+		command: phaseCommands.P0,
+		sources: [
+			{
+				source: 'DEPENDENCY_BASELINE_v1.0.0.md',
+				contains: ['## 2. Runtime and Build Responsibility', 'Bun', 'SvelteKit', 'SendPulse']
+			}
+		]
+	},
+	'P0-T14': {
+		command: phaseCommands.P0,
+		sources: [
+			{
+				source: 'DEPENDENCY_BASELINE_v1.0.0.md',
+				contains: [
+					'## 6. Exact-Pin Law',
+					'## 7. ShadCN Source-Ownership Law',
+					'## 11. State, Forms, Dates and Realtime',
+					'An autonomous agent must not introduce a new production dependency'
+				]
+			}
+		]
+	},
+	'P0-T15': {
+		command: phaseCommands.P0,
+		sources: [
+			{
+				source: 'docs/SECURITY_MODEL.md',
+				contains: [
+					'SECURITY INVOKER',
+					'SECURITY DEFINER',
+					'search_path',
+					'restricted `EXECUTE` grants'
+				]
+			}
+		]
+	},
+	'P0-T16': {
+		command: phaseCommands.P0,
+		sources: [
+			{
+				source: 'docs/SECURITY_MODEL.md',
+				contains: ['invitation-only', 'raw_user_meta_data', 'current session must satisfy AAL2']
+			}
+		]
+	},
+	'P0-T17': {
+		command: phaseCommands.P0,
+		sources: [
+			{
+				source: 'AGENTS.md',
+				contains: ['authority_sha256', 'EXECUTION STOP — Unexpected Authority Drift']
+			},
+			{
+				source: 'scripts/verify-authority-hashes.mjs',
+				contains: ['Authority drift detected in', 'recordedPaths']
+			},
+			{ source: 'docs/AUTHORITY_HASHES.json', contains: ['"docs/STATE_MACHINES.md"'] }
+		]
+	}
+};
+
+const p0HistoricalProof = {
+	command: 'git diff --name-status 021d6fc^ 021d6fc',
+	kind: 'git-boundary',
+	boundary_commit: '021d6fc7c29071da9f235a7d1275f688452c25de',
+	implementation_start_commit: '21f2e18ea2c6e3a3f44c8b3100c764b2a4e09f62',
+	boundary_files: [
+		'docs/ARCHITECTURE.md',
+		'docs/DOMAIN_MODEL.md',
+		'docs/ROADMAP.md',
+		'docs/SECURITY_MODEL.md',
+		'docs/STATE_MACHINES.md'
+	],
+	limitation:
+		'Historical Git provenance is reviewed manually; this evidence does not claim that authority verification proves no implementation leakage.'
+};
+
 const proofOverrides = {
+	'P3-T18': {
+		command: 'bun run auth:readiness',
+		source: 'scripts/test-auth-readiness.mjs',
+		assertion:
+			"assert(aal1.data?.currentLevel === 'aal1', 'fresh Owner session did not start at AAL1');"
+	},
+	'P5-T05': {
+		command: 'bun run test:p5:leads',
+		source: 'scripts/test-p5-leads.mjs',
+		assertion:
+			"\tassert(\n\t\tinbound.length === 1 &&\n\t\t\tinbound[0].intake_state === 'accepted' &&\n\t\t\tinbound[0].lead_id === accepted.body.lead_id,\n\t\t'Accepted inbound record was not durable'\n\t);"
+	},
+	'P5-T06': {
+		command: 'bun run test:p5:leads',
+		source: 'scripts/test-p5-leads.mjs',
+		assertion:
+			"\tassert(\n\t\tinbound.length === 1 &&\n\t\t\tinbound[0].intake_state === 'accepted' &&\n\t\t\tinbound[0].lead_id === accepted.body.lead_id,\n\t\t'Accepted inbound record was not durable'\n\t);"
+	},
+	'P5-T15': {
+		command: 'bun run test:p5:leads',
+		source: 'scripts/test-p5-leads.mjs',
+		assertion: 'assert(!result.response.ok, `${label} unexpectedly succeeded`);'
+	},
+	'P7-T15': {
+		command: 'bun run test:p7:quotes',
+		source: 'scripts/test-p7-quotes.mjs',
+		assertion:
+			'assert(\n\t\tresult.response.ok,\n\t\t`RPC ${name} failed (${result.response.status}): ${JSON.stringify(result.body)}`\n\t);'
+	},
+	'P8-T13': {
+		command: 'bun run test:p8:documents',
+		source: 'scripts/test-p8-documents.mjs',
+		assertion:
+			"assert(\n\t\tretryMessages.length === 1 && retryMessages[0].attempt_count === 2,\n\t\t'Retry created a duplicate outbound message or did not increment the attempt'\n\t);"
+	},
+	'P8-T16': {
+		command: 'bun run test:p8:documents',
+		source: 'scripts/test-p8-documents.mjs',
+		assertion:
+			"assert(\n\t\trejectedWebhook.response.status === 415 && wrongSignature.response.status === 401,\n\t\t'SendPulse webhook did not enforce content type and signature boundaries'\n\t);"
+	},
+	'P12-T01': {
+		command: 'bun run test:p12:hardening',
+		source: 'scripts/test-p12-hardening.mjs',
+		assertion:
+			"\tassert(\n\t\tsql(local.DB_URL, \"select to_regclass('public.operational_events') is not null;\") === 't',\n\t\t'P12 migration did not reset cleanly'\n\t);"
+	},
+	'P12-T02': {
+		command: 'bun run test:p12:hardening',
+		source: 'scripts/test-p12-hardening.mjs',
+		assertion:
+			"\tassert(\n\t\tsql(local.DB_URL, \"select to_regclass('public.operational_events') is not null;\") === 't',\n\t\t'P12 migration did not reset cleanly'\n\t);"
+	},
+	'P12-T18': {
+		command: 'bun run auth:readiness',
+		source: 'scripts/test-auth-readiness.mjs',
+		assertion:
+			"assert(aal2.data?.currentLevel === 'aal2', 'verified TOTP session did not reach AAL2');"
+	},
 	'P14-T02': {
 		command: 'bun run test:p4:tracer',
 		source: 'scripts/test-p4-tracer.mjs',
@@ -289,6 +597,24 @@ function entryFor(row) {
 			criterion: row.criterion,
 			classification: 'EXTERNAL',
 			proof: { gate: externalGate, localPass: false }
+		};
+	}
+	if (row.id === 'P0-T04') {
+		return {
+			id: row.id,
+			title: row.title,
+			criterion: row.criterion,
+			classification: 'HISTORICAL',
+			proof: p0HistoricalProof
+		};
+	}
+	if (p0Proofs[row.id]) {
+		return {
+			id: row.id,
+			title: row.title,
+			criterion: row.criterion,
+			classification: 'STATIC',
+			proof: p0Proofs[row.id]
 		};
 	}
 	if (override) {

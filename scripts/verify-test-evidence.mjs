@@ -2,7 +2,13 @@ import { existsSync, readFileSync } from 'node:fs';
 import { readdirSync } from 'node:fs';
 import { resolve } from 'node:path';
 
-export const evidenceClassifications = new Set(['AUTOMATED', 'STATIC', 'COMPOSED', 'EXTERNAL']);
+export const evidenceClassifications = new Set([
+	'AUTOMATED',
+	'STATIC',
+	'COMPOSED',
+	'EXTERNAL',
+	'HISTORICAL'
+]);
 
 function fail(message) {
 	throw new Error(`Release evidence registry: ${message}`);
@@ -30,24 +36,59 @@ function sourceText(root, source) {
 	return readFileSync(path, 'utf8');
 }
 
+function validateStaticProof(entry, root) {
+	const proof = entry.proof;
+	const sources = Array.isArray(proof.sources)
+		? proof.sources
+		: [{ source: proof.source, contains: proof.contains }];
+	if (sources.length === 0) fail(`${entry.id} requires deterministic content assertions`);
+	for (const candidate of sources) {
+		const source = sourceText(root, candidate.source);
+		if (!Array.isArray(candidate.contains) || candidate.contains.length === 0) {
+			fail(`${entry.id} requires deterministic content assertions`);
+		}
+		for (const token of candidate.contains) {
+			if (typeof token !== 'string' || token.trim() === '' || !source.includes(token)) {
+				fail(`${entry.id} content assertion is absent from ${candidate.source}`);
+			}
+		}
+	}
+}
+
+function validateHistoricalProof(entry) {
+	const proof = entry.proof;
+	if (!proof || typeof proof !== 'object') fail(`${entry.id} is missing proof metadata`);
+	if (proof.kind !== 'git-boundary') fail(`${entry.id} requires a Git boundary proof`);
+	if (typeof proof.command !== 'string' || proof.command.trim() === '') {
+		fail(`${entry.id} requires the historical review command`);
+	}
+	for (const field of ['boundary_commit', 'implementation_start_commit']) {
+		if (!/^[0-9a-f]{40}$/.test(proof[field] ?? '')) {
+			fail(`${entry.id} requires a full commit hash for ${field}`);
+		}
+	}
+	if (!Array.isArray(proof.boundary_files) || proof.boundary_files.length === 0) {
+		fail(`${entry.id} requires the reviewed historical boundary files`);
+	}
+	if (
+		typeof proof.limitation !== 'string' ||
+		!/Historical Git provenance is reviewed manually/.test(proof.limitation)
+	) {
+		fail(`${entry.id} must disclose the manual historical-proof limitation`);
+	}
+}
+
 function validateLocalProof(entry, root) {
 	const proof = entry.proof;
 	if (!proof || typeof proof !== 'object') fail(`${entry.id} is missing proof metadata`);
 	if (typeof proof.command !== 'string' || proof.command.trim() === '') {
 		fail(`${entry.id} requires an exact executable command`);
 	}
-	const source = sourceText(root, proof.source);
 	if (entry.classification === 'STATIC') {
-		if (!Array.isArray(proof.contains) || proof.contains.length === 0) {
-			fail(`${entry.id} requires deterministic content assertions`);
-		}
-		for (const token of proof.contains) {
-			if (typeof token !== 'string' || token.trim() === '' || !source.includes(token)) {
-				fail(`${entry.id} content assertion is absent from ${proof.source}`);
-			}
-		}
+		validateStaticProof(entry, root);
 		return;
 	}
+	const source = sourceText(root, proof.source);
 	if (typeof proof.assertion !== 'string' || proof.assertion.trim() === '') {
 		fail(`${entry.id} requires an exact assertion`);
 	}
@@ -89,6 +130,8 @@ export function validateEvidenceRegistry(registry, options = {}) {
 			if (typeof entry.proof?.gate !== 'string' || entry.proof.gate.trim() === '') {
 				fail(`${entry.id} external evidence requires a named gate`);
 			}
+		} else if (entry.classification === 'HISTORICAL') {
+			validateHistoricalProof(entry);
 		} else {
 			validateLocalProof(entry, root);
 		}
