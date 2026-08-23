@@ -1,5 +1,5 @@
 import { execFileSync, spawn } from 'node:child_process';
-import { createHmac } from 'node:crypto';
+import { createHmac, randomUUID } from 'node:crypto';
 
 const root = process.cwd();
 const runId = `${Date.now()}`;
@@ -10,6 +10,7 @@ const planPrefix = `${prefix}-plan`;
 let app;
 let cookie = '';
 const users = [];
+const webhookExternalIds = [];
 
 function run(command, args, options = {}) {
 	return execFileSync(command, args, {
@@ -348,6 +349,8 @@ function leadRowCount(html) {
 }
 
 async function webhook(payload, bodyOverride = null) {
+	if (typeof payload?.external_submission_id === 'string')
+		webhookExternalIds.push(payload.external_submission_id);
 	return appJson('/api/webhooks/bricks', {
 		method: 'POST',
 		headers: { authorization: `Bearer ${bricksSecret}`, 'content-type': 'application/json' },
@@ -546,18 +549,47 @@ async function testLostAndReopen(sales, owner) {
 }
 
 async function testWebhookValidationAndIdempotency() {
+	const wrongMethod = await appJson('/api/webhooks/bricks', {
+		method: 'GET',
+		headers: { authorization: `Bearer ${bricksSecret}` }
+	});
+	assert(wrongMethod.response.status === 405, 'Webhook accepted a non-POST method');
 	const unauthorized = await appJson('/api/webhooks/bricks', {
 		method: 'POST',
 		headers: { 'content-type': 'application/json' },
 		body: '{}'
 	});
 	assert(unauthorized.response.status === 401, 'Webhook accepted a request without authorization');
+	const wrongSecret = await appJson('/api/webhooks/bricks', {
+		method: 'POST',
+		headers: { authorization: 'Bearer wrong-secret', 'content-type': 'application/json' },
+		body: '{}'
+	});
+	assert(wrongSecret.response.status === 401, 'Webhook accepted an incorrect secret');
 	const malformed = await webhook({}, '{');
 	assert(malformed.response.status === 400, 'Malformed JSON was not rejected');
+	const unsupportedContentType = await appJson('/api/webhooks/bricks', {
+		method: 'POST',
+		headers: { authorization: `Bearer ${bricksSecret}`, 'content-type': 'text/plain' },
+		body: 'not-json'
+	});
+	assert(
+		unsupportedContentType.response.status === 415,
+		'Unsupported webhook content type was not rejected'
+	);
+	const malformedForm = await appJson('/api/webhooks/bricks', {
+		method: 'POST',
+		headers: {
+			authorization: `Bearer ${bricksSecret}`,
+			'content-type': 'application/x-www-form-urlencoded'
+		},
+		body: `form_id=contact-form&external_submission_id=${randomUUID()}`
+	});
+	assert(malformedForm.response.status === 422, 'Malformed form payload was not rejected');
 	const oversized = await webhook({}, 'x'.repeat(64 * 1024 + 1));
 	assert(oversized.response.status === 413, 'Oversized webhook was not rejected');
 
-	const unknownExternal = `${prefix}-unknown-form`;
+	const unknownExternal = randomUUID();
 	const unknown = await webhook({
 		form_id: 'unknown-form',
 		external_submission_id: unknownExternal,
@@ -573,7 +605,40 @@ async function testWebhookValidationAndIdempotency() {
 		'Unknown form rejection was not recorded'
 	);
 
-	const invalidEmailExternal = `${prefix}-invalid-email`;
+	const invalidUuid = await webhook({
+		form_id: 'contact-form',
+		external_submission_id: `${prefix}-invalid-uuid`,
+		first_name: 'Invalid UUID',
+		email: `${prefix}-invalid-uuid@example.test`
+	});
+	assert(invalidUuid.response.status === 422, 'Arbitrary submission IDs were accepted');
+
+	const unknownFieldExternal = randomUUID();
+	const unknownField = await webhook({
+		form_id: 'contact-form',
+		external_submission_id: unknownFieldExternal,
+		first_name: 'Unknown Field',
+		email: `${prefix}-unknown-field@example.test`,
+		pipeline_stage: 'WON'
+	});
+	assert(unknownField.response.status === 422, 'Unknown webhook fields were silently accepted');
+
+	const missingRequired = await webhook({
+		form_id: 'contact-form',
+		external_submission_id: randomUUID(),
+		first_name: 'Missing Email'
+	});
+	assert(missingRequired.response.status === 422, 'Missing required fields were accepted');
+
+	const overlongField = await webhook({
+		form_id: 'contact-form',
+		external_submission_id: randomUUID(),
+		first_name: 'x'.repeat(121),
+		email: `${prefix}-overlong@example.test`
+	});
+	assert(overlongField.response.status === 422, 'Overlong webhook fields were accepted');
+
+	const invalidEmailExternal = randomUUID();
 	const invalidEmail = await webhook({
 		form_id: 'contact-form',
 		external_submission_id: invalidEmailExternal,
@@ -589,19 +654,41 @@ async function testWebhookValidationAndIdempotency() {
 		'Invalid payload rejection was not recorded'
 	);
 
-	const acceptedExternal = `${prefix}-accepted`;
+	const acceptedExternal = randomUUID();
 	const acceptedPayload = {
 		form_id: 'contact-form',
 		external_submission_id: acceptedExternal,
 		first_name: 'Accepted',
 		last_name: 'Submission',
 		email: `${prefix}-accepted@example.test`,
-		message: 'A valid P5 enquiry'
+		message: 'A valid P5 enquiry',
+		phone: '+27 (11) 000-0003'
 	};
 	const accepted = await webhook(acceptedPayload);
 	assert(
 		accepted.response.status === 201 && accepted.body.lead_id,
 		'Valid webhook did not create a Lead'
+	);
+	const formExternal = randomUUID();
+	webhookExternalIds.push(formExternal);
+	const formAccepted = await appJson('/api/webhooks/bricks', {
+		method: 'POST',
+		headers: {
+			authorization: `Bearer ${bricksSecret}`,
+			'content-type': 'application/x-www-form-urlencoded'
+		},
+		body: new URLSearchParams({
+			form_id: 'contact-form',
+			external_submission_id: formExternal,
+			first_name: 'Form',
+			last_name: 'Submission',
+			email: `${prefix}-form@example.test`,
+			message: 'A valid form-encoded P5 enquiry'
+		})
+	});
+	assert(
+		formAccepted.response.status === 201 && formAccepted.body.lead_id,
+		'Valid form submission failed'
 	);
 	const duplicate = await webhook(acceptedPayload);
 	assert(
@@ -619,7 +706,14 @@ async function testWebhookValidationAndIdempotency() {
 			inbound[0].lead_id === accepted.body.lead_id,
 		'Accepted inbound record was not durable'
 	);
-	console.log('P5-T05 webhook validation, P5-T06 idempotency passed');
+	const acceptedLead = await leadById(accepted.body.lead_id);
+	assert(
+		acceptedLead.phone === '+27 (11) 000-0003' && acceptedLead.phone_normalized === '+27110000003',
+		'Accepted webhook did not preserve display phone and derive E.164 phone'
+	);
+	console.log(
+		'P5-T05 webhook validation, P5-T06 idempotency, and P5-T15 phone normalization passed'
+	);
 	return accepted.body.lead_id;
 }
 
@@ -627,13 +721,13 @@ async function testRepeatedEnquiry() {
 	const email = `${prefix}-repeat@example.test`;
 	const first = await webhook({
 		form_id: 'contact-form',
-		external_submission_id: `${prefix}-repeat-one`,
+		external_submission_id: randomUUID(),
 		first_name: 'Repeat',
 		email
 	});
 	const second = await webhook({
 		form_id: 'contact-form',
-		external_submission_id: `${prefix}-repeat-two`,
+		external_submission_id: randomUUID(),
 		first_name: 'Repeat',
 		email
 	});
@@ -825,6 +919,24 @@ async function cleanup() {
 	await stopApp();
 	try {
 		if (dbUrl) {
+			const quotedWebhookIds = webhookExternalIds
+				.map((id) => `'${id.replaceAll("'", "''")}'`)
+				.join(',');
+			if (quotedWebhookIds) {
+				sql(`
+					delete from public.clients
+					where id in (
+						select converted_client_id
+						from public.leads
+						where external_submission_id in (${quotedWebhookIds})
+							and converted_client_id is not null
+					);
+					delete from public.inbound_submissions
+					where source = 'bricks' and external_submission_id in (${quotedWebhookIds});
+					delete from public.leads
+					where external_submission_id in (${quotedWebhookIds});
+				`);
+			}
 			sql(`
 				delete from public.clients
 				where id in (

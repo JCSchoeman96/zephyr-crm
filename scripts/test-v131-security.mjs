@@ -112,6 +112,120 @@ where n.nspname = 'public' and c.relname = 'security_audit_events';
 );
 if (auditRls !== 'ok') throw new Error('privileged security audit evidence is not RLS-protected');
 
+const exposedRls = sql(
+	local.DB_URL,
+	`
+select count(*)
+from pg_class c
+join pg_namespace n on n.oid = c.relnamespace
+where n.nspname = 'public'
+  and c.relname = any(array[
+    'profiles','app_settings','lead_sources','lost_reasons','leads','clients',
+    'client_contacts','quotes','quote_items','tasks','activities',
+    'outbound_messages','message_events','inbound_submissions'
+  ])
+  and c.relrowsecurity;
+`
+);
+if (exposedRls !== '14')
+	throw new Error(`expected RLS on all 14 exposed tables, found ${exposedRls}`);
+
+const directEvidenceWrites = sql(
+	local.DB_URL,
+	`
+select count(*)
+from (values
+  (has_table_privilege('authenticated', 'public.outbound_messages', 'INSERT')),
+  (has_table_privilege('authenticated', 'public.outbound_messages', 'UPDATE')),
+  (has_table_privilege('authenticated', 'public.activities', 'INSERT'))
+) as grants(granted)
+where granted;
+`
+);
+if (directEvidenceWrites !== '0')
+	throw new Error('authenticated direct writes remain on trusted evidence tables');
+
+const evidenceInsertPolicies = sql(
+	local.DB_URL,
+	`
+select count(*)
+from pg_policies
+where schemaname = 'public'
+  and ((tablename = 'activities' and cmd = 'INSERT')
+    or (tablename = 'outbound_messages' and cmd in ('INSERT', 'UPDATE')));
+`
+);
+if (evidenceInsertPolicies !== '0')
+	throw new Error('trusted evidence tables still expose generic mutation policies');
+
+const trustedNoteGrant = sql(
+	local.DB_URL,
+	`
+select case when
+  has_function_privilege('authenticated', 'public.add_activity_note(uuid,uuid,uuid,uuid,uuid,text,jsonb)'::regprocedure, 'EXECUTE')
+  and not has_function_privilege('anon', 'public.add_activity_note(uuid,uuid,uuid,uuid,uuid,text,jsonb)'::regprocedure, 'EXECUTE')
+  and not has_function_privilege('public', 'public.add_activity_note(uuid,uuid,uuid,uuid,uuid,text,jsonb)'::regprocedure, 'EXECUTE')
+then 'ok' else 'bad' end;
+`
+);
+if (trustedNoteGrant !== 'ok') throw new Error('activity note action has an unsafe EXECUTE grant');
+
+const rh04Privileges = sql(
+	local.DB_URL,
+	`
+select case when
+  not has_function_privilege('authenticated', 'public.record_quote_send_ack(uuid,text,text)'::regprocedure, 'EXECUTE')
+  and not has_function_privilege('anon', 'public.record_quote_send_ack(uuid,text,text)'::regprocedure, 'EXECUTE')
+  and not has_function_privilege('public', 'public.record_quote_send_ack(uuid,text,text)'::regprocedure, 'EXECUTE')
+  and has_function_privilege('service_role', 'public.record_quote_send_ack(uuid,text,text)'::regprocedure, 'EXECUTE')
+  and exists (
+    select 1
+    from pg_proc p
+    where p.oid = 'public.record_quote_send_ack(uuid,text,text)'::regprocedure
+      and p.prosecdef
+      and p.prosrc like '%auth.role() <> ''service_role''%'
+  )
+  and has_function_privilege('service_role', 'public.prepare_task_reminder(uuid,uuid)'::regprocedure, 'EXECUTE')
+  and has_function_privilege('service_role', 'public.start_task_reminder(uuid,uuid)'::regprocedure, 'EXECUTE')
+  and has_function_privilege('service_role', 'public.mark_task_reminder_unknown(uuid,uuid,text,text)'::regprocedure, 'EXECUTE')
+  and has_function_privilege('service_role', 'public.reconcile_task_reminder(uuid,text)'::regprocedure, 'EXECUTE')
+  and has_table_privilege('service_role', 'public.automation_runs', 'SELECT')
+  and exists (
+    select 1 from pg_constraint
+    where conrelid = 'public.automation_runs'::regclass
+      and conname = 'automation_runs_status_check'
+      and pg_get_constraintdef(oid) like '%partial_failure%'
+  )
+  and exists (
+    select 1 from pg_constraint
+    where conrelid = 'public.tasks'::regclass
+      and conname = 'tasks_reminder_status_check'
+      and pg_get_constraintdef(oid) like '%submission_unknown%'
+  )
+then 'ok' else 'bad' end;
+`
+);
+if (rh04Privileges !== 'ok')
+	throw new Error('RH04 reminder/reconciliation privileges or state constraints are unsafe');
+
+const boundaryTriggers = sql(
+	local.DB_URL,
+	`
+select count(*)
+from pg_trigger t
+join pg_class c on c.oid = t.tgrelid
+join pg_namespace n on n.oid = c.relnamespace
+where not t.tgisinternal
+  and n.nspname = 'public'
+  and t.tgname = any(array[
+    'leads_protected_insert','clients_provenance_protection',
+    'tasks_enforce_mutation','tasks_protected_fields'
+  ]);
+`
+);
+if (boundaryTriggers !== '4')
+	throw new Error(`expected four RH02 protected-boundary triggers, found ${boundaryTriggers}`);
+
 console.log(
-	'v1.3.1 security evidence passed: RLS/role-status authority, signup prohibition, hardened definers, restricted EXECUTE, AAL2 contract, audit evidence, and security-invoker analytics.'
+	'v1.3.1 security evidence passed: RLS/role-status authority, protected evidence boundaries, signup prohibition, hardened definers, restricted EXECUTE, AAL2 contract, audit evidence, and security-invoker analytics.'
 );

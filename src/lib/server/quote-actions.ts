@@ -7,9 +7,13 @@ import {
 } from '$lib/domain/communications/sendpulse-adapter';
 import { bytesToBase64, ensureQuoteDocument } from '$lib/server/quote-documents';
 import { loadTrustedClientConfiguration } from '$lib/server/client-config';
+import { recordOperationalEvent } from '$lib/server/operational-events';
+import { createTrustedSupabaseClient } from '$lib/server/trusted-supabase';
 
 type ServerSupabaseClient = SupabaseClient<Database>;
 type JsonRecord = Record<string, unknown>;
+
+let quoteFinalizationFaultInjected = false;
 
 function record(value: unknown): JsonRecord {
 	return value && typeof value === 'object' && !Array.isArray(value) ? (value as JsonRecord) : {};
@@ -25,6 +29,15 @@ function escapeHtml(value: string): string {
 		.replaceAll('<', '&lt;')
 		.replaceAll('>', '&gt;')
 		.replaceAll('"', '&quot;');
+}
+
+function shouldInjectQuoteFinalizationFailure(): boolean {
+	if (env.NODE_ENV === 'production' || env.ZEPHYR_TEST_FAIL_QUOTE_FINALIZATION_ONCE !== '1') {
+		return false;
+	}
+	if (quoteFinalizationFaultInjected) return false;
+	quoteFinalizationFaultInjected = true;
+	return true;
 }
 
 export async function sendQuote(
@@ -114,10 +127,33 @@ export async function sendQuote(
 		throw error;
 	}
 
-	const completedResponse = await supabase.rpc('complete_quote_send', {
-		p_outbound_message_id: stringValue(prepared.outbound_message_id),
-		p_provider_message_id: providerMessageId
-	});
-	if (completedResponse.error) throw new Error(completedResponse.error.message);
+	const completedResponse = shouldInjectQuoteFinalizationFailure()
+		? {
+				data: null,
+				error: { message: 'Deterministic local quote finalization failure' }
+			}
+		: await supabase.rpc('complete_quote_send', {
+				p_outbound_message_id: stringValue(prepared.outbound_message_id),
+				p_provider_message_id: providerMessageId
+			});
+	if (completedResponse.error) {
+		const acknowledged = await createTrustedSupabaseClient().rpc('record_quote_send_ack', {
+			p_outbound_message_id: stringValue(prepared.outbound_message_id),
+			p_provider_message_id: providerMessageId,
+			p_error: completedResponse.error.message
+		});
+		if (acknowledged.error) {
+			await recordOperationalEvent({
+				severity: 'critical',
+				source: 'quote_send',
+				eventType: 'finalization_ack_failure',
+				message:
+					'Provider accepted a Quote message but CRM finalization evidence could not be persisted'
+			});
+		}
+		throw new Error(
+			'Provider accepted the Quote message; CRM finalization requires reconciliation.'
+		);
+	}
 	return record(completedResponse.data);
 }

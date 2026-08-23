@@ -127,12 +127,19 @@ async function createUser(label, role) {
 	sql(
 		`update public.profiles set role = ${sqlLiteral(role)}, status = 'active' where id = ${sqlLiteral(id)}::uuid;`
 	);
-	const session = await request('/auth/v1/token?grant_type=password', {
-		method: 'POST',
-		body: { email, password }
-	});
-	assert(session.ok && session.body?.access_token, `Could not sign in local ${label} test user`);
-	return { id, token: session.body.access_token };
+	let session;
+	for (let attempt = 0; attempt < 6; attempt += 1) {
+		session = await request('/auth/v1/token?grant_type=password', {
+			method: 'POST',
+			body: { email, password }
+		});
+		if (session.ok && session.body?.access_token) return { id, token: session.body.access_token };
+		await new Promise((resolve) => setTimeout(resolve, 250));
+	}
+	assert(
+		false,
+		`Could not sign in local ${label} test user (HTTP ${session?.status}: ${JSON.stringify(session?.body)})`
+	);
 }
 
 async function deleteUsers() {
@@ -178,6 +185,204 @@ async function main() {
 	const leadId = createdLead.body[0].id;
 	const initialLockVersion = createdLead.body[0].lock_version;
 	assert(initialLockVersion === 1, 'New leads must start at lock_version 1');
+	const normalizedLead = await request('/rest/v1/leads', {
+		method: 'POST',
+		token: sales.token,
+		body: {
+			first_name: 'Phone',
+			last_name: 'Normalization',
+			email: `${testPrefix}-phone@example.test`,
+			external_submission_id: `${testPrefix}-phone`,
+			phone: '+27 11 000 0002',
+			phone_normalized: '+99999999999',
+			created_at: '2000-01-01T00:00:00.000Z',
+			updated_at: '2000-01-01T00:00:00.000Z'
+		}
+	});
+	assert(
+		normalizedLead.ok &&
+			normalizedLead.body?.[0]?.phone_normalized === '+27110000002' &&
+			!normalizedLead.body[0].created_at.startsWith('2000-') &&
+			!normalizedLead.body[0].updated_at.startsWith('2000-'),
+		'Server did not derive Lead phone/timestamp fields at the trusted boundary'
+	);
+	const forgedLeadInsert = await request('/rest/v1/leads', {
+		method: 'POST',
+		token: sales.token,
+		body: {
+			...leadPayload,
+			external_submission_id: `${testPrefix}-forged-workflow`,
+			pipeline_stage: 'WON',
+			lock_version: 99,
+			paused_at: '2099-01-01T00:00:00.000Z',
+			pause_reason: 'forged browser state'
+		}
+	});
+	assertDenied(forgedLeadInsert, 'raw Lead protected-state insert');
+
+	const manualClient = await request('/rest/v1/clients', {
+		method: 'POST',
+		token: sales.token,
+		body: {
+			type: 'individual',
+			display_name: `${testPrefix} manual client`,
+			email: `${testPrefix}-client@example.test`
+		}
+	});
+	assert(
+		manualClient.ok && manualClient.body?.[0]?.id,
+		`Permitted manual Client creation failed (${manualClient.status})`
+	);
+	const manualClientId = manualClient.body[0].id;
+	assertDenied(
+		await request('/rest/v1/clients', {
+			method: 'POST',
+			token: sales.token,
+			body: {
+				type: 'individual',
+				display_name: 'x'.repeat(241)
+			}
+		}),
+		'oversized Client display name'
+	);
+	const manualContact = await request('/rest/v1/client_contacts', {
+		method: 'POST',
+		token: sales.token,
+		body: {
+			client_id: manualClientId,
+			first_name: 'Manual',
+			last_name: 'Contact',
+			email: `${testPrefix}-contact@example.test`
+		}
+	});
+	assert(
+		manualContact.ok && manualContact.body?.[0]?.id,
+		`Permitted manual ClientContact creation failed (${manualContact.status})`
+	);
+	assertDenied(
+		await request('/rest/v1/client_contacts', {
+			method: 'POST',
+			token: sales.token,
+			body: {
+				client_id: manualClientId,
+				first_name: 'x'.repeat(121),
+				last_name: 'Contact'
+			}
+		}),
+		'oversized ClientContact first name'
+	);
+	assertDenied(
+		await request('/rest/v1/clients', {
+			method: 'POST',
+			token: sales.token,
+			body: {
+				type: 'individual',
+				display_name: `${testPrefix} forged conversion`,
+				source_lead_id: leadId,
+				converted_at: '2099-01-01T00:00:00.000Z'
+			}
+		}),
+		'raw Client conversion-lineage insert'
+	);
+	assertDenied(
+		await request(`/rest/v1/clients?id=eq.${manualClientId}`, {
+			method: 'PATCH',
+			token: sales.token,
+			body: { source_lead_id: leadId, converted_at: '2099-01-01T00:00:00.000Z' }
+		}),
+		'raw Client conversion-lineage update'
+	);
+
+	const manualTask = await request('/rest/v1/tasks', {
+		method: 'POST',
+		token: sales.token,
+		body: { lead_id: leadId, type: 'custom', title: `${testPrefix} manual task` }
+	});
+	assert(
+		manualTask.ok && manualTask.body?.[0]?.id && manualTask.body[0].created_by === sales.id,
+		`Permitted manual Task creation did not derive created_by (${manualTask.status})`
+	);
+	const manualTaskId = manualTask.body[0].id;
+	assertDenied(
+		await request('/rest/v1/tasks', {
+			method: 'POST',
+			token: sales.token,
+			body: { lead_id: leadId, type: 'custom', title: 'x'.repeat(241) }
+		}),
+		'oversized Task title'
+	);
+	assertDenied(
+		await request(`/rest/v1/tasks?id=eq.${manualTaskId}`, {
+			method: 'PATCH',
+			token: sales.token,
+			body: { lock_version: 2, reminder_attempt_count: 3 }
+		}),
+		'raw Task system-field update'
+	);
+	assertDenied(
+		await request('/rest/v1/tasks', {
+			method: 'POST',
+			token: sales.token,
+			body: {
+				lead_id: leadId,
+				type: 'custom',
+				title: `${testPrefix} forged automation`,
+				created_by: owner.id,
+				automation_key: `${testPrefix}-forged-automation`,
+				reminder_status: 'sent',
+				reminder_attempt_count: 8
+			}
+		}),
+		'raw Task system-field insert'
+	);
+	assertDenied(
+		await request('/rest/v1/outbound_messages', {
+			method: 'POST',
+			token: sales.token,
+			body: {
+				channel: 'email',
+				purpose: 'forged',
+				delivery_status: 'submitted',
+				provider_message_id: `${testPrefix}-provider`,
+				recipient_snapshot: { email: 'forged@example.test' }
+			}
+		}),
+		'raw OutboundMessage evidence insert'
+	);
+	const outboundFixtureId = sql(
+		`insert into public.outbound_messages (lead_id, channel, purpose, provider, recipient_snapshot, logical_key) values (${sqlLiteral(leadId)}::uuid, 'email', 'security_fixture', 'sendpulse', '{}'::jsonb, ${sqlLiteral(`${testPrefix}-outbound`)} ) returning id;`
+	);
+	assertDenied(
+		await request(`/rest/v1/outbound_messages?id=eq.${outboundFixtureId}`, {
+			method: 'PATCH',
+			token: sales.token,
+			body: { delivery_status: 'submitted', provider_message_id: `${testPrefix}-patched` }
+		}),
+		'raw OutboundMessage evidence update'
+	);
+	assertDenied(
+		await request('/rest/v1/activities', {
+			method: 'POST',
+			token: sales.token,
+			body: {
+				lead_id: leadId,
+				actor_id: sales.id,
+				event_type: 'lead_won',
+				summary: 'forged system event'
+			}
+		}),
+		'raw system Activity insert'
+	);
+	const noteActivity = await request('/rest/v1/rpc/add_activity_note', {
+		method: 'POST',
+		token: sales.token,
+		body: {
+			p_lead_id: leadId,
+			p_summary: 'Permitted staff note',
+			p_metadata: { source: 'security-test' }
+		}
+	});
+	assert(noteActivity.ok, 'Narrow add_activity_note action did not allow a staff note');
 
 	const anonymousRead = await request(
 		`/rest/v1/leads?select=id&external_submission_id=eq.${encodeURIComponent(leadExternalId)}`
@@ -420,7 +625,7 @@ try {
 } finally {
 	try {
 		sql(
-			`delete from public.leads where external_submission_id like ${sqlLiteral(`${testPrefix}%`)}; delete from public.app_settings where setting_key like ${sqlLiteral(`${testPrefix}%`)};`
+			`delete from public.outbound_messages where logical_key like ${sqlLiteral(`${testPrefix}%`)}; delete from public.clients where display_name like ${sqlLiteral(`${testPrefix}%`)}; delete from public.leads where external_submission_id like ${sqlLiteral(`${testPrefix}%`)}; delete from public.app_settings where setting_key like ${sqlLiteral(`${testPrefix}%`)};`
 		);
 	} catch {
 		// Preserve the original test failure; the next deterministic reset removes test rows.

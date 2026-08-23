@@ -7,6 +7,28 @@ import { recordOperationalEvent } from '$lib/server/operational-events';
 import { z } from 'zod';
 
 const MAX_BODY_BYTES = 64 * 1024;
+const MAX_FORM_ID_LENGTH = 120;
+const MAX_EXTERNAL_ID_LENGTH = 128;
+const ALLOWED_REQUEST_FIELDS = new Set([
+	'form_id',
+	'external_submission_id',
+	'submission_id',
+	'first_name',
+	'last_name',
+	'name',
+	'email',
+	'phone',
+	'company',
+	'message',
+	'landing_page',
+	'referrer',
+	'utm_source',
+	'utm_medium',
+	'utm_campaign',
+	'utm_content',
+	'utm_term',
+	'source'
+]);
 
 const normalizedIntakeSchema = z.object({
 	first_name: z.string().trim().min(1).max(120),
@@ -53,13 +75,17 @@ function textField(payload: Record<string, unknown>, key: string): string {
 	return typeof value === 'string' ? value.trim() : '';
 }
 
+function phoneField(payload: Record<string, unknown>): string {
+	const value = payload.phone;
+	return typeof value === 'string' ? value : '';
+}
+
 function normalizePayload(payload: Record<string, unknown>): Record<string, string> {
 	const normalized = Object.fromEntries(
 		[
 			'first_name',
 			'last_name',
 			'email',
-			'phone',
 			'company',
 			'message',
 			'landing_page',
@@ -72,6 +98,7 @@ function normalizePayload(payload: Record<string, unknown>): Record<string, stri
 			'source'
 		].map((key) => [key, textField(payload, key)])
 	);
+	normalized.phone = phoneField(payload);
 	if (!normalized.first_name) normalized.first_name = textField(payload, 'name');
 	return normalized;
 }
@@ -92,12 +119,13 @@ async function parseRequest(
 	const contentType = event.request.headers.get('content-type') ?? '';
 	let rawPayload: Record<string, unknown>;
 	try {
-		if (contentType.includes('application/json')) {
+		const mediaType = contentType.split(';', 1)[0].trim().toLowerCase();
+		if (mediaType === 'application/json') {
 			const parsed: unknown = JSON.parse(new TextDecoder().decode(body));
 			if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed))
 				throw new Error('object expected');
 			rawPayload = parsed as Record<string, unknown>;
-		} else if (contentType.includes('application/x-www-form-urlencoded')) {
+		} else if (mediaType === 'application/x-www-form-urlencoded') {
 			rawPayload = Object.fromEntries(
 				new URLSearchParams(new TextDecoder().decode(body)).entries()
 			);
@@ -114,17 +142,37 @@ async function parseRequest(
 
 	const formId =
 		textField(rawPayload, 'form_id') || event.request.headers.get('x-bricks-form-id')?.trim() || '';
-	const externalId =
+	const externalIdRaw =
 		textField(rawPayload, 'external_submission_id') || textField(rawPayload, 'submission_id');
 	const payloadCandidate = normalizePayload(rawPayload);
-	const context = { formId, externalId, payload: payloadCandidate };
-	if (!formId || !externalId) {
+	const context = {
+		formId: formId.length <= MAX_FORM_ID_LENGTH ? formId : '',
+		externalId: externalIdRaw.length <= MAX_EXTERNAL_ID_LENGTH ? externalIdRaw : '',
+		payload: payloadCandidate
+	};
+	const unknownFields = Object.keys(rawPayload).filter((key) => !ALLOWED_REQUEST_FIELDS.has(key));
+	if (unknownFields.length > 0) {
+		throw new BricksIntakeError(`Unknown intake field: ${unknownFields[0]}`, 422, context);
+	}
+	if (!formId || !externalIdRaw) {
 		throw new BricksIntakeError(
 			'form_id, external_submission_id, first_name, and email are required',
 			422,
 			context
 		);
 	}
+	if (formId.length > MAX_FORM_ID_LENGTH) {
+		throw new BricksIntakeError('Bricks form ID is too long', 422, context);
+	}
+	if (externalIdRaw.length > MAX_EXTERNAL_ID_LENGTH) {
+		throw new BricksIntakeError('external_submission_id is too long', 422, context);
+	}
+	const uuidResult = z.uuid().safeParse(externalIdRaw);
+	if (!uuidResult.success) {
+		throw new BricksIntakeError('external_submission_id must be a UUID', 422, context);
+	}
+	const externalId = externalIdRaw.toLowerCase();
+	context.externalId = externalId;
 	const parsedPayload = normalizedIntakeSchema.safeParse(payloadCandidate);
 	if (!parsedPayload.success) {
 		throw new BricksIntakeError('Intake payload schema is invalid', 422, context);

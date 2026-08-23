@@ -3,7 +3,8 @@ import { execFileSync, spawn } from 'node:child_process';
 const root = process.cwd();
 const runId = `${Date.now()}`;
 const prefix = `p7-${runId}`;
-const appUrl = 'http://127.0.0.1:4179';
+const appPort = 4188;
+const appUrl = `http://127.0.0.1:${appPort}`;
 const users = [];
 const leads = [];
 const quoteIds = [];
@@ -289,7 +290,7 @@ async function sendQuote(id, user) {
 	return quoteById(id);
 }
 
-async function createClient(sourceLeadId) {
+async function createClient() {
 	const created = await serviceRest('/rest/v1/clients', {
 		method: 'POST',
 		headers: { 'content-type': 'application/json', Prefer: 'return=representation' },
@@ -297,8 +298,7 @@ async function createClient(sourceLeadId) {
 			type: 'company',
 			display_name: `${prefix} Client`,
 			company_name: `${prefix} Client`,
-			status: 'active',
-			source_lead_id: sourceLeadId
+			status: 'active'
 		})
 	});
 	const id = created[0]?.id;
@@ -321,7 +321,7 @@ async function waitFor(url) {
 }
 
 async function startApp() {
-	app = spawn('bun', ['run', 'dev', '--', '--host', '127.0.0.1', '--port', '4179'], {
+	app = spawn('bun', ['run', 'dev', '--', '--host', '127.0.0.1', '--port', String(appPort)], {
 		cwd: root,
 		stdio: 'ignore',
 		env: {
@@ -336,9 +336,20 @@ async function startApp() {
 }
 
 async function stopApp() {
-	if (!app) return;
-	app.kill('SIGTERM');
+	if (!app || app.exitCode !== null) return;
+	const process = app;
 	app = null;
+	await new Promise((resolve) => {
+		const timeout = setTimeout(() => {
+			process.kill('SIGKILL');
+			resolve();
+		}, 5000);
+		process.once('exit', () => {
+			clearTimeout(timeout);
+			resolve();
+		});
+		process.kill('SIGTERM');
+	});
 }
 
 async function loginApp(user) {
@@ -435,9 +446,30 @@ async function main() {
 	const sales = await createUser('sales', 'sales');
 	const lead = await createLead('lifecycle', sales);
 	await reachDecision(lead, sales);
-	const clientId = await createClient(lead.id);
+	const clientId = await createClient();
+	await expectRpcFailure(
+		'save_quote_draft',
+		{
+			p_quote_id: null,
+			p_lock_version: null,
+			p_lead_id: lead.id,
+			p_client_id: clientId,
+			p_subject: `${prefix} untrusted association`,
+			p_introduction: null,
+			p_terms: 'Association probe',
+			p_tax_label: 'VAT',
+			p_tax_rate: '0',
+			p_valid_until: '2099-12-31',
+			p_currency: 'ZAR',
+			p_items: [{ name: 'Association probe', quantity: '1', unit_price: '1.00', taxable: true }]
+		},
+		anonKey,
+		await signIn(sales),
+		'Untrusted Quote client association'
+	);
+	console.log('P7-T15 untrusted client association denied');
 
-	const exact = await saveDraft(lead, sales, `${prefix} exact`, draftItems(), { clientId });
+	const exact = await saveDraft(lead, sales, `${prefix} exact`, draftItems());
 	const exactRow = await quoteById(exact.quote_id);
 	const exactItems = await itemsByQuote(exact.quote_id);
 	assert(
@@ -591,7 +623,7 @@ async function main() {
 				taxable: true
 			}
 		],
-		{ taxRate: '15', terms: 'Original terms', clientId }
+		{ taxRate: '15', terms: 'Original terms' }
 	);
 	await readyQuote(revisionSource.quote_id, revisionSource.lock_version, sales);
 	const sentSource = await sendQuote(revisionSource.quote_id, sales);
@@ -624,7 +656,7 @@ async function main() {
 			p_quote_id: sentSource.id,
 			p_lock_version: sentSource.lock_version,
 			p_lead_id: lead.id,
-			p_client_id: clientId,
+			p_client_id: null,
 			p_subject: 'No',
 			p_introduction: null,
 			p_terms: null,

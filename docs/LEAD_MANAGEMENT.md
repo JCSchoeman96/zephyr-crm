@@ -12,7 +12,9 @@ Phase 5 completes the operational Lead domain without changing the frozen distin
 
 ## Intake and list boundaries
 
-Bricks intake is authenticated by the shared trusted secret, checks the configured form ID and bounded fields, normalizes the supported contact shape, and records rejected submissions when a stable external submission ID is available. `(source, external_submission_id)` is the idempotency boundary; email is never used as a deduplication key.
+Bricks intake is authenticated by the shared trusted secret, checks the configured form ID and bounded fields, normalizes the supported contact shape, and records rejected submissions when a bounded submission identifier is available. The canonical external submission identity is a lower-case, hyphenated RFC-style UUID; invalid or overlong identifiers are rejected before CRM processing. `(source, external_submission_id)` is the idempotency boundary; email is never used as a deduplication key.
+
+The intake request policy is strict: JSON and URL-encoded form requests may use only the documented allowlist (`form_id`, the two supported submission-ID aliases, contact/attribution fields, and `name`); unknown fields are rejected rather than silently projected away. Hosted edge/WAF rate limiting remains a deployment gate and is not implemented as in-process Worker state.
 
 The `/leads` server load applies a maximum page size of 50, stable `id` tie-breaking, allow-listed sorting, bounded search fields, and authorized stage/attention/assignment filters. PostgreSQL remains authoritative; the browser receives only the requested page.
 

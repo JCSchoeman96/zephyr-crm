@@ -35,6 +35,7 @@ substitutes for live provider/DNS or human-observation evidence.
 | Recovery | Encrypted backup and disposable restore with private document hash verification | PASS |
 | Migration | Fresh reset and forward-upgrade rehearsal | PASS |
 | Diagnostics | Redacted owner/admin diagnostics and operational evidence | PASS |
+| Owner/Admin Auth/MFA | Invitation-only application login, local TOTP enrollment/verification, AAL1 denial, AAL2 privileged-action success, logout, and recovery/re-enrollment documentation | PASS locally; hosted staff enrollment remains external |
 | Build and security | Cloudflare artifact, public-bundle scan, RLS/security, browser, static and diff gates | PASS |
 
 ## Future remote deployment checklist
@@ -42,6 +43,21 @@ substitutes for live provider/DNS or human-observation evidence.
 Every item below is external/manual and requires a future explicit goal plus a
 named operator. Marking an item complete requires evidence attached to the client
 handoff; the local build does not mark these items complete.
+
+The release candidate identity is `v1.0.0-rc.1`; the frozen roadmap/authority
+version remains `v1.3.1`. The non-circular release sequence is:
+
+```text
+P14 VALIDATING
+  → P14-T01..P14-T21 PASS
+  → P14 COMPLETE
+  → FINAL_PROJECT_VALIDATION
+  → COMPLETE / LOCAL_BUILD_COMPLETE / PILOT_READY
+```
+
+P14 does not require terminal global state. A failed global gate reopens the
+responsible proof and returns to final validation only after the affected
+phase is complete again.
 
 ### Client-owned accounts and access
 
@@ -85,7 +101,9 @@ handoff; the local build does not mark these items complete.
 ### Staff, observation, and feedback
 
 - [ ] Invite staff through the approved invitation-only Auth flow; verify Owner/Admin
-      AAL2 and MFA enrolment/re-enrolment expectations.
+      AAL2 and MFA enrolment/re-enrolment expectations. The local proof is
+      `bun run auth:integration` plus `bun run auth:readiness`; hosted staff
+      enrollment and recovery-device confirmation remain pilot evidence.
 - [ ] Observe new enquiry, qualification, attention/Task work, quote creation and
       revision, send/follow-up, no-response, Lost, Won conversion, dashboard, and
       reporting workflows with real staff.

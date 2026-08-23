@@ -17,12 +17,18 @@
 			last_webhook_at: string | null;
 			failed_outbound_last_24h: number;
 			failed_outbound_total: number;
+			submission_unknown_total: number;
+			stale_submitting_total: number;
 		};
 		reminders: {
 			last_run_at: string | null;
 			last_run_status: string | null;
 			failed_last_24h: number;
+			partial_runs_last_24h: number;
 			failed_tasks_last_24h: number;
+			submission_unknown_tasks: number;
+			stale_submitting_tasks: number;
+			latest_run_error: string | null;
 		};
 		critical_errors: Array<{
 			severity: string;
@@ -83,6 +89,14 @@
 					<dt>Failed outbound, last 24h</dt>
 					<dd>{diagnostics.sendpulse.failed_outbound_last_24h}</dd>
 				</div>
+				<div>
+					<dt>Submission uncertainty</dt>
+					<dd>{diagnostics.sendpulse.submission_unknown_total}</dd>
+				</div>
+				<div>
+					<dt>Stale submitting</dt>
+					<dd>{diagnostics.sendpulse.stale_submitting_total}</dd>
+				</div>
 			</dl>
 		</Card>
 		<Card title="Reminder processor">
@@ -98,6 +112,22 @@
 				<div>
 					<dt>Failed tasks, last 24h</dt>
 					<dd>{diagnostics.reminders.failed_tasks_last_24h}</dd>
+				</div>
+				<div>
+					<dt>Partial runs, last 24h</dt>
+					<dd>{diagnostics.reminders.partial_runs_last_24h}</dd>
+				</div>
+				<div>
+					<dt>Uncertain reminders</dt>
+					<dd>{diagnostics.reminders.submission_unknown_tasks}</dd>
+				</div>
+				<div>
+					<dt>Stale submitting reminders</dt>
+					<dd>{diagnostics.reminders.stale_submitting_tasks}</dd>
+				</div>
+				<div>
+					<dt>Latest run error</dt>
+					<dd>{diagnostics.reminders.latest_run_error ?? 'None recorded'}</dd>
 				</div>
 			</dl>
 		</Card>

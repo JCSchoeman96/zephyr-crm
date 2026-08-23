@@ -13,13 +13,32 @@ bun run check
 bun run lint
 bun run test
 bun run build
+bun run auth:csrf
 bun run db:test
 bun run db:security
+bun run auth:integration
+bun run auth:readiness
+bun run test:v131:security
+bun run test:v131:communications
+bun run test:v131:recovery
+bun run test:p8:documents
+bun run test:p9:automation
+bun run test:p10:analytics
+bun run test:p11:hardening
 bun run test:p12:hardening
+bun run test:p13:template
+bun run test:p14:release
+bun run release:evidence:run -- --plan
 bun run quality
 ```
 
-`bun run quality` is the authoritative combined gate. It includes the frozen authority check, formatting, lint, strict Svelte/TypeScript checks, unit and browser tests, Cloudflare build, public-bundle secret scan, schema/RLS/security contracts, all phase acceptance contracts and `git diff --check`. A backup file or a successful SQL dump by itself cannot satisfy the recovery gate.
+`bun run quality` is the authoritative combined local gate, and the required CI
+workflow enumerates its substantive commands in separate diagnosable jobs. It
+includes the frozen authority check, formatting, lint, strict Svelte/TypeScript
+checks, unit and browser tests, Cloudflare Worker + Static Assets build,
+public-bundle secret scan, schema/RLS/security contracts, Auth/MFA readiness,
+all phase acceptance contracts and `git diff --check`. A backup file or a
+successful SQL dump by itself cannot satisfy the recovery gate.
 
 ## Environment and secret boundary
 
@@ -44,11 +63,14 @@ Rollback is forward-safe recovery, not an in-place destructive migration: stop t
 
 ## Integration readiness checks
 
-Before a separately authorized pilot, an operator must verify the production Bricks form ID and secret, SendPulse sender-domain authentication and webhook secret, cron secret, redirect URLs, private Storage policy, CSP origins, Cloudflare bindings and DNS. SendPulse webhook events must be authenticated and idempotent; uncertain provider outcomes must remain visible instead of being silently retried as new messages. Owner/Admin AAL2 requirements and invitation-only Auth provisioning must be verified in the hosted environment.
+Before a separately authorized pilot, an operator must verify the production Bricks form ID and secret, SendPulse sender-domain authentication and webhook secret, cron secret, redirect URLs, private Storage policy, CSP origins, Cloudflare bindings and DNS. SendPulse webhook events must be authenticated and idempotent; uncertain provider outcomes must remain visible instead of being silently retried as new messages. Owner/Admin AAL2 requirements and invitation-only Auth provisioning must be verified in the hosted environment. Local provider outcomes use the `submission_unknown` reconciliation state and never trigger a blind second send.
 
 The release gate requires both complete business journeys:
 
 - Login → Bricks intake → Lead → Quote → Send → Reminder → conversion → Client;
 - Login → Bricks intake → Lead → Lost → required reason.
 
-Pilot approval is not production launch. The required terminal local status is `LOCAL_BUILD_COMPLETE` and `PILOT_READY`, while `pilot_status=NOT_STARTED` and `production_status=NOT_LAUNCHED` remain explicit.
+Pilot approval is not production launch. The non-circular local sequence is
+`P14 COMPLETE → FINAL_PROJECT_VALIDATION → COMPLETE`, with terminal statuses
+`LOCAL_BUILD_COMPLETE` and `PILOT_READY`, while `pilot_status=NOT_STARTED` and
+`production_status=NOT_LAUNCHED` remain explicit.

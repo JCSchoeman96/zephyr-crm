@@ -159,6 +159,7 @@ export type Database = {
 					sent_count: number;
 					started_at: string;
 					status: string;
+					unknown_count: number;
 				};
 				Insert: {
 					claims_count?: number;
@@ -171,6 +172,7 @@ export type Database = {
 					sent_count?: number;
 					started_at?: string;
 					status?: string;
+					unknown_count?: number;
 				};
 				Update: {
 					claims_count?: number;
@@ -183,6 +185,7 @@ export type Database = {
 					sent_count?: number;
 					started_at?: string;
 					status?: string;
+					unknown_count?: number;
 				};
 				Relationships: [];
 			};
@@ -1499,6 +1502,18 @@ export type Database = {
 						};
 						Returns: Json;
 				  };
+			add_activity_note: {
+				Args: {
+					p_client_id?: string;
+					p_lead_id?: string;
+					p_metadata?: Json;
+					p_outbound_message_id?: string;
+					p_quote_id?: string;
+					p_summary?: string;
+					p_task_id?: string;
+				};
+				Returns: Json;
+			};
 			assign_lead: {
 				Args: {
 					p_assigned_to: string;
@@ -1605,6 +1620,15 @@ export type Database = {
 				Args: { p_error: string; p_outbound_message_id: string };
 				Returns: Json;
 			};
+			mark_task_reminder_unknown: {
+				Args: {
+					p_error?: string;
+					p_provider_message_id?: string;
+					p_run_id: string;
+					p_task_id: string;
+				};
+				Returns: Json;
+			};
 			operational_diagnostics: { Args: never; Returns: Json };
 			pause_lead: {
 				Args: {
@@ -1646,12 +1670,24 @@ export type Database = {
 				Args: { p_logical_key: string; p_provider_message_id: string };
 				Returns: Json;
 			};
+			reconcile_task_reminder: {
+				Args: { p_provider_message_id: string; p_task_id: string };
+				Returns: Json;
+			};
 			record_bricks_rejection: {
 				Args: {
 					p_error_message: string;
 					p_external_submission_id: string;
 					p_form_id: string;
 					p_payload: Json;
+				};
+				Returns: Json;
+			};
+			record_quote_send_ack: {
+				Args: {
+					p_error?: string;
+					p_outbound_message_id: string;
+					p_provider_message_id: string;
 				};
 				Returns: Json;
 			};
@@ -1722,6 +1758,10 @@ export type Database = {
 					p_status: string;
 					p_user_id: string;
 				};
+				Returns: Json;
+			};
+			start_task_reminder: {
+				Args: { p_run_id: string; p_task_id: string };
 				Returns: Json;
 			};
 			supersede_quote: {

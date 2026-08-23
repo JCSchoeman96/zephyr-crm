@@ -6,7 +6,8 @@ import { readFileSync } from 'node:fs';
 const root = process.cwd();
 const runId = `${Date.now()}`;
 const prefix = `p8-${runId}`;
-const appUrl = 'http://127.0.0.1:4179';
+const appPort = 4187;
+const appUrl = `http://127.0.0.1:${appPort}`;
 const providerUrl = 'http://127.0.0.1:4180';
 const webhookSecret = `p8-webhook-${runId}`;
 const users = [];
@@ -308,7 +309,7 @@ function startProvider() {
 }
 
 async function startApp() {
-	app = spawn('bun', ['run', 'dev', '--', '--host', '127.0.0.1', '--port', '4179'], {
+	app = spawn('bun', ['run', 'dev', '--', '--host', '127.0.0.1', '--port', String(appPort)], {
 		cwd: root,
 		stdio: 'ignore',
 		env: {
@@ -324,10 +325,28 @@ async function startApp() {
 			SENDPULSE_API_BASE_URL: providerUrl,
 			SENDPULSE_SENDER_EMAIL: 'sales@example.test',
 			SENDPULSE_SENDER_NAME: 'Zephyr P8',
-			SENDPULSE_WEBHOOK_SECRET: webhookSecret
+			SENDPULSE_WEBHOOK_SECRET: webhookSecret,
+			ZEPHYR_TEST_FAIL_QUOTE_FINALIZATION_ONCE: '1'
 		}
 	});
 	await waitFor(`${appUrl}/login`);
+}
+
+async function stopApp() {
+	if (!app || app.exitCode !== null) return;
+	const process = app;
+	app = undefined;
+	await new Promise((resolve) => {
+		const timeout = setTimeout(() => {
+			process.kill('SIGKILL');
+			resolve();
+		}, 5000);
+		process.once('exit', () => {
+			clearTimeout(timeout);
+			resolve();
+		});
+		process.kill('SIGTERM');
+	});
 }
 
 async function sendQuoteThroughApp(quote) {
@@ -386,12 +405,67 @@ async function cleanup() {
 let passed = 0;
 try {
 	const user = await createUser('sales');
+	const finalizationLead = await createLead('finalization-failure');
+	await reachDecision(finalizationLead, user);
+	const finalizationQuote = await createReadyQuote(finalizationLead, user, 'finalization-failure');
 	const firstLead = await createLead('delivery');
 	await reachDecision(firstLead, user);
 	const firstQuote = await createReadyQuote(firstLead, user, 'delivery');
 	await startProvider();
 	await startApp();
 	await loginApp(user);
+
+	const finalizationFailure = await sendQuoteThroughApp(finalizationQuote);
+	assert(
+		!finalizationFailure.response.ok &&
+			String(finalizationFailure.body?.error).toLowerCase().includes('reconciliation'),
+		'Provider success followed by quote finalization failure was not reported as reconciliation-required'
+	);
+	let finalizationMessages = await messagesFor(finalizationQuote.id);
+	assert(
+		finalizationMessages.length === 1 &&
+			finalizationMessages[0].delivery_status === 'submission_unknown' &&
+			finalizationMessages[0].provider_message_id,
+		'Provider identity was not retained after quote finalization failure'
+	);
+	const providerCallsAfterFinalizationFailure = providerAttempt;
+	const blockedFinalizationRetry = await sendQuoteThroughApp(
+		await serviceQuote(finalizationQuote.id)
+	);
+	assert(!blockedFinalizationRetry.response.ok, 'Quote finalization uncertainty was retryable');
+	assert(
+		providerAttempt === providerCallsAfterFinalizationFailure,
+		'Quote finalization retry called SendPulse a second time'
+	);
+	const finalizationReconciled = await mustRpc(
+		'reconcile_quote_submission',
+		{
+			p_logical_key: finalizationMessages[0].logical_key,
+			p_provider_message_id: finalizationMessages[0].provider_message_id
+		},
+		serviceRoleKey
+	);
+	assert(
+		finalizationReconciled?.provider_message_id === finalizationMessages[0].provider_message_id,
+		'Quote finalization reconciliation did not preserve provider identity'
+	);
+	finalizationMessages = await messagesFor(finalizationQuote.id);
+	const finalizationActivities = await serviceRest(
+		`/rest/v1/activities?quote_id=eq.${finalizationQuote.id}&event_type=eq.quote_sent&select=id`
+	);
+	const finalizationTasks = await serviceRest(
+		`/rest/v1/tasks?quote_id=eq.${finalizationQuote.id}&type=eq.follow_up&select=id`
+	);
+	assert(
+		finalizationMessages.length === 1 &&
+			finalizationMessages[0].delivery_status === 'submitted' &&
+			(await serviceQuote(finalizationQuote.id)).status === 'sent' &&
+			finalizationActivities.length === 1 &&
+			finalizationTasks.length === 1,
+		'Quote finalization reconciliation duplicated or omitted downstream state'
+	);
+	console.log('RH04 quote provider-success/finalization-failure reconciliation passed');
+	passed += 1;
 
 	const send = await sendQuoteThroughApp(firstQuote);
 	assert(
@@ -491,6 +565,29 @@ try {
 	passed += 2;
 
 	const providerMessageId = firstMessages[0].provider_message_id;
+	const webhookBody = JSON.stringify({
+		message_id: providerMessageId,
+		event: 'delivered',
+		event_id: `${prefix}-boundary`
+	});
+	const webhookSignature = createHmac('sha256', webhookSecret).update(webhookBody).digest('hex');
+	const rejectedWebhook = await appJson('/api/webhooks/sendpulse', {
+		method: 'POST',
+		headers: { 'content-type': 'text/plain', 'x-sendpulse-signature': webhookSignature },
+		body: webhookBody
+	});
+	const wrongSignature = await appJson('/api/webhooks/sendpulse', {
+		method: 'POST',
+		headers: { 'content-type': 'application/json', 'x-sendpulse-signature': '00' },
+		body: webhookBody
+	});
+	assert(
+		rejectedWebhook.response.status === 415 && wrongSignature.response.status === 401,
+		'SendPulse webhook did not enforce content type and signature boundaries'
+	);
+	console.log('P8-T16 webhook defense-in-depth passed');
+	passed += 1;
+
 	const deliveredPayload = {
 		event_id: `${prefix}-delivery`,
 		message_id: providerMessageId,
@@ -655,12 +752,12 @@ try {
 	console.log('P8-T18 hard-bounce remediation and idempotency passed');
 	passed += 1;
 } finally {
-	if (app) app.kill('SIGTERM');
+	await stopApp();
 	if (provider) await new Promise((resolve) => provider.close(resolve));
 	await cleanup();
 }
 
-assert(passed === 13, `Expected 13 P8 focused tests, received ${passed}`);
+assert(passed === 15, `Expected 15 P8 focused tests, received ${passed}`);
 console.log(
-	`P8 focused integration tests passed (${passed} tests; P8-T11/P8-T13/P8-T15/P8-T16/P8-T17 are covered by adjacent unit/security gates)`
+	`P8 focused integration tests passed (${passed} tests; P8-T11/P8-T13/P8-T15/P8-T17 are covered by adjacent unit/security gates)`
 );

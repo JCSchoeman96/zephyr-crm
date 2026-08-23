@@ -7,7 +7,8 @@ import { tmpdir } from 'node:os';
 const root = process.cwd();
 const runId = `${Date.now()}-${process.pid}`;
 const prefix = `p12-${runId}`;
-const appUrl = 'http://127.0.0.1:4184';
+const appPort = 4186;
+const appUrl = `http://127.0.0.1:${appPort}`;
 const storagePath = `quotes/${randomUUID()}/p12-recovery.pdf`;
 let app;
 let backupDirectory;
@@ -55,6 +56,9 @@ function identifier(value) {
 
 async function waitForServer(url) {
 	for (let attempt = 0; attempt < 80; attempt += 1) {
+		if (app?.exitCode !== null && app?.exitCode !== undefined) {
+			throw new Error(`P12 application server exited before readiness (code ${app.exitCode})`);
+		}
 		try {
 			const response = await fetch(url);
 			if (response.ok || response.status < 500) return;
@@ -78,7 +82,7 @@ async function storageRequest(apiUrl, serviceRoleKey, path, init = {}) {
 }
 
 async function startApp(local) {
-	app = spawn('bun', ['run', 'dev', '--', '--host', '127.0.0.1', '--port', '4184'], {
+	app = spawn('bun', ['run', 'dev', '--', '--host', '127.0.0.1', '--port', String(appPort)], {
 		cwd: root,
 		stdio: 'ignore',
 		env: {
@@ -98,10 +102,47 @@ async function startApp(local) {
 	await waitForServer(`${appUrl}/login`);
 }
 
-function stopApp() {
-	if (!app) return;
-	app.kill('SIGTERM');
+async function waitForBricksRpc(local) {
+	for (let attempt = 0; attempt < 80; attempt += 1) {
+		try {
+			const response = await fetch(`${local.API_URL}/rest/v1/rpc/ingest_bricks_lead`, {
+				method: 'POST',
+				headers: {
+					apikey: local.SERVICE_ROLE_KEY,
+					Authorization: `Bearer ${local.SERVICE_ROLE_KEY}`,
+					'content-type': 'application/json'
+				},
+				body: JSON.stringify({
+					p_form_id: 'contact-form',
+					p_external_submission_id: randomUUID(),
+					p_payload: {}
+				})
+			});
+			const body = await response.text();
+			if (response.status < 500 && !body.includes('schema cache')) return;
+		} catch {
+			// PostgREST is still restarting after the clean database reset.
+		}
+		await new Promise((resolve) => setTimeout(resolve, 250));
+	}
+	throw new Error('Timed out waiting for the Bricks RPC schema cache after database reset');
+}
+
+async function stopApp() {
+	if (!app || app.exitCode !== null) return;
+	const process = app;
 	app = undefined;
+	await new Promise((resolve) => {
+		const timeout = setTimeout(() => {
+			process.kill('SIGKILL');
+			resolve();
+		}, 5000);
+		process.once('exit', () => {
+			clearTimeout(timeout);
+			resolve();
+		});
+		process.kill('SIGTERM');
+	});
 }
 
 async function runDatabaseContracts(local) {
@@ -111,9 +152,45 @@ async function runDatabaseContracts(local) {
 		'P12 migration did not reset cleanly'
 	);
 	console.log('P12-T09 migration reset passed');
+	const rh04Migration = await readFile(
+		'supabase/migrations/20260823110000_rh04_delivery_reliability.sql',
+		'utf8'
+	);
+	for (const required of [
+		'submission_unknown_total',
+		'stale_submitting_total',
+		'partial_runs_last_24h',
+		'submission_unknown_tasks',
+		'stale_submitting_tasks',
+		'latest_run_error'
+	]) {
+		assert(rh04Migration.includes(required), `RH04 diagnostics evidence is missing ${required}`);
+	}
+	console.log('RH04 uncertainty, stale-state, partial-run diagnostics evidence passed');
 
 	run('bun', ['run', 'db:security']);
 	console.log('P12-T01 anonymous denial and P12-T02 role matrix passed');
+	const inputBoundaries = sql(
+		local.DB_URL,
+		`
+select count(*)
+from pg_constraint
+where conname = any(array[
+  'profiles_input_bounds', 'app_settings_input_bounds', 'leads_input_bounds',
+  'clients_input_bounds', 'client_contacts_input_bounds', 'tasks_input_bounds',
+  'quotes_input_bounds', 'quote_items_input_bounds', 'outbound_messages_input_bounds',
+  'message_events_input_bounds', 'inbound_submissions_input_bounds',
+  'activities_input_bounds', 'outbound_message_attempts_input_bounds',
+  'operational_events_input_bounds', 'automation_runs_input_bounds',
+  'security_audit_events_input_bounds'
+]);
+`
+	);
+	assert(
+		inputBoundaries === '16',
+		`RH06 durable input-boundary constraints are incomplete (${inputBoundaries}/16)`
+	);
+	console.log('RH06 durable input persistence bounds passed');
 
 	const preservedLeadSourceCount = sql(local.DB_URL, 'select count(*) from public.lead_sources;');
 	sql(
@@ -140,10 +217,33 @@ async function runDatabaseContracts(local) {
 		'Forward upgrade lost existing reference data'
 	);
 	console.log('P12-T10 P11-to-P12 forward upgrade rehearsal passed');
+
+	// The rehearsal intentionally applies the historical P12 migration to a
+	// disposable pair of operational tables. Restore the complete current
+	// schema before later P12 contracts or the next quality command runs; a
+	// release test must not leave the local database at a historical schema.
+	run('bun', ['run', 'db:reset']);
+	assert(
+		sql(
+			local.DB_URL,
+			"select count(*) from information_schema.columns where table_schema = 'public' and table_name = 'automation_runs' and column_name = 'unknown_count';"
+		) === '1',
+		'Current RH04 automation schema was not restored after the P12 rehearsal'
+	);
+	assert(
+		sql(
+			local.DB_URL,
+			"select count(*) from pg_constraint where conname = 'automation_runs_input_bounds';"
+		) === '1',
+		'Current RH06 input-boundary schema was not restored after the P12 rehearsal'
+	);
+	console.log('P12 current-schema restoration passed');
 }
 
 async function runSecurityAndInputContracts(local) {
+	await waitForBricksRpc(local);
 	await startApp(local);
+	const xssSubmissionId = randomUUID();
 	const page = await fetch(`${appUrl}/login`);
 	const csp = page.headers.get('content-security-policy') ?? '';
 	assert(
@@ -179,13 +279,17 @@ async function runSecurityAndInputContracts(local) {
 		},
 		body: JSON.stringify({
 			form_id: 'contact-form',
-			external_submission_id: `${prefix}-xss`,
+			external_submission_id: xssSubmissionId,
 			first_name: 'Input test',
 			email: `${prefix}@example.test`,
 			message: '<script>alert(1)</script>'
 		})
 	});
-	assert(unsafeLead.status === 201, `Valid bounded input was rejected (${unsafeLead.status})`);
+	const unsafeLeadBody = await unsafeLead.text();
+	assert(
+		unsafeLead.status === 201,
+		`Valid bounded input was rejected (${unsafeLead.status}): ${unsafeLeadBody.slice(0, 300)}`
+	);
 	const leadSource = await readFile('src/routes/leads/[id]/+page.svelte', 'utf8');
 	const quoteSource = await readFile('src/routes/quotes/[id]/+page.svelte', 'utf8');
 	const intakeSource = await readFile('src/lib/server/bricks-intake.ts', 'utf8');
@@ -199,7 +303,7 @@ async function runSecurityAndInputContracts(local) {
 	);
 	sql(
 		local.DB_URL,
-		`set session_replication_role = replica; delete from public.leads where external_submission_id = '${prefix}-xss'; set session_replication_role = origin;`
+		`set session_replication_role = replica; delete from public.leads where external_submission_id = '${xssSubmissionId}'; set session_replication_role = origin;`
 	);
 	console.log('P12-T05 XSS-safe rendering and input validation passed');
 }
@@ -288,7 +392,7 @@ async function main() {
 	);
 	await runDatabaseContracts(local);
 	await runSecurityAndInputContracts(local);
-	stopApp();
+	await stopApp();
 	await runBackupRecovery(local);
 	await runLifecycleContracts();
 	run('bun', ['run', 'build']);
@@ -313,7 +417,7 @@ async function main() {
 try {
 	await main();
 } finally {
-	stopApp();
+	await stopApp();
 	if (restoreDatabase) {
 		const local = statusEnv();
 		if (local.DB_URL) sql(local.DB_URL, `drop database if exists ${identifier(restoreDatabase)};`);

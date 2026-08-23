@@ -107,12 +107,20 @@ async function main() {
 			`Server Auth form did not redirect an active invited user (HTTP ${response.status}, content-type ${response.headers.get('content-type') ?? 'unknown'}): ${responseBody.slice(0, 300)}`
 		);
 	}
-	if (response.headers.getSetCookie().length === 0) {
+	const cookies = response.headers.getSetCookie();
+	if (cookies.length === 0) {
 		throw new Error('Server Auth form did not return a session cookie.');
+	}
+	const cookieHeader = cookies.join('; ');
+	const hasSameSiteLax = /SameSite=Lax/i.test(cookieHeader);
+	if (!hasSameSiteLax) {
+		throw new Error(
+			`Server Auth session cookie is missing SameSite=Lax protection (SameSiteLax=${hasSameSiteLax}).`
+		);
 	}
 
 	console.log(
-		'Auth session contract passed: active invited user signs in through the server action and receives a session cookie.'
+		'Auth session contract passed: SameSite session-cookie attributes and active invited login.'
 	);
 }
 

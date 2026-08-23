@@ -1,5 +1,6 @@
 import { createServer } from 'node:http';
 import { execFileSync, spawn } from 'node:child_process';
+import { randomUUID } from 'node:crypto';
 import fs from 'node:fs';
 
 const root = process.cwd();
@@ -212,7 +213,7 @@ async function main() {
 
 	const payload = {
 		form_id: 'contact-form',
-		external_submission_id: `tracer-${runId}`,
+		external_submission_id: randomUUID(),
 		first_name: 'Ada',
 		last_name: 'Tracer',
 		email: 'ada.tracer@example.test',
@@ -278,7 +279,7 @@ async function main() {
 
 	const lostPayload = {
 		...payload,
-		external_submission_id: `tracer-lost-${runId}`,
+		external_submission_id: randomUUID(),
 		email: 'lost.tracer@example.test'
 	};
 	const lostIntakeResponse = await fetch(`${appUrl}/api/webhooks/bricks`, {
@@ -312,11 +313,39 @@ async function main() {
 	);
 }
 
+async function stopApp() {
+	if (!app || app.exitCode !== null) {
+		app = null;
+		return;
+	}
+	const process = app;
+	app = null;
+	await new Promise((resolve) => {
+		const timeout = setTimeout(() => {
+			process.kill('SIGKILL');
+			resolve();
+		}, 5000);
+		process.once('exit', () => {
+			clearTimeout(timeout);
+			resolve();
+		});
+		process.kill('SIGTERM');
+	});
+}
+
+async function stopProvider() {
+	if (!provider) return;
+	const server = provider;
+	provider = null;
+	if (!server.listening) return;
+	await new Promise((resolve) => server.close(resolve));
+}
+
 try {
 	await main();
 } finally {
-	if (app) app.kill('SIGTERM');
-	if (provider) provider.close();
+	await stopApp();
+	await stopProvider();
 	if (clientId)
 		await rest(`/rest/v1/clients?id=eq.${clientId}`, { method: 'DELETE' }).catch(() => {});
 	if (leadId) await rest(`/rest/v1/leads?id=eq.${leadId}`, { method: 'DELETE' }).catch(() => {});
