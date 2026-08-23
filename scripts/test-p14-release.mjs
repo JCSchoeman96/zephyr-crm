@@ -15,7 +15,9 @@ function run(command, args, options = {}) {
 			...options
 		}).trim();
 	} catch (error) {
-		throw new Error(`${command} failed during the P14 release gate.`, { cause: error });
+		throw new Error(`${command} ${args.join(' ')} failed during the P14 release gate.`, {
+			cause: error
+		});
 	}
 }
 
