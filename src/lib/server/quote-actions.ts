@@ -8,6 +8,7 @@ import {
 import { bytesToBase64, ensureQuoteDocument } from '$lib/server/quote-documents';
 import { loadTrustedClientConfiguration } from '$lib/server/client-config';
 import { recordOperationalEvent } from '$lib/server/operational-events';
+import { createTrustedSupabaseClient } from '$lib/server/trusted-supabase';
 
 type ServerSupabaseClient = SupabaseClient<Database>;
 type JsonRecord = Record<string, unknown>;
@@ -136,7 +137,7 @@ export async function sendQuote(
 				p_provider_message_id: providerMessageId
 			});
 	if (completedResponse.error) {
-		const acknowledged = await supabase.rpc('record_quote_send_ack', {
+		const acknowledged = await createTrustedSupabaseClient().rpc('record_quote_send_ack', {
 			p_outbound_message_id: stringValue(prepared.outbound_message_id),
 			p_provider_message_id: providerMessageId,
 			p_error: completedResponse.error.message

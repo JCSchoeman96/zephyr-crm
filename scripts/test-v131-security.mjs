@@ -174,8 +174,17 @@ const rh04Privileges = sql(
 	local.DB_URL,
 	`
 select case when
-  has_function_privilege('authenticated', 'public.record_quote_send_ack(uuid,text,text)'::regprocedure, 'EXECUTE')
+  not has_function_privilege('authenticated', 'public.record_quote_send_ack(uuid,text,text)'::regprocedure, 'EXECUTE')
   and not has_function_privilege('anon', 'public.record_quote_send_ack(uuid,text,text)'::regprocedure, 'EXECUTE')
+  and not has_function_privilege('public', 'public.record_quote_send_ack(uuid,text,text)'::regprocedure, 'EXECUTE')
+  and has_function_privilege('service_role', 'public.record_quote_send_ack(uuid,text,text)'::regprocedure, 'EXECUTE')
+  and exists (
+    select 1
+    from pg_proc p
+    where p.oid = 'public.record_quote_send_ack(uuid,text,text)'::regprocedure
+      and p.prosecdef
+      and p.prosrc like '%auth.role() <> ''service_role''%'
+  )
   and has_function_privilege('service_role', 'public.prepare_task_reminder(uuid,uuid)'::regprocedure, 'EXECUTE')
   and has_function_privilege('service_role', 'public.start_task_reminder(uuid,uuid)'::regprocedure, 'EXECUTE')
   and has_function_privilege('service_role', 'public.mark_task_reminder_unknown(uuid,uuid,text,text)'::regprocedure, 'EXECUTE')
