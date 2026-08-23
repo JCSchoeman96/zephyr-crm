@@ -2,7 +2,7 @@ import { existsSync } from 'node:fs';
 import { spawn } from 'node:child_process';
 
 const root = process.cwd();
-const port = 4175;
+const port = 4185;
 const appUrl = `http://127.0.0.1:${port}`;
 let worker;
 
@@ -21,6 +21,23 @@ async function waitForWorker() {
 		await new Promise((resolve) => setTimeout(resolve, 250));
 	}
 	throw new Error('Timed out waiting for the local production Worker.');
+}
+
+async function stopWorker() {
+	if (!worker || worker.exitCode !== null) return;
+	const process = worker;
+	await new Promise((resolve) => {
+		const timeout = setTimeout(() => {
+			process.kill('SIGKILL');
+			resolve();
+		}, 5000);
+		process.once('exit', () => {
+			clearTimeout(timeout);
+			resolve();
+		});
+		process.kill('SIGTERM');
+	});
+	worker = undefined;
 }
 
 try {
@@ -54,5 +71,5 @@ try {
 	);
 	console.log('Auth CSRF contract passed: production Worker rejects cross-origin form mutations.');
 } finally {
-	if (worker) worker.kill('SIGTERM');
+	await stopWorker();
 }
