@@ -369,7 +369,12 @@ try {
 	const overdueLead = await createLead('overdue', sales, { source: 'manual' });
 	await createTask(overdueLead, sales, 'overdue', `${dateOffset(-1)}T23:59:00Z`);
 	const dueTodayLead = await createLead('due-today', sales, { source: 'manual' });
-	await createTask(dueTodayLead, sales, 'due today', timestampAt('12:00:00'));
+	await createTask(
+		dueTodayLead,
+		sales,
+		'due today',
+		new Date(Date.now() + 5 * 60 * 1000).toISOString()
+	);
 
 	const attribution = {
 		source: 'google_ads',
@@ -436,7 +441,7 @@ try {
 	);
 	assert(
 		countDelta(after, before, 'overdue_tasks', 'operational') === 1,
-		'P10-T01 overdue Task count did not reconcile'
+		`P10-T01 overdue Task count did not reconcile: before=${JSON.stringify(before.operational)} after=${JSON.stringify(after.operational)}`
 	);
 	assert(
 		countDelta(after, before, 'due_today', 'operational') === 1,
@@ -607,7 +612,7 @@ try {
 	try {
 		const leadFilter = sqlLiteral(`${prefix}-%`);
 		sql(
-			`delete from public.quote_items where quote_id in (select id from public.quotes where lead_id in (select id from public.leads where external_submission_id like ${leadFilter})); delete from public.quotes where lead_id in (select id from public.leads where external_submission_id like ${leadFilter}); delete from public.client_contacts where client_id in (select id from public.clients where source_lead_id in (select id from public.leads where external_submission_id like ${leadFilter})); delete from public.clients where source_lead_id in (select id from public.leads where external_submission_id like ${leadFilter}); delete from public.leads where external_submission_id like ${leadFilter}; delete from public.inbound_submissions where external_submission_id like ${leadFilter};`
+			`delete from public.tasks where lead_id in (select id from public.leads where external_submission_id like ${leadFilter}) or quote_id in (select id from public.quotes where lead_id in (select id from public.leads where external_submission_id like ${leadFilter})); delete from public.quote_items where quote_id in (select id from public.quotes where lead_id in (select id from public.leads where external_submission_id like ${leadFilter})); delete from public.quotes where lead_id in (select id from public.leads where external_submission_id like ${leadFilter}); delete from public.client_contacts where client_id in (select id from public.clients where source_lead_id in (select id from public.leads where external_submission_id like ${leadFilter})); delete from public.clients where source_lead_id in (select id from public.leads where external_submission_id like ${leadFilter}); delete from public.leads where external_submission_id like ${leadFilter}; delete from public.inbound_submissions where external_submission_id like ${leadFilter};`
 		);
 	} catch {
 		// A disposable local reset remains the recovery path for an interrupted fixture run.
