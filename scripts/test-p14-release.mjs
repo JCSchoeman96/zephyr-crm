@@ -1,6 +1,7 @@
 import { execFileSync } from 'node:child_process';
 import { readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
+import { validateEvidenceRegistry } from './verify-test-evidence.mjs';
 
 const root = process.cwd();
 
@@ -60,10 +61,12 @@ function reconcileRequirements() {
 		for (const id of new Set(ids))
 			assert(coverage.includes(id), `${id} is missing from requirements coverage.`);
 	}
-	for (let phase = 0; phase <= 13; phase += 1) {
-		const handoff = read(`.agent/goal-loop/handoffs/P${phase}.md`);
-		assert(/COMPLETE/.test(handoff), `P${phase} handoff is not complete.`);
-	}
+	const registry = JSON.parse(read('docs/release/TEST_EVIDENCE.json'));
+	const evidence = validateEvidenceRegistry(registry);
+	assert(
+		evidence.count === 229,
+		`Mandatory evidence registry contains ${evidence.count} IDs, not 229.`
+	);
 	assert(
 		read('docs/PILOT_READINESS.md').includes('NOT_STARTED'),
 		'Pilot readiness status boundary is missing.'
@@ -100,39 +103,28 @@ function validatePilotPackage() {
 	console.log('P14-T15 pilot readiness package passed');
 }
 
-function mapQualityEvidence() {
-	for (const phrase of [
-		'P4 tracer bullet passed',
-		'P7-T06 sent immutability passed',
-		'P8 focused integration tests passed',
-		'P9 focused automation tests passed',
-		'P12 security, backup, recovery and operational hardening passed',
-		'P13-T10 fresh-template quality subset passed'
+function runP14EvidenceCommands() {
+	for (const args of [
+		['run', 'test:p4:tracer'],
+		['run', 'test:p4:tracer'],
+		['run', 'test:p7:quotes'],
+		['run', 'test:p8:documents'],
+		['run', 'db:security'],
+		['run', 'test:p5:leads'],
+		['run', 'test:v131:communications'],
+		['run', 'test:p12:hardening'],
+		['run', 'test:p13:template'],
+		['run', 'test:p12:hardening'],
+		['run', 'build'],
+		['run', 'release:state:p14']
 	]) {
-		// The authoritative command was run to completion above; this source-level
-		// mapping keeps the phase evidence explicit without duplicating fixtures.
-		assert(phrase.length > 0, 'Quality evidence label must be non-empty.');
-	}
-	for (const [id, message] of [
-		['P14-T02', 'Won end-to-end'],
-		['P14-T03', 'Lost end-to-end'],
-		['P14-T04', 'quote history integrity'],
-		['P14-T05', 'duplicate/idempotency regression'],
-		['P14-T06', 'authorization regression'],
-		['P14-T07', 'Bricks contract'],
-		['P14-T08', 'SendPulse contract'],
-		['P14-T09', 'backup/restore'],
-		['P14-T10', 'migration rehearsal'],
-		['P14-T11', 'diagnostics'],
-		['P14-T12', 'production build artifact']
-	]) {
-		console.log(`${id} ${message} passed via the authoritative local quality contracts`);
+		run('bun', args);
 	}
 }
 
 provisionFreshClient();
 run('bun', ['run', 'quality']);
-mapQualityEvidence();
+runP14EvidenceCommands();
 reconcileRequirements();
 validatePilotPackage();
 console.log('P14-T13 full project quality gate passed');

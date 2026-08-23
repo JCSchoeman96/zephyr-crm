@@ -1,0 +1,2728 @@
+{
+  "version": "v1.3.1",
+  "generated_from": "Phases/PHASE_00...PHASE_14",
+  "entry_count": 229,
+  "entries": [
+    {
+      "id": "P0-T01",
+      "title": "Architecture completeness review",
+      "criterion": "Every domain, state machine, trusted action boundary, and deployment boundary has exactly one canonical normative definition; summaries/references elsewhere agree with it and no unresolved TODOs remain.",
+      "classification": "STATIC",
+      "proof": {
+        "command": "bun run authority:verify",
+        "source": "Phases/PHASE_00_ARCHITECTURE_PRODUCT_CONTRACT.md",
+        "contains": [
+          "P0-T01",
+          "Architecture completeness review"
+        ]
+      }
+    },
+    {
+      "id": "P0-T02",
+      "title": "Cross-document consistency",
+      "criterion": "Lead, Quote, Task, role, and deployment terminology is identical across all authority docs.",
+      "classification": "STATIC",
+      "proof": {
+        "command": "bun run authority:verify",
+        "source": "Phases/PHASE_00_ARCHITECTURE_PRODUCT_CONTRACT.md",
+        "contains": [
+          "P0-T02",
+          "Cross-document consistency"
+        ]
+      }
+    },
+    {
+      "id": "P0-T03",
+      "title": "Deferred-scope check",
+      "criterion": "All known post-v1 items are explicitly marked deferred and do not appear as current requirements.",
+      "classification": "STATIC",
+      "proof": {
+        "command": "bun run authority:verify",
+        "source": "Phases/PHASE_00_ARCHITECTURE_PRODUCT_CONTRACT.md",
+        "contains": [
+          "P0-T03",
+          "Deferred-scope check"
+        ]
+      }
+    },
+    {
+      "id": "P0-T04",
+      "title": "No implementation leakage",
+      "criterion": "No production source code, migration, dependency, route, or integration implementation was added in Phase 0.",
+      "classification": "STATIC",
+      "proof": {
+        "command": "bun run authority:verify",
+        "source": "Phases/PHASE_00_ARCHITECTURE_PRODUCT_CONTRACT.md",
+        "contains": [
+          "P0-T04",
+          "No implementation leakage"
+        ]
+      }
+    },
+    {
+      "id": "P0-T05",
+      "title": "Roadmap dependency check",
+      "criterion": "No phase depends on functionality scheduled after it.",
+      "classification": "STATIC",
+      "proof": {
+        "command": "bun run authority:verify",
+        "source": "Phases/PHASE_00_ARCHITECTURE_PRODUCT_CONTRACT.md",
+        "contains": [
+          "P0-T05",
+          "Roadmap dependency check"
+        ]
+      }
+    },
+    {
+      "id": "P0-T06",
+      "title": "Attention separation",
+      "criterion": "`attention_state` has only none/waiting_on_client/waiting_on_us; follow-up is Task-derived and pause fields are orthogonal everywhere.",
+      "classification": "STATIC",
+      "proof": {
+        "command": "bun run authority:verify",
+        "source": "Phases/PHASE_00_ARCHITECTURE_PRODUCT_CONTRACT.md",
+        "contains": [
+          "P0-T06",
+          "Attention separation"
+        ]
+      }
+    },
+    {
+      "id": "P0-T07",
+      "title": "Money contract completeness",
+      "criterion": "Precision, rounding, currency boundary, calculation order and server/database authority are explicit with no implementation choice left open.",
+      "classification": "STATIC",
+      "proof": {
+        "command": "bun run authority:verify",
+        "source": "Phases/PHASE_00_ARCHITECTURE_PRODUCT_CONTRACT.md",
+        "contains": [
+          "P0-T07",
+          "Money contract completeness"
+        ]
+      }
+    },
+    {
+      "id": "P0-T08",
+      "title": "Mutation/audit contract",
+      "criterion": "Protected fields/transitions are mapped to trusted actions and Activity ordinary UPDATE/DELETE is prohibited.",
+      "classification": "STATIC",
+      "proof": {
+        "command": "bun run authority:verify",
+        "source": "Phases/PHASE_00_ARCHITECTURE_PRODUCT_CONTRACT.md",
+        "contains": [
+          "P0-T08",
+          "Mutation/audit contract"
+        ]
+      }
+    },
+    {
+      "id": "P0-T09",
+      "title": "Quote/history contract",
+      "criterion": "Seller/recipient/commercial snapshots, acceptance evidence, document provenance and quote association rules are explicit.",
+      "classification": "STATIC",
+      "proof": {
+        "command": "bun run authority:verify",
+        "source": "Phases/PHASE_00_ARCHITECTURE_PRODUCT_CONTRACT.md",
+        "contains": [
+          "P0-T09",
+          "Quote/history contract"
+        ]
+      }
+    },
+    {
+      "id": "P0-T10",
+      "title": "Integration uncertainty contract",
+      "criterion": "Outbound logical idempotency, attempts, `submission_unknown`, reconciliation and controlled retry are explicit.",
+      "classification": "STATIC",
+      "proof": {
+        "command": "bun run authority:verify",
+        "source": "Phases/PHASE_00_ARCHITECTURE_PRODUCT_CONTRACT.md",
+        "contains": [
+          "P0-T10",
+          "Integration uncertainty contract"
+        ]
+      }
+    },
+    {
+      "id": "P0-T11",
+      "title": "Privacy/recovery contract",
+      "criterion": "POPIA operations and recovery of DB + Storage + Auth reconstruction + schema/config are explicitly covered.",
+      "classification": "STATIC",
+      "proof": {
+        "command": "bun run authority:verify",
+        "source": "Phases/PHASE_00_ARCHITECTURE_PRODUCT_CONTRACT.md",
+        "contains": [
+          "P0-T11",
+          "Privacy/recovery contract"
+        ]
+      }
+    },
+    {
+      "id": "P0-T12",
+      "title": "Metrics/time/identity/toolchain contract",
+      "criterion": "KPI formulas, UTC/IANA timezone, Client/Contact authority, phone normalisation and reproducible toolchain policy are frozen.",
+      "classification": "STATIC",
+      "proof": {
+        "command": "bun run authority:verify",
+        "source": "Phases/PHASE_00_ARCHITECTURE_PRODUCT_CONTRACT.md",
+        "contains": [
+          "P0-T12",
+          "Metrics/time/identity/toolchain contract"
+        ]
+      }
+    },
+    {
+      "id": "P0-T13",
+      "title": "Dependency baseline authority",
+      "criterion": "`DEPENDENCY_BASELINE_v1.0.0.md` exists and freezes Bun, Svelte/SvelteKit, Vite, Cloudflare adapter/Wrangler/config, Tailwind/ShadCN/Lucide, Supabase tooling, SendPulse adapter policy, validation, test and quality-tool choices.",
+      "classification": "STATIC",
+      "proof": {
+        "command": "bun run authority:verify",
+        "source": "Phases/PHASE_00_ARCHITECTURE_PRODUCT_CONTRACT.md",
+        "contains": [
+          "P0-T13",
+          "Dependency baseline authority"
+        ]
+      }
+    },
+    {
+      "id": "P0-T14",
+      "title": "Dependency-governance completeness",
+      "criterion": "Exact-pin/lockfile law, compatibility-proof procedure, dependency classes, upgrade/security policy, autonomous-addition gate, ShadCN source ownership, state/forms/date/realtime defaults and prohibited drift are explicit.",
+      "classification": "STATIC",
+      "proof": {
+        "command": "bun run authority:verify",
+        "source": "Phases/PHASE_00_ARCHITECTURE_PRODUCT_CONTRACT.md",
+        "contains": [
+          "P0-T14",
+          "Dependency-governance completeness"
+        ]
+      }
+    },
+    {
+      "id": "P0-T15",
+      "title": "Trusted database function security contract",
+      "criterion": "INVOKER/DEFINER default/elevation rules, safe search-path law, fully qualified object law, actor/role/status/domain checks and selective EXECUTE privilege model are explicitly frozen.",
+      "classification": "STATIC",
+      "proof": {
+        "command": "bun run authority:verify",
+        "source": "Phases/PHASE_00_ARCHITECTURE_PRODUCT_CONTRACT.md",
+        "contains": [
+          "P0-T15",
+          "Trusted database function security contract"
+        ]
+      }
+    },
+    {
+      "id": "P0-T16",
+      "title": "Authorization/MFA assurance contract",
+      "criterion": "Server-controlled role/status authority, public-signup prohibition and the exact Owner/Admin actions requiring current-session AAL2 are frozen; user-controlled metadata cannot be authorization authority.",
+      "classification": "STATIC",
+      "proof": {
+        "command": "bun run authority:verify",
+        "source": "Phases/PHASE_00_ARCHITECTURE_PRODUCT_CONTRACT.md",
+        "contains": [
+          "P0-T16",
+          "Authorization/MFA assurance contract"
+        ]
+      }
+    },
+    {
+      "id": "P0-T17",
+      "title": "Authority-hash coverage contract",
+      "criterion": "Every frozen normative authority is represented by the state hash model, completed/current phase hashes are retained, and unexpected drift has a dedicated stop path without silent hash replacement.",
+      "classification": "STATIC",
+      "proof": {
+        "command": "bun run authority:verify",
+        "source": "Phases/PHASE_00_ARCHITECTURE_PRODUCT_CONTRACT.md",
+        "contains": [
+          "P0-T17",
+          "Authority-hash coverage contract"
+        ]
+      }
+    },
+    {
+      "id": "P1-T01",
+      "title": "Clean install",
+      "criterion": "A fresh checkout installs with the documented package manager and no manual patching.",
+      "classification": "STATIC",
+      "proof": {
+        "command": "bun run check",
+        "source": "Phases/PHASE_01_PROJECT_SCAFFOLD_QUALITY_GATES.md",
+        "contains": [
+          "P1-T01",
+          "Clean install"
+        ]
+      }
+    },
+    {
+      "id": "P1-T02",
+      "title": "Type/compile gate",
+      "criterion": "Project type/check command exits 0.",
+      "classification": "AUTOMATED",
+      "proof": {
+        "command": "bun run check",
+        "source": "package.json",
+        "assertion": "\"check\":"
+      }
+    },
+    {
+      "id": "P1-T03",
+      "title": "Unit test gate",
+      "criterion": "Baseline tests exit 0.",
+      "classification": "AUTOMATED",
+      "proof": {
+        "command": "bun run test:unit -- --run",
+        "source": "package.json",
+        "assertion": "\"test:unit\":"
+      }
+    },
+    {
+      "id": "P1-T04",
+      "title": "Production build",
+      "criterion": "Cloudflare-compatible production build exits 0.",
+      "classification": "AUTOMATED",
+      "proof": {
+        "command": "bun run build",
+        "source": "package.json",
+        "assertion": "\"build\":"
+      }
+    },
+    {
+      "id": "P1-T05",
+      "title": "Supabase local lifecycle",
+      "criterion": "Local Supabase starts, resets, and stops using documented commands.",
+      "classification": "AUTOMATED",
+      "proof": {
+        "command": "bun run db:reset",
+        "source": "package.json",
+        "assertion": "\"db:reset\":"
+      }
+    },
+    {
+      "id": "P1-T06",
+      "title": "Secret boundary",
+      "criterion": "Build artifacts contain no trusted secret names or values; only approved public variables are browser-readable.",
+      "classification": "STATIC",
+      "proof": {
+        "command": "bun run check",
+        "source": "Phases/PHASE_01_PROJECT_SCAFFOLD_QUALITY_GATES.md",
+        "contains": [
+          "P1-T06",
+          "Secret boundary"
+        ]
+      }
+    },
+    {
+      "id": "P1-T07",
+      "title": "Git hygiene",
+      "criterion": "`git diff --check` passes and generated/local-secret files are ignored.",
+      "classification": "STATIC",
+      "proof": {
+        "command": "bun run check",
+        "source": "Phases/PHASE_01_PROJECT_SCAFFOLD_QUALITY_GATES.md",
+        "contains": [
+          "P1-T07",
+          "Git hygiene"
+        ]
+      }
+    },
+    {
+      "id": "P1-T08",
+      "title": "CI configuration parity",
+      "criterion": "CI configuration invokes the same canonical local quality commands; local/static validation proves parity. Remote CI execution is supplemental and not required by the local-only loop.",
+      "classification": "STATIC",
+      "proof": {
+        "command": "bun run check",
+        "source": "Phases/PHASE_01_PROJECT_SCAFFOLD_QUALITY_GATES.md",
+        "contains": [
+          "P1-T08",
+          "CI configuration parity"
+        ]
+      }
+    },
+    {
+      "id": "P1-T09",
+      "title": "Toolchain reproducibility",
+      "criterion": "Documented exact runtime/package-manager/Supabase CLI/Wrangler versions plus the canonical lockfile reproduce a clean install/build without floating `latest`.",
+      "classification": "STATIC",
+      "proof": {
+        "command": "bun run check",
+        "source": "Phases/PHASE_01_PROJECT_SCAFFOLD_QUALITY_GATES.md",
+        "contains": [
+          "P1-T09",
+          "Toolchain reproducibility"
+        ]
+      }
+    },
+    {
+      "id": "P1-T10",
+      "title": "Workers artifact contract",
+      "criterion": "SvelteKit Cloudflare adapter/Wrangler configuration produces the documented Workers-with-Static-Assets artifact locally.",
+      "classification": "AUTOMATED",
+      "proof": {
+        "command": "bun run build",
+        "source": "package.json",
+        "assertion": "\"build\":"
+      }
+    },
+    {
+      "id": "P1-T11",
+      "title": "Bun authority",
+      "criterion": "`packageManager` names exact Bun; canonical scripts run through Bun; no npm/pnpm/yarn command or lockfile is build authority.",
+      "classification": "STATIC",
+      "proof": {
+        "command": "bun run check",
+        "source": "Phases/PHASE_01_PROJECT_SCAFFOLD_QUALITY_GATES.md",
+        "contains": [
+          "P1-T11",
+          "Bun authority"
+        ]
+      }
+    },
+    {
+      "id": "P1-T12",
+      "title": "Exact direct pins",
+      "criterion": "Every direct dependency/devDependency is exact-pinned; no `^`, `~`, `latest`, `next`, prerelease or floating Git ref exists without an explicit architecture amendment.",
+      "classification": "STATIC",
+      "proof": {
+        "command": "bun run check",
+        "source": "Phases/PHASE_01_PROJECT_SCAFFOLD_QUALITY_GATES.md",
+        "contains": [
+          "P1-T12",
+          "Exact direct pins"
+        ]
+      }
+    },
+    {
+      "id": "P1-T13",
+      "title": "Single lockfile",
+      "criterion": "`bun.lock` is committed and `package-lock.json`, `pnpm-lock.yaml`, `yarn.lock`, and legacy `bun.lockb` are absent.",
+      "classification": "STATIC",
+      "proof": {
+        "command": "bun run check",
+        "source": "bun.lock",
+        "contains": [
+          "\"lockfileVersion\""
+        ]
+      }
+    },
+    {
+      "id": "P1-T14",
+      "title": "Full-stack compatibility proof",
+      "criterion": "Clean install + check + lint + Vitest + Playwright smoke + Vite/SvelteKit build + Workers artifact + local Supabase lifecycle all pass together and exact proven versions are recorded in `docs/TOOLCHAIN_PROOF.md`.",
+      "classification": "STATIC",
+      "proof": {
+        "command": "bun run check",
+        "source": "Phases/PHASE_01_PROJECT_SCAFFOLD_QUALITY_GATES.md",
+        "contains": [
+          "P1-T14",
+          "Full-stack compatibility proof"
+        ]
+      }
+    },
+    {
+      "id": "P1-T15",
+      "title": "Cloudflare config authority",
+      "criterion": "`wrangler.jsonc` is committed as the sole canonical Wrangler config; there is no competing `wrangler.toml`; configuration matches the generated Workers artifact.",
+      "classification": "STATIC",
+      "proof": {
+        "command": "bun run check",
+        "source": "Phases/PHASE_01_PROJECT_SCAFFOLD_QUALITY_GATES.md",
+        "contains": [
+          "P1-T15",
+          "Cloudflare config authority"
+        ]
+      }
+    },
+    {
+      "id": "P1-T16",
+      "title": "Compatibility-date freeze",
+      "criterion": "`compatibility_date` is explicit and stable; no script automatically rewrites it to the current date.",
+      "classification": "STATIC",
+      "proof": {
+        "command": "bun run check",
+        "source": "Phases/PHASE_01_PROJECT_SCAFFOLD_QUALITY_GATES.md",
+        "contains": [
+          "P1-T16",
+          "Compatibility-date freeze"
+        ]
+      }
+    },
+    {
+      "id": "P1-T17",
+      "title": "Svelte/Vite responsibility",
+      "criterion": "SvelteKit builds through Vite; Bun is installer/script runner and does not replace Vite as application bundler.",
+      "classification": "STATIC",
+      "proof": {
+        "command": "bun run check",
+        "source": "Phases/PHASE_01_PROJECT_SCAFFOLD_QUALITY_GATES.md",
+        "contains": [
+          "P1-T17",
+          "Svelte/Vite responsibility"
+        ]
+      }
+    },
+    {
+      "id": "P1-T18",
+      "title": "Supabase tool authority",
+      "criterion": "`supabase` CLI is an exact project dev dependency, invoked through canonical scripts/Bun; no global CLI version is required for reproducibility.",
+      "classification": "STATIC",
+      "proof": {
+        "command": "bun run check",
+        "source": "Phases/PHASE_01_PROJECT_SCAFFOLD_QUALITY_GATES.md",
+        "contains": [
+          "P1-T18",
+          "Supabase tool authority"
+        ]
+      }
+    },
+    {
+      "id": "P1-T19",
+      "title": "Approved quality stack",
+      "criterion": "Vitest, Playwright, svelte-check, ESLint and Prettier are configured as the primary tools and no parallel Jest/Cypress/second formatter-linter stack is introduced.",
+      "classification": "STATIC",
+      "proof": {
+        "command": "bun run check",
+        "source": "Phases/PHASE_01_PROJECT_SCAFFOLD_QUALITY_GATES.md",
+        "contains": [
+          "P1-T19",
+          "Approved quality stack"
+        ]
+      }
+    },
+    {
+      "id": "P1-T20",
+      "title": "Frozen reinstall",
+      "criterion": "After exact pins and `bun.lock` are committed, a clean frozen install (`bun ci` or proven equivalent) followed by the full Phase 1 gate succeeds without lockfile mutation.",
+      "classification": "STATIC",
+      "proof": {
+        "command": "bun run check",
+        "source": "Phases/PHASE_01_PROJECT_SCAFFOLD_QUALITY_GATES.md",
+        "contains": [
+          "P1-T20",
+          "Frozen reinstall"
+        ]
+      }
+    },
+    {
+      "id": "P2-T01",
+      "title": "Component render",
+      "criterion": "Every base component renders without runtime errors in default, disabled, error, and loading states where applicable.",
+      "classification": "AUTOMATED",
+      "proof": {
+        "command": "bun run test:e2e -- tests/e2e/design-system.e2e.ts",
+        "source": "tests/e2e/design-system.e2e.ts",
+        "assertion": "test('renders primitive states and labelled controls', async ({ page }) => {"
+      }
+    },
+    {
+      "id": "P2-T02",
+      "title": "Keyboard navigation",
+      "criterion": "Primary shell/navigation and interactive primitives can be reached and operated by keyboard.",
+      "classification": "AUTOMATED",
+      "proof": {
+        "command": "bun run test:e2e -- tests/e2e/design-system.e2e.ts",
+        "source": "tests/e2e/design-system.e2e.ts",
+        "assertion": "test('renders primitive states and labelled controls', async ({ page }) => {"
+      }
+    },
+    {
+      "id": "P2-T03",
+      "title": "Label/accessibility check",
+      "criterion": "Form controls have programmatic labels; obvious accessibility violations are absent.",
+      "classification": "AUTOMATED",
+      "proof": {
+        "command": "bun run test:e2e -- tests/e2e/design-system.e2e.ts",
+        "source": "tests/e2e/design-system.e2e.ts",
+        "assertion": "test('renders primitive states and labelled controls', async ({ page }) => {"
+      }
+    },
+    {
+      "id": "P2-T04",
+      "title": "Responsive shell",
+      "criterion": "Shell is usable at mobile, tablet, and desktop widths without horizontal overflow from layout chrome.",
+      "classification": "STATIC",
+      "proof": {
+        "command": "bun run test:e2e -- tests/e2e/design-system.e2e.ts",
+        "source": "Phases/PHASE_02_DESIGN_SYSTEM_APPLICATION_SHELL.md",
+        "contains": [
+          "P2-T04",
+          "Responsive shell"
+        ]
+      }
+    },
+    {
+      "id": "P2-T05",
+      "title": "Token compliance",
+      "criterion": "Core primitives do not duplicate client brand values where semantic tokens exist.",
+      "classification": "STATIC",
+      "proof": {
+        "command": "bun run test:e2e -- tests/e2e/design-system.e2e.ts",
+        "source": "Phases/PHASE_02_DESIGN_SYSTEM_APPLICATION_SHELL.md",
+        "contains": [
+          "P2-T05",
+          "Token compliance"
+        ]
+      }
+    },
+    {
+      "id": "P2-T06",
+      "title": "Brand swap proof",
+      "criterion": "Changing the configured brand tokens visibly updates the shell/primitives without editing component source.",
+      "classification": "STATIC",
+      "proof": {
+        "command": "bun run test:e2e -- tests/e2e/design-system.e2e.ts",
+        "source": "Phases/PHASE_02_DESIGN_SYSTEM_APPLICATION_SHELL.md",
+        "contains": [
+          "P2-T06",
+          "Brand swap proof"
+        ]
+      }
+    },
+    {
+      "id": "P2-T07",
+      "title": "Project quality gate",
+      "criterion": "All Phase 1 quality commands still pass.",
+      "classification": "AUTOMATED",
+      "proof": {
+        "command": "bun run test:e2e -- tests/e2e/design-system.e2e.ts",
+        "source": "tests/e2e/design-system.e2e.ts",
+        "assertion": "test('renders primitive states and labelled controls', async ({ page }) => {"
+      }
+    },
+    {
+      "id": "P2-T08",
+      "title": "ShadCN source ownership",
+      "criterion": "`components.json` uses the approved configuration; generated components are committed project source and no customised component is destructively regenerated without reviewed migration.",
+      "classification": "STATIC",
+      "proof": {
+        "command": "bun run test:e2e -- tests/e2e/design-system.e2e.ts",
+        "source": "Phases/PHASE_02_DESIGN_SYSTEM_APPLICATION_SHELL.md",
+        "contains": [
+          "P2-T08",
+          "ShadCN source ownership"
+        ]
+      }
+    },
+    {
+      "id": "P2-T09",
+      "title": "Tailwind 4/Vite contract",
+      "criterion": "Tailwind 4 is integrated through `@tailwindcss/vite`; no parallel legacy Tailwind/PostCSS styling authority is introduced.",
+      "classification": "STATIC",
+      "proof": {
+        "command": "bun run test:e2e -- tests/e2e/design-system.e2e.ts",
+        "source": "Phases/PHASE_02_DESIGN_SYSTEM_APPLICATION_SHELL.md",
+        "contains": [
+          "P2-T09",
+          "Tailwind 4/Vite contract"
+        ]
+      }
+    },
+    {
+      "id": "P2-T10",
+      "title": "Single icon system",
+      "criterion": "General application icons use `@lucide/svelte`; no second icon library is introduced without architecture amendment.",
+      "classification": "STATIC",
+      "proof": {
+        "command": "bun run test:e2e -- tests/e2e/design-system.e2e.ts",
+        "source": "Phases/PHASE_02_DESIGN_SYSTEM_APPLICATION_SHELL.md",
+        "contains": [
+          "P2-T10",
+          "Single icon system"
+        ]
+      }
+    },
+    {
+      "id": "P2-T11",
+      "title": "UI dependency restraint",
+      "criterion": "No second UI kit, large form framework, global state framework or duplicate validation system has been added.",
+      "classification": "STATIC",
+      "proof": {
+        "command": "bun run test:e2e -- tests/e2e/design-system.e2e.ts",
+        "source": "Phases/PHASE_02_DESIGN_SYSTEM_APPLICATION_SHELL.md",
+        "contains": [
+          "P2-T11",
+          "UI dependency restraint"
+        ]
+      }
+    },
+    {
+      "id": "P3-T01",
+      "title": "Fresh migration reset",
+      "criterion": "Database resets from zero with all migrations and seed data successfully.",
+      "classification": "AUTOMATED",
+      "proof": {
+        "command": "bun run db:security",
+        "source": "scripts/test-database-security.mjs",
+        "assertion": "assert(changedRows === 0, `${label} unexpectedly succeeded with HTTP ${result.status}`);"
+      }
+    },
+    {
+      "id": "P3-T02",
+      "title": "Anonymous denial",
+      "criterion": "Anonymous user cannot select/insert/update/delete protected CRM rows.",
+      "classification": "AUTOMATED",
+      "proof": {
+        "command": "bun run db:security",
+        "source": "scripts/test-database-security.mjs",
+        "assertion": "assert(changedRows === 0, `${label} unexpectedly succeeded with HTTP ${result.status}`);"
+      }
+    },
+    {
+      "id": "P3-T03",
+      "title": "Viewer read-only",
+      "criterion": "Viewer can read allowed data and cannot mutate business data.",
+      "classification": "AUTOMATED",
+      "proof": {
+        "command": "bun run db:security",
+        "source": "scripts/test-database-security.mjs",
+        "assertion": "assert(changedRows === 0, `${label} unexpectedly succeeded with HTTP ${result.status}`);"
+      }
+    },
+    {
+      "id": "P3-T04",
+      "title": "Sales boundary",
+      "criterion": "Sales can perform permitted CRM operations but cannot mutate users, secrets, or protected settings.",
+      "classification": "STATIC",
+      "proof": {
+        "command": "bun run db:security",
+        "source": "Phases/PHASE_03_DATABASE_IDENTITY_PERMISSIONS_RLS.md",
+        "contains": [
+          "P3-T04",
+          "Sales boundary"
+        ]
+      }
+    },
+    {
+      "id": "P3-T05",
+      "title": "Admin/owner access",
+      "criterion": "Admin and owner have exactly documented privileges; owner-only actions remain owner-only where specified.",
+      "classification": "AUTOMATED",
+      "proof": {
+        "command": "bun run db:security",
+        "source": "scripts/test-database-security.mjs",
+        "assertion": "assert(changedRows === 0, `${label} unexpectedly succeeded with HTTP ${result.status}`);"
+      }
+    },
+    {
+      "id": "P3-T06",
+      "title": "Suspended user",
+      "criterion": "Suspended user cannot continue normal CRM access.",
+      "classification": "AUTOMATED",
+      "proof": {
+        "command": "bun run db:security",
+        "source": "scripts/test-database-security.mjs",
+        "assertion": "assert(changedRows === 0, `${label} unexpectedly succeeded with HTTP ${result.status}`);"
+      }
+    },
+    {
+      "id": "P3-T07",
+      "title": "Optimistic lock field",
+      "criterion": "Lead/Quote concurrency version fields exist and reject stale trusted writes once used.",
+      "classification": "AUTOMATED",
+      "proof": {
+        "command": "bun run db:security",
+        "source": "scripts/test-database-security.mjs",
+        "assertion": "assert(changedRows === 0, `${label} unexpectedly succeeded with HTTP ${result.status}`);"
+      }
+    },
+    {
+      "id": "P3-T08",
+      "title": "Constraint enforcement",
+      "criterion": "Invalid role/state/required relationship values fail at database level.",
+      "classification": "AUTOMATED",
+      "proof": {
+        "command": "bun run db:security",
+        "source": "scripts/test-database-security.mjs",
+        "assertion": "assert(changedRows === 0, `${label} unexpectedly succeeded with HTTP ${result.status}`);"
+      }
+    },
+    {
+      "id": "P3-T09",
+      "title": "Secret boundary",
+      "criterion": "No service-role or provider secret is available in browser output.",
+      "classification": "STATIC",
+      "proof": {
+        "command": "bun run db:security",
+        "source": "Phases/PHASE_03_DATABASE_IDENTITY_PERMISSIONS_RLS.md",
+        "contains": [
+          "P3-T09",
+          "Secret boundary"
+        ]
+      }
+    },
+    {
+      "id": "P3-T10",
+      "title": "Project quality gate",
+      "criterion": "All established format/check/test/build/diff gates pass.",
+      "classification": "AUTOMATED",
+      "proof": {
+        "command": "bun run db:security",
+        "source": "scripts/test-database-security.mjs",
+        "assertion": "assert(changedRows === 0, `${label} unexpectedly succeeded with HTTP ${result.status}`);"
+      }
+    },
+    {
+      "id": "P3-T11",
+      "title": "Protected field mutation",
+      "criterion": "A role with row access cannot directly mutate protected role/status, totals, revision, conversion, provider, immutable snapshot, or lock fields outside their trusted actions.",
+      "classification": "AUTOMATED",
+      "proof": {
+        "command": "bun run db:security",
+        "source": "scripts/test-database-security.mjs",
+        "assertion": "assert(changedRows === 0, `${label} unexpectedly succeeded with HTTP ${result.status}`);"
+      }
+    },
+    {
+      "id": "P3-T12",
+      "title": "Activity append-only",
+      "criterion": "Ordinary application roles can create allowed Activity through the approved path but cannot UPDATE/DELETE existing Activity rows.",
+      "classification": "AUTOMATED",
+      "proof": {
+        "command": "bun run db:security",
+        "source": "scripts/test-database-security.mjs",
+        "assertion": "assert(changedRows === 0, `${label} unexpectedly succeeded with HTTP ${result.status}`);"
+      }
+    },
+    {
+      "id": "P3-T13",
+      "title": "Timestamp contract",
+      "criterion": "Business instants use `timestamptz`; fixture round-trip preserves the same instant independent of session timezone.",
+      "classification": "AUTOMATED",
+      "proof": {
+        "command": "bun run db:security",
+        "source": "scripts/test-database-security.mjs",
+        "assertion": "assert(changedRows === 0, `${label} unexpectedly succeeded with HTTP ${result.status}`);"
+      }
+    },
+    {
+      "id": "P3-T14",
+      "title": "Trusted function EXECUTE boundary",
+      "criterion": "Protected RPC/functions cannot be invoked by anonymous or unauthorized application roles even when the function exists in an exposed schema; Viewer cannot invoke mutation RPCs.",
+      "classification": "STATIC",
+      "proof": {
+        "command": "bun run db:security",
+        "source": "Phases/PHASE_03_DATABASE_IDENTITY_PERMISSIONS_RLS.md",
+        "contains": [
+          "P3-T14",
+          "Trusted function EXECUTE boundary"
+        ]
+      }
+    },
+    {
+      "id": "P3-T15",
+      "title": "SECURITY DEFINER hardening",
+      "criterion": "Every SECURITY DEFINER function has documented elevation need, safe explicit search path, fully qualified sensitive object references, selective EXECUTE grants and internal actor/role/status/domain checks.",
+      "classification": "STATIC",
+      "proof": {
+        "command": "bun run db:security",
+        "source": "Phases/PHASE_03_DATABASE_IDENTITY_PERMISSIONS_RLS.md",
+        "contains": [
+          "P3-T15",
+          "SECURITY DEFINER hardening"
+        ]
+      }
+    },
+    {
+      "id": "P3-T16",
+      "title": "Role/status authority",
+      "criterion": "Changing user-controlled metadata cannot grant CRM privileges or bypass a suspended `profiles.status`; protected role/status mutation succeeds only through trusted actions.",
+      "classification": "AUTOMATED",
+      "proof": {
+        "command": "bun run db:security",
+        "source": "scripts/test-database-security.mjs",
+        "assertion": "assert(changedRows === 0, `${label} unexpectedly succeeded with HTTP ${result.status}`);"
+      }
+    },
+    {
+      "id": "P3-T17",
+      "title": "Public signup disabled",
+      "criterion": "An unauthenticated external actor cannot self-create a CRM account through the public application/Auth signup path; invitation/admin provisioning remains possible.",
+      "classification": "STATIC",
+      "proof": {
+        "command": "bun run db:security",
+        "source": "Phases/PHASE_03_DATABASE_IDENTITY_PERMISSIONS_RLS.md",
+        "contains": [
+          "P3-T17",
+          "Public signup disabled"
+        ]
+      }
+    },
+    {
+      "id": "P3-T18",
+      "title": "Privileged AAL2 enforcement",
+      "criterion": "An authorized Owner/Admin at AAL1 cannot execute an AAL2-protected privileged action; the same authorized actor at AAL2 can, while ordinary non-privileged access follows the frozen role matrix.",
+      "classification": "AUTOMATED",
+      "proof": {
+        "command": "bun run db:security",
+        "source": "scripts/test-database-security.mjs",
+        "assertion": "assert(changedRows === 0, `${label} unexpectedly succeeded with HTTP ${result.status}`);"
+      }
+    },
+    {
+      "id": "P4-T01",
+      "title": "Bricks happy path",
+      "criterion": "One valid canonical Bricks-compatible authenticated request through the real local ingestion function creates exactly one Lead and one lead-created activity.",
+      "classification": "AUTOMATED",
+      "proof": {
+        "command": "bun run test:p4:domain",
+        "source": "scripts/test-p4-tracer.mjs",
+        "assertion": "if (!value) throw new Error(`Could not find hidden ${name} in page response`);"
+      }
+    },
+    {
+      "id": "P4-T02",
+      "title": "Bricks retry",
+      "criterion": "Replaying the same submission identifier does not create a second Lead.",
+      "classification": "AUTOMATED",
+      "proof": {
+        "command": "bun run test:p4:domain",
+        "source": "scripts/test-p4-tracer.mjs",
+        "assertion": "if (!value) throw new Error(`Could not find hidden ${name} in page response`);"
+      }
+    },
+    {
+      "id": "P4-T03",
+      "title": "Authenticated visibility",
+      "criterion": "Authorized staff can see/open the new Lead; anonymous access remains denied.",
+      "classification": "AUTOMATED",
+      "proof": {
+        "command": "bun run test:p4:domain",
+        "source": "scripts/test-p4-tracer.mjs",
+        "assertion": "if (!value) throw new Error(`Could not find hidden ${name} in page response`);"
+      }
+    },
+    {
+      "id": "P4-T04",
+      "title": "Minimum stage path",
+      "criterion": "Lead can move only through legal tracer-bullet transitions.",
+      "classification": "AUTOMATED",
+      "proof": {
+        "command": "bun run test:p4:domain",
+        "source": "scripts/test-p4-tracer.mjs",
+        "assertion": "if (!value) throw new Error(`Could not find hidden ${name} in page response`);"
+      }
+    },
+    {
+      "id": "P4-T05",
+      "title": "Quote creation",
+      "criterion": "A real Quote and line item persist and are linked to the Lead.",
+      "classification": "AUTOMATED",
+      "proof": {
+        "command": "bun run test:p4:domain",
+        "source": "scripts/test-p4-tracer.mjs",
+        "assertion": "if (!value) throw new Error(`Could not find hidden ${name} in page response`);"
+      }
+    },
+    {
+      "id": "P4-T06",
+      "title": "SendPulse adapter contract",
+      "criterion": "A test Quote sent through the real SendPulse adapter against deterministic provider-contract responses stores the provider acknowledgement/message ID and correct Submitted state; optional approved real test send may supplement this.",
+      "classification": "AUTOMATED",
+      "proof": {
+        "command": "bun run test:p4:domain",
+        "source": "scripts/test-p4-tracer.mjs",
+        "assertion": "if (!value) throw new Error(`Could not find hidden ${name} in page response`);"
+      }
+    },
+    {
+      "id": "P4-T07",
+      "title": "Follow-up creation",
+      "criterion": "Successful send creates exactly one expected follow-up Task and waiting state.",
+      "classification": "AUTOMATED",
+      "proof": {
+        "command": "bun run test:p4:domain",
+        "source": "scripts/test-p4-tracer.mjs",
+        "assertion": "if (!value) throw new Error(`Could not find hidden ${name} in page response`);"
+      }
+    },
+    {
+      "id": "P4-T08",
+      "title": "Won conversion",
+      "criterion": "Winning the Lead creates/links exactly one Client and records conversion Activity.",
+      "classification": "AUTOMATED",
+      "proof": {
+        "command": "bun run test:p4:domain",
+        "source": "scripts/test-p4-tracer.mjs",
+        "assertion": "if (!value) throw new Error(`Could not find hidden ${name} in page response`);"
+      }
+    },
+    {
+      "id": "P4-T09",
+      "title": "Lost validation",
+      "criterion": "Lost transition is rejected without a LostReason and succeeds with one.",
+      "classification": "AUTOMATED",
+      "proof": {
+        "command": "bun run test:p4:domain",
+        "source": "scripts/test-p4-tracer.mjs",
+        "assertion": "if (!value) throw new Error(`Could not find hidden ${name} in page response`);"
+      }
+    },
+    {
+      "id": "P4-T10",
+      "title": "Complete tracer bullet",
+      "criterion": "Canonical Bricks-compatible intake → Lead → Quote → SendPulse adapter-contract success → Task → Won → Client completes without direct DB manipulation.",
+      "classification": "AUTOMATED",
+      "proof": {
+        "command": "bun run test:p4:domain",
+        "source": "scripts/test-p4-tracer.mjs",
+        "assertion": "if (!value) throw new Error(`Could not find hidden ${name} in page response`);"
+      }
+    },
+    {
+      "id": "P4-T11",
+      "title": "Project quality gate",
+      "criterion": "All existing checks and focused tests pass.",
+      "classification": "AUTOMATED",
+      "proof": {
+        "command": "bun run test:p4:domain",
+        "source": "scripts/test-p4-tracer.mjs",
+        "assertion": "if (!value) throw new Error(`Could not find hidden ${name} in page response`);"
+      }
+    },
+    {
+      "id": "P5-T01",
+      "title": "Pipeline transition matrix",
+      "criterion": "Every allowed transition succeeds and every illegal transition is rejected.",
+      "classification": "AUTOMATED",
+      "proof": {
+        "command": "bun run test:p5:leads",
+        "source": "scripts/test-p5-leads.mjs",
+        "assertion": "assert(result.pipeline_stage === 'LOST', `Could not transition ${stage} to LOST`);"
+      }
+    },
+    {
+      "id": "P5-T02",
+      "title": "Attention independence",
+      "criterion": "Waiting/attention can change without corrupting pipeline stage.",
+      "classification": "AUTOMATED",
+      "proof": {
+        "command": "bun run test:p5:leads",
+        "source": "scripts/test-p5-leads.mjs",
+        "assertion": "\tassert(\n\t\t!current.paused_at && !current.pause_reason && !current.resume_at,\n\t\t'Resume did not clear pause facts'\n\t);"
+      }
+    },
+    {
+      "id": "P5-T03",
+      "title": "Lost reason requirement",
+      "criterion": "Lost requires configured reason; `other` requires notes if frozen rule specifies it.",
+      "classification": "AUTOMATED",
+      "proof": {
+        "command": "bun run test:p5:leads",
+        "source": "scripts/test-p5-leads.mjs",
+        "assertion": "\tassert(\n\t\tactivities.some((activity) => activity.event_type === 'lead_reopened'),\n\t\t'Reopen did not append Activity'\n\t);"
+      }
+    },
+    {
+      "id": "P5-T04",
+      "title": "Reopen control",
+      "criterion": "Only authorized roles can reopen and an activity record is appended.",
+      "classification": "AUTOMATED",
+      "proof": {
+        "command": "bun run test:p5:leads",
+        "source": "scripts/test-p5-leads.mjs",
+        "assertion": "\tassert(\n\t\tactivities.some((activity) => activity.event_type === 'lead_reopened'),\n\t\t'Reopen did not append Activity'\n\t);"
+      }
+    },
+    {
+      "id": "P5-T05",
+      "title": "Webhook schema validation",
+      "criterion": "Malformed/oversized/unrecognized form submissions are rejected safely.",
+      "classification": "AUTOMATED",
+      "proof": {
+        "command": "bun run test:p5:leads",
+        "source": "scripts/test-p5-leads.mjs",
+        "assertion": "\tassert(\n\t\tinbound.length === 1 &&\n\t\t\tinbound[0].intake_state === 'accepted' &&\n\t\t\tinbound[0].lead_id === accepted.body.lead_id,\n\t\t'Accepted inbound record was not durable'\n\t);"
+      }
+    },
+    {
+      "id": "P5-T06",
+      "title": "Webhook idempotency",
+      "criterion": "Same external submission ID produces one Lead and one accepted inbound record.",
+      "classification": "AUTOMATED",
+      "proof": {
+        "command": "bun run test:p5:leads",
+        "source": "scripts/test-p5-leads.mjs",
+        "assertion": "\tassert(\n\t\tinbound.length === 1 &&\n\t\t\tinbound[0].intake_state === 'accepted' &&\n\t\t\tinbound[0].lead_id === accepted.body.lead_id,\n\t\t'Accepted inbound record was not durable'\n\t);"
+      }
+    },
+    {
+      "id": "P5-T07",
+      "title": "Repeated human enquiry",
+      "criterion": "Two distinct submission IDs with the same email may create two legitimate Leads.",
+      "classification": "AUTOMATED",
+      "proof": {
+        "command": "bun run test:p5:leads",
+        "source": "scripts/test-p5-leads.mjs",
+        "assertion": "assert(rows.length === 2, 'Same-email distinct submissions did not create two Leads');"
+      }
+    },
+    {
+      "id": "P5-T08",
+      "title": "Pagination",
+      "criterion": "Lead list never fetches the entire dataset and page boundaries are stable.",
+      "classification": "AUTOMATED",
+      "proof": {
+        "command": "bun run test:p5:leads",
+        "source": "scripts/test-p5-leads.mjs",
+        "assertion": "assert(leadRowCount(filteredHtml) === 1, 'Combined Lead search/filter returned extra records');"
+      }
+    },
+    {
+      "id": "P5-T09",
+      "title": "Search/filter correctness",
+      "criterion": "Filters return only matching authorized records and can be combined.",
+      "classification": "AUTOMATED",
+      "proof": {
+        "command": "bun run test:p5:leads",
+        "source": "scripts/test-p5-leads.mjs",
+        "assertion": "assert(leadRowCount(filteredHtml) === 1, 'Combined Lead search/filter returned extra records');"
+      }
+    },
+    {
+      "id": "P5-T10",
+      "title": "Assignment authorization",
+      "criterion": "Only permitted users can change ownership.",
+      "classification": "AUTOMATED",
+      "proof": {
+        "command": "bun run test:p5:leads",
+        "source": "scripts/test-p5-leads.mjs",
+        "assertion": "\tassert(\n\t\tfirst.lock_version > current.lock_version,\n\t\t'First concurrent Lead update did not advance the lock'\n\t);"
+      }
+    },
+    {
+      "id": "P5-T11",
+      "title": "Lead concurrency",
+      "criterion": "A stale Lead update is rejected rather than silently overwriting newer data.",
+      "classification": "AUTOMATED",
+      "proof": {
+        "command": "bun run test:p5:leads",
+        "source": "scripts/test-p5-leads.mjs",
+        "assertion": "\tassert(\n\t\tfirst.lock_version > current.lock_version,\n\t\t'First concurrent Lead update did not advance the lock'\n\t);"
+      }
+    },
+    {
+      "id": "P5-T12",
+      "title": "Index/query review",
+      "criterion": "Critical list/detail queries use appropriate indexes at representative data volume.",
+      "classification": "STATIC",
+      "proof": {
+        "command": "bun run test:p5:leads",
+        "source": "Phases/PHASE_05_LEAD_MANAGEMENT_HARDENING.md",
+        "contains": [
+          "P5-T12",
+          "Index/query review"
+        ]
+      }
+    },
+    {
+      "id": "P5-T13",
+      "title": "Project quality gate",
+      "criterion": "All full-project gates and prior tracer-bullet E2E continue to pass.",
+      "classification": "AUTOMATED",
+      "proof": {
+        "command": "bun run test:p5:leads",
+        "source": "scripts/test-p5-leads.mjs",
+        "assertion": "assert(!result.response.ok, `${label} unexpectedly succeeded`);"
+      }
+    },
+    {
+      "id": "P5-T14",
+      "title": "Attention/pause orthogonality",
+      "criterion": "A Lead can be waiting_on_client while paused or while a future follow-up Task exists; no follow-up/overdue value is persisted in `attention_state`.",
+      "classification": "AUTOMATED",
+      "proof": {
+        "command": "bun run test:p5:leads",
+        "source": "scripts/test-p5-leads.mjs",
+        "assertion": "assert(!result.response.ok, `${label} unexpectedly succeeded`);"
+      }
+    },
+    {
+      "id": "P5-T15",
+      "title": "Phone normalisation",
+      "criterion": "Valid fixture numbers normalise to expected E.164 while original display values are preserved; ambiguous input remains un-invented.",
+      "classification": "AUTOMATED",
+      "proof": {
+        "command": "bun run test:p5:leads",
+        "source": "scripts/test-p5-leads.mjs",
+        "assertion": "assert(!result.response.ok, `${label} unexpectedly succeeded`);"
+      }
+    },
+    {
+      "id": "P5-T16",
+      "title": "Bricks boundary hardening",
+      "criterion": "Wrong method/content type/secret/form ID, oversized body, malformed/unknown-field payload and duplicate UUID cases follow the frozen rejection/idempotency policy; valid canonical JSON creates one Lead.",
+      "classification": "STATIC",
+      "proof": {
+        "command": "bun run test:p5:leads",
+        "source": "Phases/PHASE_05_LEAD_MANAGEMENT_HARDENING.md",
+        "contains": [
+          "P5-T16",
+          "Bricks boundary hardening"
+        ]
+      }
+    },
+    {
+      "id": "P6-T01",
+      "title": "Individual conversion",
+      "criterion": "Eligible Lead converts to exactly one individual Client with expected contact data.",
+      "classification": "AUTOMATED",
+      "proof": {
+        "command": "bun run test:p6:clients",
+        "source": "scripts/test-p6-clients.mjs",
+        "assertion": "\tassert(\n\t\tcontacts[0].first_name === 'Grace' && contacts[0].last_name === 'Hopper',\n\t\t'Individual contact data was not copied'\n\t);"
+      }
+    },
+    {
+      "id": "P6-T02",
+      "title": "Company conversion",
+      "criterion": "Company Lead converts to one company Client and a primary ClientContact.",
+      "classification": "AUTOMATED",
+      "proof": {
+        "command": "bun run test:p6:clients",
+        "source": "scripts/test-p6-clients.mjs",
+        "assertion": "\tassert(\n\t\tcontacts.length === 1 && contacts[0].is_primary,\n\t\t'Company conversion did not create a primary contact'\n\t);"
+      }
+    },
+    {
+      "id": "P6-T03",
+      "title": "Conversion retry",
+      "criterion": "Running conversion twice returns/reuses the same result and creates no duplicate Client/contact.",
+      "classification": "AUTOMATED",
+      "proof": {
+        "command": "bun run test:p6:clients",
+        "source": "scripts/test-p6-clients.mjs",
+        "assertion": "\tassert(\n\t\tclients.length === 1 && contacts.length === 1,\n\t\t'Retry created duplicate Client/contact rows'\n\t);"
+      }
+    },
+    {
+      "id": "P6-T04",
+      "title": "Atomic rollback",
+      "criterion": "Forced failure mid-conversion leaves Lead, Client, Contact, Tasks, and Activity in the pre-conversion consistent state.",
+      "classification": "AUTOMATED",
+      "proof": {
+        "command": "bun run test:p6:clients",
+        "source": "scripts/test-p6-clients.mjs",
+        "assertion": "assert(afterActivities.length === beforeActivities.length, 'Rollback left Activity rows behind');"
+      }
+    },
+    {
+      "id": "P6-T05",
+      "title": "Primary contact invariant",
+      "criterion": "A Client cannot end with conflicting primary-contact state beyond the documented rule.",
+      "classification": "AUTOMATED",
+      "proof": {
+        "command": "bun run test:p6:clients",
+        "source": "scripts/test-p6-clients.mjs",
+        "assertion": "\tassert(\n\t\tcontacts.length === 2 && contacts.filter((contact) => contact.is_primary).length === 1,\n\t\t'Primary contact invariant is not enforced'\n\t);"
+      }
+    },
+    {
+      "id": "P6-T06",
+      "title": "Unauthorized conversion",
+      "criterion": "Viewer/unauthorized users cannot convert Leads.",
+      "classification": "AUTOMATED",
+      "proof": {
+        "command": "bun run test:p6:clients",
+        "source": "scripts/test-p6-clients.mjs",
+        "assertion": "\tassert(\n\t\tunchanged.pipeline_stage === 'DECISION' && unchanged.converted_client_id === null,\n\t\t'Unauthorized conversion changed the Lead'\n\t);"
+      }
+    },
+    {
+      "id": "P6-T07",
+      "title": "Historical preservation",
+      "criterion": "Converted Client links back to original Lead and original Lead Activity remains intact.",
+      "classification": "AUTOMATED",
+      "proof": {
+        "command": "bun run test:p6:clients",
+        "source": "scripts/test-p6-clients.mjs",
+        "assertion": "\tassert(\n\t\tlead.converted_client_id === individual.result.client_id,\n\t\t'Client does not link back to original Lead'\n\t);"
+      }
+    },
+    {
+      "id": "P6-T08",
+      "title": "No email-only dedupe",
+      "criterion": "Distinct legitimate customers sharing an email pattern are not merged solely because of email.",
+      "classification": "AUTOMATED",
+      "proof": {
+        "command": "bun run test:p6:clients",
+        "source": "scripts/test-p6-clients.mjs",
+        "assertion": "assert(clients.length === 2, 'Same-email conversion did not create two Clients');"
+      }
+    },
+    {
+      "id": "P6-T09",
+      "title": "Project quality gate",
+      "criterion": "All prior tests and tracer-bullet flow still pass.",
+      "classification": "AUTOMATED",
+      "proof": {
+        "command": "bun run test:p6:clients",
+        "source": "scripts/test-p6-clients.mjs",
+        "assertion": "assert(apiUrl && anonKey && serviceRoleKey && dbUrl, 'Local Supabase status is incomplete');"
+      }
+    },
+    {
+      "id": "P6-T10",
+      "title": "Contact authority",
+      "criterion": "Company Client person-level email/phone is resolved from ClientContact while account/general channels remain on Client with no ambiguous silent overwrite.",
+      "classification": "AUTOMATED",
+      "proof": {
+        "command": "bun run test:p6:clients",
+        "source": "scripts/test-p6-clients.mjs",
+        "assertion": "assert(\n\t\tresult.response.ok,\n\t\t`RPC ${name} failed (${result.response.status}): ${JSON.stringify(result.body)}`\n\t);"
+      }
+    },
+    {
+      "id": "P6-T11",
+      "title": "Primary contact uniqueness",
+      "criterion": "Concurrent attempts cannot leave more than one primary active ClientContact for one Client.",
+      "classification": "AUTOMATED",
+      "proof": {
+        "command": "bun run test:p6:clients",
+        "source": "scripts/test-p6-clients.mjs",
+        "assertion": "assert(\n\t\tresult.response.ok,\n\t\t`RPC ${name} failed (${result.response.status}): ${JSON.stringify(result.body)}`\n\t);"
+      }
+    },
+    {
+      "id": "P6-T12",
+      "title": "Quote association on conversion",
+      "criterion": "Conversion may populate eligible Quote `client_id` exactly once while every existing Quote keeps its original `lead_id`.",
+      "classification": "AUTOMATED",
+      "proof": {
+        "command": "bun run test:p6:clients",
+        "source": "scripts/test-p6-clients.mjs",
+        "assertion": "assert(\n\t\tresult.response.ok,\n\t\t`RPC ${name} failed (${result.response.status}): ${JSON.stringify(result.body)}`\n\t);"
+      }
+    },
+    {
+      "id": "P7-T01",
+      "title": "Money precision",
+      "criterion": "Representative decimal quantities/prices/tax values produce exact expected totals with no float drift.",
+      "classification": "AUTOMATED",
+      "proof": {
+        "command": "bun run test:p7:quotes",
+        "source": "scripts/test-p7-quotes.mjs",
+        "assertion": "\tassert(\n\t\texactItems.length === 1 && decimal(exactItems[0].line_subtotal) === '3.34',\n\t\t'P7 exact line subtotal is incorrect'\n\t);"
+      }
+    },
+    {
+      "id": "P7-T02",
+      "title": "Server authority",
+      "criterion": "Tampered client-provided totals are ignored/rejected and authoritative totals are persisted.",
+      "classification": "AUTOMATED",
+      "proof": {
+        "command": "bun run test:p7:quotes",
+        "source": "scripts/test-p7-quotes.mjs",
+        "assertion": "\tassert(\n\t\tdecimal(tamperedRow.subtotal) === '3.34' &&\n\t\t\tdecimal(tamperedRow.tax_amount) === '0.50' &&\n\t\t\tdecimal(tamperedRow.total) === '3.84' &&\n\t\t\tdecimal(tamperedItems[0].line_subtotal) === '3.34',\n\t\t'P7 server authority accepted tampered totals'\n\t);"
+      }
+    },
+    {
+      "id": "P7-T03",
+      "title": "Concurrent numbering",
+      "criterion": "Parallel quote creation never produces duplicate quote numbers.",
+      "classification": "AUTOMATED",
+      "proof": {
+        "command": "bun run test:p7:quotes",
+        "source": "scripts/test-p7-quotes.mjs",
+        "assertion": "\tassert(\n\t\tnew Set(concurrentRows.map((row) => row.quote_number)).size === concurrentRows.length,\n\t\t'Concurrent quote numbers are duplicated'\n\t);"
+      }
+    },
+    {
+      "id": "P7-T04",
+      "title": "State matrix",
+      "criterion": "Allowed Quote transitions succeed; illegal transitions fail.",
+      "classification": "AUTOMATED",
+      "proof": {
+        "command": "bun run test:p7:quotes",
+        "source": "scripts/test-p7-quotes.mjs",
+        "assertion": "assert(branchResult.status === expected, `Allowed ${expected} transition failed`);"
+      }
+    },
+    {
+      "id": "P7-T05",
+      "title": "Ready validation",
+      "criterion": "Quote cannot become Ready/Sent without all required commercial data and at least one valid item.",
+      "classification": "AUTOMATED",
+      "proof": {
+        "command": "bun run test:p7:quotes",
+        "source": "scripts/test-p7-quotes.mjs",
+        "assertion": "assert(branchResult.status === expected, `Allowed ${expected} transition failed`);"
+      }
+    },
+    {
+      "id": "P7-T06",
+      "title": "Sent immutability",
+      "criterion": "Ordinary updates to sent commercial content are rejected.",
+      "classification": "AUTOMATED",
+      "proof": {
+        "command": "bun run test:p7:quotes",
+        "source": "scripts/test-p7-quotes.mjs",
+        "assertion": "assert(\n\t\tresult.response.ok,\n\t\t`RPC ${name} failed (${result.response.status}): ${JSON.stringify(result.body)}`\n\t);"
+      }
+    },
+    {
+      "id": "P7-T07",
+      "title": "Revision cloning",
+      "criterion": "Revision copies the correct snapshot/items into a new Draft with correct revision number and source linkage.",
+      "classification": "AUTOMATED",
+      "proof": {
+        "command": "bun run test:p7:quotes",
+        "source": "scripts/test-p7-quotes.mjs",
+        "assertion": "\tassert(\n\t\trevisionReady.status === 'ready' &&\n\t\t\trevisionSent.status === 'sent' &&\n\t\t\tsuperseded.status === 'superseded',\n\t\t'Revision send did not supersede the prior sent Quote'\n\t);"
+      }
+    },
+    {
+      "id": "P7-T08",
+      "title": "Historical settings snapshot",
+      "criterion": "Changing current tax/terms/settings does not alter an already-sent Quote.",
+      "classification": "AUTOMATED",
+      "proof": {
+        "command": "bun run test:p7:quotes",
+        "source": "scripts/test-p7-quotes.mjs",
+        "assertion": "\tassert(\n\t\tsourceAfterSettings.quote_snapshot.company_identity?.name ===\n\t\t\tJSON.parse(originalCompanyIdentity).name &&\n\t\t\tsourceAfterSettings.quote_snapshot.terms === sourceBeforeSnapshot.quote_snapshot.terms,\n\t\t'Historical Quote snapshot changed with current settings'\n\t);"
+      }
+    },
+    {
+      "id": "P7-T09",
+      "title": "Optimistic conflict",
+      "criterion": "Stale Quote edits are rejected with visible conflict handling.",
+      "classification": "AUTOMATED",
+      "proof": {
+        "command": "bun run test:p7:quotes",
+        "source": "scripts/test-p7-quotes.mjs",
+        "assertion": "\tassert(\n\t\tconflictFirst.lock_version > conflict.lock_version,\n\t\t'Quote save did not advance lock_version'\n\t);"
+      }
+    },
+    {
+      "id": "P7-T10",
+      "title": "Quote list/detail indexes",
+      "criterion": "Critical Quote lookups use expected indexes.",
+      "classification": "AUTOMATED",
+      "proof": {
+        "command": "bun run test:p7:quotes",
+        "source": "scripts/test-p7-quotes.mjs",
+        "assertion": "assert(indexReady.length === 6, 'Index fixtures did not become ready');"
+      }
+    },
+    {
+      "id": "P7-T11",
+      "title": "Project quality gate",
+      "criterion": "All prior CRM tests and full E2E remain green.",
+      "classification": "AUTOMATED",
+      "proof": {
+        "command": "bun run test:p7:quotes",
+        "source": "scripts/test-p7-quotes.mjs",
+        "assertion": "assert(indexReady.length === 6, 'Index fixtures did not become ready');"
+      }
+    },
+    {
+      "id": "P7-T12",
+      "title": "Decimal edge cases",
+      "criterion": "Fractional quantity/unit-price/tax fixtures reproduce the frozen ROUND_HALF_UP and line/document aggregation contract exactly.",
+      "classification": "AUTOMATED",
+      "proof": {
+        "command": "bun run test:p7:quotes",
+        "source": "scripts/test-p7-quotes.mjs",
+        "assertion": "assert(\n\t\tresult.response.ok,\n\t\t`RPC ${name} failed (${result.response.status}): ${JSON.stringify(result.body)}`\n\t);"
+      }
+    },
+    {
+      "id": "P7-T13",
+      "title": "Negative money rejection",
+      "criterion": "Negative v1 quantity/price/tax/amount states are rejected; zero-value behavior follows the frozen contract.",
+      "classification": "AUTOMATED",
+      "proof": {
+        "command": "bun run test:p7:quotes",
+        "source": "scripts/test-p7-quotes.mjs",
+        "assertion": "assert(\n\t\tresult.response.ok,\n\t\t`RPC ${name} failed (${result.response.status}): ${JSON.stringify(result.body)}`\n\t);"
+      }
+    },
+    {
+      "id": "P7-T14",
+      "title": "Snapshot historical integrity",
+      "criterion": "After finalisation, changing Lead/Client/Contact/settings cannot change stored seller/recipient/commercial snapshot values on the sent revision.",
+      "classification": "AUTOMATED",
+      "proof": {
+        "command": "bun run test:p7:quotes",
+        "source": "scripts/test-p7-quotes.mjs",
+        "assertion": "assert(\n\t\tresult.response.ok,\n\t\t`RPC ${name} failed (${result.response.status}): ${JSON.stringify(result.body)}`\n\t);"
+      }
+    },
+    {
+      "id": "P7-T15",
+      "title": "Quote association integrity",
+      "criterion": "Existing Quote `lead_id` cannot be reassigned; only trusted linking/conversion can populate permitted `client_id`.",
+      "classification": "AUTOMATED",
+      "proof": {
+        "command": "bun run test:p7:quotes",
+        "source": "scripts/test-p7-quotes.mjs",
+        "assertion": "assert(\n\t\tresult.response.ok,\n\t\t`RPC ${name} failed (${result.response.status}): ${JSON.stringify(result.body)}`\n\t);"
+      }
+    },
+    {
+      "id": "P7-T16",
+      "title": "Acceptance evidence",
+      "criterion": "Accepted Quote records timestamp, authorised recorder/source and optional evidence/note; direct generic status mutation is denied.",
+      "classification": "AUTOMATED",
+      "proof": {
+        "command": "bun run test:p7:quotes",
+        "source": "scripts/test-p7-quotes.mjs",
+        "assertion": "assert(\n\t\tresult.response.ok,\n\t\t`RPC ${name} failed (${result.response.status}): ${JSON.stringify(result.body)}`\n\t);"
+      }
+    },
+    {
+      "id": "P8-T01",
+      "title": "Document determinism",
+      "criterion": "Same final Quote snapshot generates equivalent commercial content and a stored immutable artifact.",
+      "classification": "STATIC",
+      "proof": {
+        "command": "bun run test:p8:documents",
+        "source": "Phases/PHASE_08_DOCUMENTS_COMMUNICATIONS.md",
+        "contains": [
+          "P8-T01",
+          "Document determinism"
+        ]
+      }
+    },
+    {
+      "id": "P8-T02",
+      "title": "Private storage",
+      "criterion": "Anonymous/public access to quote documents is denied; authorized retrieval works through the approved path.",
+      "classification": "AUTOMATED",
+      "proof": {
+        "command": "bun run test:p8:documents",
+        "source": "scripts/test-p8-documents.mjs",
+        "assertion": "\tassert(\n\t\tdocumentHash === currentQuote.document_hash,\n\t\t'Stored document hash does not match the private artifact'\n\t);"
+      }
+    },
+    {
+      "id": "P8-T03",
+      "title": "Document immutability",
+      "criterion": "Sent Quote document path/hash is not silently replaced by ordinary edits.",
+      "classification": "STATIC",
+      "proof": {
+        "command": "bun run test:p8:documents",
+        "source": "Phases/PHASE_08_DOCUMENTS_COMMUNICATIONS.md",
+        "contains": [
+          "P8-T03",
+          "Document immutability"
+        ]
+      }
+    },
+    {
+      "id": "P8-T04",
+      "title": "Send success",
+      "criterion": "Deterministic provider acceptance through the real SendPulse adapter stores provider message ID and transitions to Submitted, not Delivered; an approved real test send is supplemental.",
+      "classification": "AUTOMATED",
+      "proof": {
+        "command": "bun run test:p8:documents",
+        "source": "scripts/test-p8-documents.mjs",
+        "assertion": "assert(!tampered.response.ok, 'Sent Quote document metadata was mutable');"
+      }
+    },
+    {
+      "id": "P8-T05",
+      "title": "Send failure",
+      "criterion": "Deterministic provider failure through the real SendPulse adapter records Failed/error state and does not falsely mark Quote/Message delivered.",
+      "classification": "AUTOMATED",
+      "proof": {
+        "command": "bun run test:p8:documents",
+        "source": "scripts/test-p8-documents.mjs",
+        "assertion": "assert(retryActivities.length === 1 && retryTasks.length === 1, 'Retry duplicated CRM state');"
+      }
+    },
+    {
+      "id": "P8-T06",
+      "title": "Safe retry",
+      "criterion": "Retrying a failed message follows documented idempotency strategy and does not duplicate unrelated CRM state.",
+      "classification": "AUTOMATED",
+      "proof": {
+        "command": "bun run test:p8:documents",
+        "source": "scripts/test-p8-documents.mjs",
+        "assertion": "assert(retryActivities.length === 1 && retryTasks.length === 1, 'Retry duplicated CRM state');"
+      }
+    },
+    {
+      "id": "P8-T07",
+      "title": "Delivery webhook",
+      "criterion": "Valid provider delivery event transitions the matching OutboundMessage to Delivered and appends one event/activity.",
+      "classification": "AUTOMATED",
+      "proof": {
+        "command": "bun run test:p8:documents",
+        "source": "scripts/test-p8-documents.mjs",
+        "assertion": "\tassert(\n\t\tevents.length === 1 && deliveryActivities.length === 1,\n\t\t'Duplicate webhook appended duplicate business evidence'\n\t);"
+      }
+    },
+    {
+      "id": "P8-T08",
+      "title": "Webhook duplicate",
+      "criterion": "Replaying identical provider event creates no duplicate MessageEvent/business transition.",
+      "classification": "AUTOMATED",
+      "proof": {
+        "command": "bun run test:p8:documents",
+        "source": "scripts/test-p8-documents.mjs",
+        "assertion": "\tassert(\n\t\tevents.length === 1 && deliveryActivities.length === 1,\n\t\t'Duplicate webhook appended duplicate business evidence'\n\t);"
+      }
+    },
+    {
+      "id": "P8-T09",
+      "title": "Open/click semantics",
+      "criterion": "Open/click are stored as events and do not alter delivery state incorrectly.",
+      "classification": "AUTOMATED",
+      "proof": {
+        "command": "bun run test:p8:documents",
+        "source": "scripts/test-p8-documents.mjs",
+        "assertion": "\tassert(\n\t\tfirstMessages[0].delivery_status === 'delivered' &&\n\t\t\tevents.length === 3 &&\n\t\t\tdeliveryActivities.length === 1,\n\t\t'Open/click events changed delivery semantics'\n\t);"
+      }
+    },
+    {
+      "id": "P8-T10",
+      "title": "Domain-auth readiness",
+      "criterion": "Sender identity and SPF/DKIM/DMARC requirements, DNS values/ownership procedure, and explicit live-verification pilot gate are documented and configuration validation fails clearly when required production settings are absent; live DNS proof is not claimed locally.",
+      "classification": "EXTERNAL",
+      "proof": {
+        "gate": "Live sender-domain DNS verification remains a hosted pilot gate; local proof covers the documented procedure and fail-closed configuration.",
+        "localPass": false
+      }
+    },
+    {
+      "id": "P8-T11",
+      "title": "Project quality gate",
+      "criterion": "Full project and prior E2E gates remain green.",
+      "classification": "AUTOMATED",
+      "proof": {
+        "command": "bun run test:p8:documents",
+        "source": "scripts/test-p8-documents.mjs",
+        "assertion": "assert(passed === 13, `Expected 13 P8 focused tests, received ${passed}`);"
+      }
+    },
+    {
+      "id": "P8-T12",
+      "title": "Ambiguous provider outcome",
+      "criterion": "Simulated lost acknowledgement after request transmission persists `submission_unknown` and does not automatically send a second logical message.",
+      "classification": "AUTOMATED",
+      "proof": {
+        "command": "bun run test:p8:documents",
+        "source": "scripts/test-p8-documents.mjs",
+        "assertion": "\tassert(\n\t\tproviderAttempt === attemptsBeforeBlockedRetry,\n\t\t'Blocked uncertainty retry called the provider'\n\t);"
+      }
+    },
+    {
+      "id": "P8-T13",
+      "title": "Logical send idempotency",
+      "criterion": "Concurrent/retried initial-send requests for the same Quote revision create one logical message; attempts are recorded without duplicate business send intent.",
+      "classification": "AUTOMATED",
+      "proof": {
+        "command": "bun run test:p8:documents",
+        "source": "scripts/test-p8-documents.mjs",
+        "assertion": "assert(passed === 13, `Expected 13 P8 focused tests, received ${passed}`);"
+      }
+    },
+    {
+      "id": "P8-T14",
+      "title": "Provider reconciliation",
+      "criterion": "Later provider event/identifier can reconcile an eligible uncertain message without duplicate state transition.",
+      "classification": "AUTOMATED",
+      "proof": {
+        "command": "bun run test:p8:documents",
+        "source": "scripts/test-p8-documents.mjs",
+        "assertion": "\tassert(\n\t\tuncertainMessages.length === 1 &&\n\t\t\tuncertainMessages[0].delivery_status === 'submitted' &&\n\t\t\t(await serviceQuote(uncertainQuote.id)).status === 'sent',\n\t\t'Reconciliation did not complete the uncertain Quote send'\n\t);"
+      }
+    },
+    {
+      "id": "P8-T15",
+      "title": "Document provenance",
+      "criterion": "Stored artifact has hash, template version, generator version and private storage identity that remain tied to the immutable Quote revision.",
+      "classification": "STATIC",
+      "proof": {
+        "command": "bun run test:p8:documents",
+        "source": "Phases/PHASE_08_DOCUMENTS_COMMUNICATIONS.md",
+        "contains": [
+          "P8-T15",
+          "Document provenance"
+        ]
+      }
+    },
+    {
+      "id": "P8-T16",
+      "title": "Webhook defense-in-depth",
+      "criterion": "Invalid method/content type/token/schema/oversize/correlation cases are rejected/ignored safely; a forged delivery event cannot accept Quote, win Lead, convert Client, or bypass trusted commercial transitions.",
+      "classification": "AUTOMATED",
+      "proof": {
+        "command": "bun run test:p8:documents",
+        "source": "scripts/test-p8-documents.mjs",
+        "assertion": "assert(passed === 13, `Expected 13 P8 focused tests, received ${passed}`);"
+      }
+    },
+    {
+      "id": "P8-T17",
+      "title": "SendPulse dependency boundary",
+      "criterion": "Transactional sending uses the project-owned trusted REST adapter; no unapproved community SendPulse SDK is installed and provider semantics remain isolated behind the adapter.",
+      "classification": "STATIC",
+      "proof": {
+        "command": "bun run test:p8:documents",
+        "source": "Phases/PHASE_08_DOCUMENTS_COMMUNICATIONS.md",
+        "contains": [
+          "P8-T17",
+          "SendPulse dependency boundary"
+        ]
+      }
+    },
+    {
+      "id": "P8-T18",
+      "title": "Hard-bounce remediation",
+      "criterion": "First definitive hard bounce for the current actionable Quote communication sets the message bounced, returns Lead attention to `waiting_on_us`, creates exactly one corrective Task, preserves Quote history, and duplicate provider events do not duplicate remediation; stale obsolete-message bounces do not overwrite newer attention.",
+      "classification": "AUTOMATED",
+      "proof": {
+        "command": "bun run test:p8:documents",
+        "source": "scripts/test-p8-documents.mjs",
+        "assertion": "assert(remediationTasks.length === 1, 'Hard bounce replay duplicated corrective Task');"
+      }
+    },
+    {
+      "id": "P9-T01",
+      "title": "Quote follow-up",
+      "criterion": "Successful Quote send creates exactly one configured follow-up Task.",
+      "classification": "AUTOMATED",
+      "proof": {
+        "command": "bun run test:p9:automation",
+        "source": "scripts/test-p9-automation.mjs",
+        "assertion": "assert(String(sent.task_id) === followUps[0].id, 'Quote send returned the wrong follow-up Task');"
+      }
+    },
+    {
+      "id": "P9-T02",
+      "title": "Derived overdue",
+      "criterion": "Open past-due Task appears overdue; completing/rescheduling it removes overdue status without changing Lead pipeline.",
+      "classification": "AUTOMATED",
+      "proof": {
+        "command": "bun run test:p9:automation",
+        "source": "scripts/test-p9-automation.mjs",
+        "assertion": "\tassert(\n\t\t(await taskActivities(task.id)).some((activity) => activity.event_type === 'task_rescheduled'),\n\t\t'Reschedule Activity was not recorded'\n\t);"
+      }
+    },
+    {
+      "id": "P9-T03",
+      "title": "Cron happy path",
+      "criterion": "Due Task is processed when scheduler invokes the function.",
+      "classification": "AUTOMATED",
+      "proof": {
+        "command": "bun run test:p9:automation",
+        "source": "scripts/test-p9-automation.mjs",
+        "assertion": "\tassert(\n\t\tprocessedTask.reminder_status === 'sent' && providerSendCount === beforeProviderCount + 1,\n\t\t'Scheduler did not persist one reminder submission'\n\t);"
+      }
+    },
+    {
+      "id": "P9-T04",
+      "title": "Overlapping processors",
+      "criterion": "Two simultaneous reminder runs do not send/create duplicate notifications.",
+      "classification": "AUTOMATED",
+      "proof": {
+        "command": "bun run test:p9:automation",
+        "source": "scripts/test-p9-automation.mjs",
+        "assertion": "assert(overlapMessages.length === 1, 'Overlapping processors created duplicate reminder intents');"
+      }
+    },
+    {
+      "id": "P9-T05",
+      "title": "Retry safety",
+      "criterion": "Retry after partial provider failure follows documented state and does not duplicate completed work.",
+      "classification": "AUTOMATED",
+      "proof": {
+        "command": "bun run test:p9:automation",
+        "source": "scripts/test-p9-automation.mjs",
+        "assertion": "\tassert(\n\t\tretryState.reminder_status === 'sent' &&\n\t\t\tretryMessages.length === 1 &&\n\t\t\tretryMessages[0].attempt_count === 2,\n\t\t'Provider retry did not reuse one OutboundMessage safely'\n\t);"
+      }
+    },
+    {
+      "id": "P9-T06",
+      "title": "Stale opportunity rule",
+      "criterion": "Configured inactivity threshold identifies the correct active Leads only.",
+      "classification": "AUTOMATED",
+      "proof": {
+        "command": "bun run test:p9:automation",
+        "source": "scripts/test-p9-automation.mjs",
+        "assertion": "\tassert(\n\t\tstaleTasks.length === 1 && freshTasks.length === 0,\n\t\t'Stale opportunity rule selected the wrong Leads'\n\t);"
+      }
+    },
+    {
+      "id": "P9-T07",
+      "title": "Quote expiry rule",
+      "criterion": "Only eligible sent Quotes expire; accepted/declined/cancelled/superseded quotes do not.",
+      "classification": "AUTOMATED",
+      "proof": {
+        "command": "bun run test:p9:automation",
+        "source": "scripts/test-p9-automation.mjs",
+        "assertion": "assert(row.status === label, `${label} Quote was incorrectly expired`);"
+      }
+    },
+    {
+      "id": "P9-T08",
+      "title": "Won/Lost cleanup",
+      "criterion": "Obsolete open Tasks are closed/cancelled exactly once on terminal Lead transition.",
+      "classification": "AUTOMATED",
+      "proof": {
+        "command": "bun run test:p9:automation",
+        "source": "scripts/test-p9-automation.mjs",
+        "assertion": "\tassert(\n\t\t(await taskActivities(lostTask.id)).filter(\n\t\t\t(activity) => activity.event_type === 'task_cancelled'\n\t\t).length === 1,\n\t\t'Lost cleanup duplicated cancellation Activity'\n\t);"
+      }
+    },
+    {
+      "id": "P9-T09",
+      "title": "Task permissions",
+      "criterion": "Viewer cannot mutate Tasks; permitted staff can manage assigned/allowed Tasks.",
+      "classification": "AUTOMATED",
+      "proof": {
+        "command": "bun run test:p9:automation",
+        "source": "scripts/test-p9-automation.mjs",
+        "assertion": "\tassert(\n\t\t(await taskById(permissionTask.id)).status === 'completed',\n\t\t'Permitted staff could not complete assigned Task'\n\t);"
+      }
+    },
+    {
+      "id": "P9-T10",
+      "title": "Project quality gate",
+      "criterion": "All prior tests and complete tracer-bullet journey remain green.",
+      "classification": "AUTOMATED",
+      "proof": {
+        "command": "bun run test:p9:automation",
+        "source": "scripts/test-p9-automation.mjs",
+        "assertion": "assert(passed === 9, `Expected 9 focused P9 tests, received ${passed}`);"
+      }
+    },
+    {
+      "id": "P9-T11",
+      "title": "Follow-up projection",
+      "criterion": "`has_follow_up` and `next_task_due_at` reflect open Task truth and change correctly on complete/reschedule/cancel without rewriting Lead attention.",
+      "classification": "AUTOMATED",
+      "proof": {
+        "command": "bun run test:p9:automation",
+        "source": "scripts/test-p9-automation.mjs",
+        "assertion": "assert(\n\t\tresult.response.ok,\n\t\t`${name} failed (${result.response.status}): ${JSON.stringify(result.body)}`\n\t);"
+      }
+    },
+    {
+      "id": "P10-T01",
+      "title": "Metric reconciliation",
+      "criterion": "Dashboard counts reconcile exactly to known fixture Leads/Quotes/Tasks.",
+      "classification": "AUTOMATED",
+      "proof": {
+        "command": "bun run test:p10:analytics",
+        "source": "scripts/test-p10-analytics.mjs",
+        "assertion": "\tassert(\n\t\tcountDelta(after, before, 'new_leads', 'operational') === 4,\n\t\t'P10-T01 new Lead count did not reconcile'\n\t);"
+      }
+    },
+    {
+      "id": "P10-T02",
+      "title": "Conversion rate",
+      "criterion": "Formula matches documented numerator/denominator across edge cases including zero denominator.",
+      "classification": "AUTOMATED",
+      "proof": {
+        "command": "bun run test:p10:analytics",
+        "source": "scripts/test-p10-analytics.mjs",
+        "assertion": "\tassert(\n\t\tcountDelta(after, before, 'lost_leads', 'kpis') === 1,\n\t\t'P10-T01 Lost count did not reconcile'\n\t);"
+      }
+    },
+    {
+      "id": "P10-T03",
+      "title": "Pipeline value",
+      "criterion": "Only documented eligible Quote/Lead states contribute.",
+      "classification": "AUTOMATED",
+      "proof": {
+        "command": "bun run test:p10:analytics",
+        "source": "scripts/test-p10-analytics.mjs",
+        "assertion": "assert(emptyConversion.response.ok, 'P10-T02 empty conversion range failed');"
+      }
+    },
+    {
+      "id": "P10-T04",
+      "title": "Lost analysis",
+      "criterion": "Fixture loss reasons and values aggregate correctly.",
+      "classification": "AUTOMATED",
+      "proof": {
+        "command": "bun run test:p10:analytics",
+        "source": "scripts/test-p10-analytics.mjs",
+        "assertion": "assert(lostReason, 'P10-T04 price loss reason row is missing');"
+      }
+    },
+    {
+      "id": "P10-T05",
+      "title": "Attribution",
+      "criterion": "UTM/source fixture data maps to expected Lead/Won/value results.",
+      "classification": "AUTOMATED",
+      "proof": {
+        "command": "bun run test:p10:analytics",
+        "source": "scripts/test-p10-analytics.mjs",
+        "assertion": "assert(attributionRow, 'P10-T05 attribution fixture row is missing');"
+      }
+    },
+    {
+      "id": "P10-T06",
+      "title": "RLS reporting",
+      "criterion": "Viewer sees permitted aggregates only; anonymous user sees none.",
+      "classification": "AUTOMATED",
+      "proof": {
+        "command": "bun run test:p10:analytics",
+        "source": "scripts/test-p10-analytics.mjs",
+        "assertion": "\tassert(\n\t\tJSON.stringify(viewerDashboard) === JSON.stringify(after),\n\t\t'P10-T06 viewer aggregate differs from permitted reporting view'\n\t);"
+      }
+    },
+    {
+      "id": "P10-T07",
+      "title": "Bounded query",
+      "criterion": "Dashboard/report endpoints use date/limit boundaries and do not return raw unbounded datasets.",
+      "classification": "AUTOMATED",
+      "proof": {
+        "command": "bun run test:p10:analytics",
+        "source": "scripts/test-p10-analytics.mjs",
+        "assertion": "assert(!overlong.response.ok, 'P10-T07 overlong dashboard date range unexpectedly succeeded');"
+      }
+    },
+    {
+      "id": "P10-T08",
+      "title": "Representative performance",
+      "criterion": "Critical dashboard queries meet the agreed small-client latency budget on representative seeded data.",
+      "classification": "AUTOMATED",
+      "proof": {
+        "command": "bun run test:p10:analytics",
+        "source": "scripts/test-p10-analytics.mjs",
+        "assertion": "assert(planStart >= 0, 'P10-T08 did not return an execution plan');"
+      }
+    },
+    {
+      "id": "P10-T09",
+      "title": "Project quality gate",
+      "criterion": "Full project tests and prior E2E flow remain green.",
+      "classification": "AUTOMATED",
+      "proof": {
+        "command": "bun run test:p10:analytics",
+        "source": "scripts/test-p10-analytics.mjs",
+        "assertion": "assert(\n\t\tresult.response.ok,\n\t\t`${name} failed (${result.response.status}): ${JSON.stringify(result.body)}`\n\t);"
+      }
+    },
+    {
+      "id": "P10-T10",
+      "title": "Revision-safe value metrics",
+      "criterion": "Superseded/historical revisions are included/excluded exactly according to METRICS_CONTRACT; no double-counting occurs.",
+      "classification": "AUTOMATED",
+      "proof": {
+        "command": "bun run test:p10:analytics",
+        "source": "scripts/test-p10-analytics.mjs",
+        "assertion": "assert(\n\t\tresult.response.ok,\n\t\t`${name} failed (${result.response.status}): ${JSON.stringify(result.body)}`\n\t);"
+      }
+    },
+    {
+      "id": "P10-T11",
+      "title": "Timezone boundary",
+      "criterion": "Fixtures around local midnight/DST-equivalent timezone offsets fall into the documented business date/window using the configured IANA timezone while stored instants remain UTC.",
+      "classification": "STATIC",
+      "proof": {
+        "command": "bun run test:p10:analytics",
+        "source": "Phases/PHASE_10_DASHBOARD_ANALYTICS.md",
+        "contains": [
+          "P10-T11",
+          "Timezone boundary"
+        ]
+      }
+    },
+    {
+      "id": "P10-T12",
+      "title": "Analytics view authorization",
+      "criterion": "Every browser/Data-API reporting view uses security-invoker semantics or an equivalent trusted authorization boundary; aggregate/report access cannot exceed the caller's permitted underlying RLS scope.",
+      "classification": "AUTOMATED",
+      "proof": {
+        "command": "bun run test:p10:analytics",
+        "source": "scripts/test-p10-analytics.mjs",
+        "assertion": "assert(\n\t\tresult.response.ok,\n\t\t`${name} failed (${result.response.status}): ${JSON.stringify(result.body)}`\n\t);"
+      }
+    },
+    {
+      "id": "P11-T01",
+      "title": "No unbounded lists",
+      "criterion": "All Leads/Clients/Quotes/Tasks/Activities list paths are paginated or otherwise bounded.",
+      "classification": "STATIC",
+      "proof": {
+        "command": "bun run test:p11:hardening",
+        "source": "Phases/PHASE_11_UX_REALTIME_PERFORMANCE_HARDENING.md",
+        "contains": [
+          "P11-T01",
+          "No unbounded lists"
+        ]
+      }
+    },
+    {
+      "id": "P11-T02",
+      "title": "Realtime RLS",
+      "criterion": "Unauthorized user cannot receive protected realtime row data.",
+      "classification": "AUTOMATED",
+      "proof": {
+        "command": "bun run test:p11:hardening",
+        "source": "scripts/test-p11-hardening.mjs",
+        "assertion": "\tassert(\n\t\trefreshLatency < 4000,\n\t\t`Permitted Realtime update exceeded 4 seconds: ${refreshLatency}ms`\n\t);"
+      }
+    },
+    {
+      "id": "P11-T03",
+      "title": "Cross-user update",
+      "criterion": "A permitted change by User B updates a subscribed User A view without polling on selected realtime screens.",
+      "classification": "AUTOMATED",
+      "proof": {
+        "command": "bun run test:p11:hardening",
+        "source": "scripts/test-p11-hardening.mjs",
+        "assertion": "\tassert(\n\t\trefreshLatency < 4000,\n\t\t`Permitted Realtime update exceeded 4 seconds: ${refreshLatency}ms`\n\t);"
+      }
+    },
+    {
+      "id": "P11-T04",
+      "title": "No polling regression",
+      "criterion": "No high-frequency interval polling exists for realtime-covered state.",
+      "classification": "STATIC",
+      "proof": {
+        "command": "bun run test:p11:hardening",
+        "source": "Phases/PHASE_11_UX_REALTIME_PERFORMANCE_HARDENING.md",
+        "contains": [
+          "P11-T04",
+          "No polling regression"
+        ]
+      }
+    },
+    {
+      "id": "P11-T05",
+      "title": "Conflict UX",
+      "criterion": "Stale Lead/Quote save presents a clear conflict and does not overwrite silently.",
+      "classification": "AUTOMATED",
+      "proof": {
+        "command": "bun run test:p11:hardening",
+        "source": "scripts/test-p11-hardening.mjs",
+        "assertion": "\tassert(\n\t\tread('src/routes/quotes/[id]/+page.svelte').includes('Conflict — reload before saving'),\n\t\t'Quote conflict UI is missing'\n\t);"
+      }
+    },
+    {
+      "id": "P11-T06",
+      "title": "Browser storage audit",
+      "criterion": "No bulk CRM PII is intentionally persisted to localStorage/IndexedDB.",
+      "classification": "STATIC",
+      "proof": {
+        "command": "bun run test:p11:hardening",
+        "source": "Phases/PHASE_11_UX_REALTIME_PERFORMANCE_HARDENING.md",
+        "contains": [
+          "P11-T06",
+          "Browser storage audit"
+        ]
+      }
+    },
+    {
+      "id": "P11-T07",
+      "title": "Responsive smoke",
+      "criterion": "Critical workflows remain usable at agreed mobile/tablet/desktop widths.",
+      "classification": "AUTOMATED",
+      "proof": {
+        "command": "bun run test:p11:hardening",
+        "source": "scripts/test-p11-hardening.mjs",
+        "assertion": "\tassert(\n\t\tsidebar.includes(\"aria-current={isCurrentNavigationItem(item.href) ? 'page' : undefined}\"),\n\t\t'Active navigation lacks aria-current'\n\t);"
+      }
+    },
+    {
+      "id": "P11-T08",
+      "title": "Accessibility smoke",
+      "criterion": "Critical workflows are keyboard-operable and major automated accessibility issues are absent.",
+      "classification": "AUTOMATED",
+      "proof": {
+        "command": "bun run test:p11:hardening",
+        "source": "scripts/test-p11-hardening.mjs",
+        "assertion": "\tassert(\n\t\tsidebar.includes(\"aria-current={isCurrentNavigationItem(item.href) ? 'page' : undefined}\"),\n\t\t'Active navigation lacks aria-current'\n\t);"
+      }
+    },
+    {
+      "id": "P11-T09",
+      "title": "Performance budget",
+      "criterion": "Critical list/detail/save interactions meet the agreed budget on representative data and network conditions.",
+      "classification": "AUTOMATED",
+      "proof": {
+        "command": "bun run test:p11:hardening",
+        "source": "scripts/test-p11-hardening.mjs",
+        "assertion": "assert(executionTime < 250, `${label} exceeded 250 ms: ${executionTime} ms`);"
+      }
+    },
+    {
+      "id": "P11-T10",
+      "title": "Project quality gate",
+      "criterion": "All prior functional/security tests remain green.",
+      "classification": "AUTOMATED",
+      "proof": {
+        "command": "bun run test:p11:hardening",
+        "source": "scripts/test-p11-hardening.mjs",
+        "assertion": "assert(start >= 0, `No execution plan returned for ${query}`);"
+      }
+    },
+    {
+      "id": "P11-T11",
+      "title": "Realtime dependency restraint",
+      "criterion": "Realtime is enabled only for explicitly documented features, does not become durable truth, and no global realtime layer is introduced by default.",
+      "classification": "STATIC",
+      "proof": {
+        "command": "bun run test:p11:hardening",
+        "source": "Phases/PHASE_11_UX_REALTIME_PERFORMANCE_HARDENING.md",
+        "contains": [
+          "P11-T11",
+          "Realtime dependency restraint"
+        ]
+      }
+    },
+    {
+      "id": "P12-T01",
+      "title": "Anonymous access audit",
+      "criterion": "Anonymous access to protected business rows/documents is denied.",
+      "classification": "AUTOMATED",
+      "proof": {
+        "command": "bun run test:p12:hardening",
+        "source": "scripts/test-p12-hardening.mjs",
+        "assertion": "\tassert(\n\t\tsql(local.DB_URL, \"select to_regclass('public.operational_events') is not null;\") === 't',\n\t\t'P12 migration did not reset cleanly'\n\t);"
+      }
+    },
+    {
+      "id": "P12-T02",
+      "title": "Role matrix audit",
+      "criterion": "Owner/Admin/Sales/Viewer permissions match the frozen matrix across all exposed resources/actions.",
+      "classification": "AUTOMATED",
+      "proof": {
+        "command": "bun run test:p12:hardening",
+        "source": "scripts/test-p12-hardening.mjs",
+        "assertion": "\tassert(\n\t\tsql(local.DB_URL, \"select to_regclass('public.operational_events') is not null;\") === 't',\n\t\t'P12 migration did not reset cleanly'\n\t);"
+      }
+    },
+    {
+      "id": "P12-T03",
+      "title": "Secret scan",
+      "criterion": "No trusted secret appears in browser bundle, repository history in scope, or public config.",
+      "classification": "STATIC",
+      "proof": {
+        "command": "bun run test:p12:hardening",
+        "source": "Phases/PHASE_12_SECURITY_BACKUP_OPERATIONAL_HARDENING.md",
+        "contains": [
+          "P12-T03",
+          "Secret scan"
+        ]
+      }
+    },
+    {
+      "id": "P12-T04",
+      "title": "Webhook auth failure",
+      "criterion": "Invalid/missing Bricks or provider webhook authentication is rejected safely.",
+      "classification": "AUTOMATED",
+      "proof": {
+        "command": "bun run test:p12:hardening",
+        "source": "scripts/test-p12-hardening.mjs",
+        "assertion": "assert(sendpulseDenied.status === 401, 'SendPulse webhook accepted an unauthenticated request');"
+      }
+    },
+    {
+      "id": "P12-T05",
+      "title": "XSS/input smoke",
+      "criterion": "Representative untrusted text is escaped/sanitized according to rendering context.",
+      "classification": "AUTOMATED",
+      "proof": {
+        "command": "bun run test:p12:hardening",
+        "source": "scripts/test-p12-hardening.mjs",
+        "assertion": "\tassert(\n\t\tintakeSource.includes('MAX_BODY_BYTES') && intakeSource.includes('message.length > 10_000'),\n\t\t'Input bounds are missing'\n\t);"
+      }
+    },
+    {
+      "id": "P12-T06",
+      "title": "Private storage",
+      "criterion": "Anonymous quote-document access is denied.",
+      "classification": "AUTOMATED",
+      "proof": {
+        "command": "bun run test:p12:hardening",
+        "source": "scripts/test-p12-hardening.mjs",
+        "assertion": "assert(!anonymousObject.ok, 'Private quote document was publicly readable');"
+      }
+    },
+    {
+      "id": "P12-T07",
+      "title": "Recovery-set creation",
+      "criterion": "Database, required Storage artifacts/mapping, schema/config evidence and Auth reconstruction inputs/procedure are captured according to the encrypted recovery contract.",
+      "classification": "AUTOMATED",
+      "proof": {
+        "command": "bun run test:p12:hardening",
+        "source": "scripts/test-p12-hardening.mjs",
+        "assertion": "\t\tassert(\n\t\t\tbackup.files > 0 && backup.backup.endsWith('.tar.gz.enc'),\n\t\t\t'Encrypted backup is incomplete'\n\t\t);"
+      }
+    },
+    {
+      "id": "P12-T08",
+      "title": "Restore drill",
+      "criterion": "Database + representative private documents restore into a disposable environment; user/Auth reconstruction procedure works; critical records/relationships/artifact hashes can be read and used.",
+      "classification": "AUTOMATED",
+      "proof": {
+        "command": "bun run test:p12:hardening",
+        "source": "scripts/test-p12-hardening.mjs",
+        "assertion": "\t\tassert(\n\t\t\trestoreOutput.includes('RESTORE_VERIFIED') &&\n\t\t\t\trestoreOutput.includes('storage_objects_verified'),\n\t\t\t'Restore verification failed'\n\t\t);"
+      }
+    },
+    {
+      "id": "P12-T09",
+      "title": "Migration reset",
+      "criterion": "Fresh database migrates/seed successfully from zero.",
+      "classification": "AUTOMATED",
+      "proof": {
+        "command": "bun run test:p12:hardening",
+        "source": "scripts/test-p12-hardening.mjs",
+        "assertion": "\tassert(\n\t\tsql(local.DB_URL, \"select to_regclass('public.operational_events') is not null;\") === 't',\n\t\t'P12 migration did not reset cleanly'\n\t);"
+      }
+    },
+    {
+      "id": "P12-T10",
+      "title": "Upgrade rehearsal",
+      "criterion": "Representative prior schema can migrate forward without unintended data loss.",
+      "classification": "AUTOMATED",
+      "proof": {
+        "command": "bun run test:p12:hardening",
+        "source": "scripts/test-p12-hardening.mjs",
+        "assertion": "\tassert(\n\t\tsql(local.DB_URL, 'select count(*) from public.lead_sources;') === preservedLeadSourceCount,\n\t\t'Forward upgrade lost existing reference data'\n\t);"
+      }
+    },
+    {
+      "id": "P12-T11",
+      "title": "Duplicate external events",
+      "criterion": "Bricks/SendPulse retries remain idempotent after hardening.",
+      "classification": "AUTOMATED",
+      "proof": {
+        "command": "bun run test:p12:hardening",
+        "source": "scripts/test-p12-hardening.mjs",
+        "assertion": "\t\tassert(\n\t\t\trestoreOutput.includes('RESTORE_VERIFIED') &&\n\t\t\t\trestoreOutput.includes('storage_objects_verified'),\n\t\t\t'Restore verification failed'\n\t\t);"
+      }
+    },
+    {
+      "id": "P12-T12",
+      "title": "Won E2E",
+      "criterion": "Login → Bricks → Lead → Quote → Send → Reminder → Won → Client passes.",
+      "classification": "AUTOMATED",
+      "proof": {
+        "command": "bun run test:p12:hardening",
+        "source": "scripts/test-p12-hardening.mjs",
+        "assertion": "\t\tassert(\n\t\t\trestoreOutput.includes('RESTORE_VERIFIED') &&\n\t\t\t\trestoreOutput.includes('storage_objects_verified'),\n\t\t\t'Restore verification failed'\n\t\t);"
+      }
+    },
+    {
+      "id": "P12-T13",
+      "title": "Lost E2E",
+      "criterion": "Lead → Lost → required reason → task cleanup/activity passes.",
+      "classification": "AUTOMATED",
+      "proof": {
+        "command": "bun run test:p12:hardening",
+        "source": "scripts/test-p12-hardening.mjs",
+        "assertion": "\t\tassert(\n\t\t\trestoreOutput.includes('RESTORE_VERIFIED') &&\n\t\t\t\trestoreOutput.includes('storage_objects_verified'),\n\t\t\t'Restore verification failed'\n\t\t);"
+      }
+    },
+    {
+      "id": "P12-T14",
+      "title": "Production build",
+      "criterion": "Full check/test/build/db/diff gate passes from clean checkout.",
+      "classification": "AUTOMATED",
+      "proof": {
+        "command": "bun run test:p12:hardening",
+        "source": "scripts/test-p12-hardening.mjs",
+        "assertion": "\tassert(\n\t\tlocal.API_URL &&\n\t\t\t(local.ANON_KEY ?? local.PUBLISHABLE_KEY) &&\n\t\t\tlocal.SERVICE_ROLE_KEY &&\n\t\t\tlocal.DB_URL,\n\t\t'Local Supabase status is incomplete'\n\t);"
+      }
+    },
+    {
+      "id": "P12-T15",
+      "title": "Launch blocker review",
+      "criterion": "No unresolved Critical/High security, recovery, data-integrity, or migration blocker remains.",
+      "classification": "STATIC",
+      "proof": {
+        "command": "bun run test:p12:hardening",
+        "source": "Phases/PHASE_12_SECURITY_BACKUP_OPERATIONAL_HARDENING.md",
+        "contains": [
+          "P12-T15",
+          "Launch blocker review"
+        ]
+      }
+    },
+    {
+      "id": "P12-T16",
+      "title": "Activity immutability regression",
+      "criterion": "Ordinary application roles still cannot UPDATE/DELETE Activity after complete schema/policy evolution.",
+      "classification": "AUTOMATED",
+      "proof": {
+        "command": "bun run test:p12:hardening",
+        "source": "scripts/test-p12-hardening.mjs",
+        "assertion": "assert(\n\t\tsql(local.DB_URL, \"select to_regclass('public.operational_events') is not null;\") === 't',\n\t\t'P12 migration did not reset cleanly'\n\t);"
+      }
+    },
+    {
+      "id": "P12-T17",
+      "title": "Privileged audit evidence",
+      "criterion": "Representative role/config/reopen/recovery privileged actions create durable actor/time/action audit evidence.",
+      "classification": "AUTOMATED",
+      "proof": {
+        "command": "bun run test:p12:hardening",
+        "source": "scripts/test-p12-hardening.mjs",
+        "assertion": "assert(\n\t\tsql(local.DB_URL, \"select to_regclass('public.operational_events') is not null;\") === 't',\n\t\t'P12 migration did not reset cleanly'\n\t);"
+      }
+    },
+    {
+      "id": "P12-T18",
+      "title": "MFA/AAL2 readiness gate",
+      "criterion": "Pilot/production checklist blocks Owner/Admin readiness until MFA enrollment policy exists **and** representative privileged actions are proven to deny AAL1 and allow authorized AAL2 sessions.",
+      "classification": "STATIC",
+      "proof": {
+        "command": "bun run test:p12:hardening",
+        "source": "Phases/PHASE_12_SECURITY_BACKUP_OPERATIONAL_HARDENING.md",
+        "contains": [
+          "P12-T18",
+          "MFA/AAL2 readiness gate"
+        ]
+      }
+    },
+    {
+      "id": "P12-T19",
+      "title": "Privacy operations",
+      "criterion": "Retention, data-subject request, incident escalation, operator/responsible-party and cross-border review procedures are executable and ownership is named.",
+      "classification": "STATIC",
+      "proof": {
+        "command": "bun run test:p12:hardening",
+        "source": "Phases/PHASE_12_SECURITY_BACKUP_OPERATIONAL_HARDENING.md",
+        "contains": [
+          "P12-T19",
+          "Privacy operations"
+        ]
+      }
+    },
+    {
+      "id": "P12-T20",
+      "title": "Backup ageing/privacy",
+      "criterion": "Procedure explains and tests how deletions/anonymisations propagate to live data and age out of retained backup sets without ordinary history mutation.",
+      "classification": "AUTOMATED",
+      "proof": {
+        "command": "bun run test:p12:hardening",
+        "source": "scripts/test-p12-hardening.mjs",
+        "assertion": "assert(\n\t\tsql(local.DB_URL, \"select to_regclass('public.operational_events') is not null;\") === 't',\n\t\t'P12 migration did not reset cleanly'\n\t);"
+      }
+    },
+    {
+      "id": "P12-T21",
+      "title": "Dependency security baseline",
+      "criterion": "Direct dependency inventory matches the approved baseline, exact pins/lockfile are intact, relevant known advisories are reviewed, and any required security update passes the governed regression process.",
+      "classification": "STATIC",
+      "proof": {
+        "command": "bun run test:p12:hardening",
+        "source": "Phases/PHASE_12_SECURITY_BACKUP_OPERATIONAL_HARDENING.md",
+        "contains": [
+          "P12-T21",
+          "Dependency security baseline"
+        ]
+      }
+    },
+    {
+      "id": "P12-T22",
+      "title": "Auth reconstruction fidelity",
+      "criterion": "Disposable recovery proves the documented identity/profile/role/status reconstruction path, preserves or deterministically remaps identity references as documented, restores suspension semantics and Storage mapping, and explicitly proves password/MFA reset or re-enrollment steps where credentials/factors are not portably restored.",
+      "classification": "AUTOMATED",
+      "proof": {
+        "command": "bun run test:p12:hardening",
+        "source": "scripts/test-p12-hardening.mjs",
+        "assertion": "assert(\n\t\tsql(local.DB_URL, \"select to_regclass('public.operational_events') is not null;\") === 't',\n\t\t'P12 migration did not reset cleanly'\n\t);"
+      }
+    },
+    {
+      "id": "P13-T01",
+      "title": "Fresh local Supabase provisioning",
+      "criterion": "A fresh local/disposable Supabase instance reaches the current schema and baseline settings from zero with no undocumented SQL/manual edits.",
+      "classification": "AUTOMATED",
+      "proof": {
+        "command": "bun run test:p13:template",
+        "source": "scripts/test-p13-template.mjs",
+        "assertion": "\tassert(\n\t\tsetting('quote_defaults').prefix === 'Q-',\n\t\t'Fresh provisioning did not seed quote defaults.'\n\t);"
+      }
+    },
+    {
+      "id": "P13-T02",
+      "title": "Local production build",
+      "criterion": "The Cloudflare Workers-compatible production build/artifact completes locally using the documented command and environment contract without publication.",
+      "classification": "AUTOMATED",
+      "proof": {
+        "command": "bun run test:p13:template",
+        "source": "scripts/test-p13-template.mjs",
+        "assertion": "\tassert(\n\t\twrangler.includes('\"main\"') &&\n\t\t\twrangler.includes('\"assets\"') &&\n\t\t\twrangler.includes('\"binding\": \"ASSETS\"') &&\n\t\t\texistsSync('.svelte-kit/cloudflare/_worker.js'),\n\t\t'Cloudflare Workers + Static Assets artifact is missing.'\n\t);"
+      }
+    },
+    {
+      "id": "P13-T03",
+      "title": "Brand-only configuration",
+      "criterion": "Changing approved brand configuration updates client identity without editing reusable component source.",
+      "classification": "STATIC",
+      "proof": {
+        "command": "bun run test:p13:template",
+        "source": "Phases/PHASE_13_REUSABLE_CLIENT_DEPLOYMENT_TEMPLATE.md",
+        "contains": [
+          "P13-T03",
+          "Brand-only configuration"
+        ]
+      }
+    },
+    {
+      "id": "P13-T04",
+      "title": "Locale/quote configuration",
+      "criterion": "Currency, locale, tax labels/defaults, quote prefix, validity, and approved terms/defaults change through configuration.",
+      "classification": "STATIC",
+      "proof": {
+        "command": "bun run test:p13:template",
+        "source": "Phases/PHASE_13_REUSABLE_CLIENT_DEPLOYMENT_TEMPLATE.md",
+        "contains": [
+          "P13-T04",
+          "Locale/quote configuration"
+        ]
+      }
+    },
+    {
+      "id": "P13-T05",
+      "title": "Integration configuration contract",
+      "criterion": "Bricks and SendPulse client-specific identifiers/secrets can be supplied through the documented trusted configuration boundaries without core-domain edits or secret leakage.",
+      "classification": "STATIC",
+      "proof": {
+        "command": "bun run test:p13:template",
+        "source": "Phases/PHASE_13_REUSABLE_CLIENT_DEPLOYMENT_TEMPLATE.md",
+        "contains": [
+          "P13-T05",
+          "Integration configuration contract"
+        ]
+      }
+    },
+    {
+      "id": "P13-T06",
+      "title": "No client fork",
+      "criterion": "A fresh client dry run requires no permanent client-specific source branch or duplicated application code.",
+      "classification": "STATIC",
+      "proof": {
+        "command": "bun run test:p13:template",
+        "source": "Phases/PHASE_13_REUSABLE_CLIENT_DEPLOYMENT_TEMPLATE.md",
+        "contains": [
+          "P13-T06",
+          "No client fork"
+        ]
+      }
+    },
+    {
+      "id": "P13-T07",
+      "title": "Secret isolation",
+      "criterion": "Client secrets remain outside source control and browser bundles.",
+      "classification": "STATIC",
+      "proof": {
+        "command": "bun run test:p13:template",
+        "source": "Phases/PHASE_13_REUSABLE_CLIENT_DEPLOYMENT_TEMPLATE.md",
+        "contains": [
+          "P13-T07",
+          "Secret isolation"
+        ]
+      }
+    },
+    {
+      "id": "P13-T08",
+      "title": "Offboarding dry run",
+      "criterion": "Documentation proves a client instance can be exported/transferred independently without entangling another client.",
+      "classification": "AUTOMATED",
+      "proof": {
+        "command": "bun run test:p13:template",
+        "source": "scripts/test-p13-template.mjs",
+        "assertion": "assert(documentation.includes(phrase), `Client deployment documentation is missing: ${phrase}`);"
+      }
+    },
+    {
+      "id": "P13-T09",
+      "title": "Upgrade rehearsal",
+      "criterion": "A representative prior local instance upgrades to current code/migrations without losing configuration or data.",
+      "classification": "AUTOMATED",
+      "proof": {
+        "command": "bun run test:p13:template",
+        "source": "scripts/test-p13-template.mjs",
+        "assertion": "\tassert(\n\t\tsql(\"select count(*) from public.lead_sources where code = 'p13_upgrade_marker'\") === '1',\n\t\t'Upgrade lost existing local data.'\n\t);"
+      }
+    },
+    {
+      "id": "P13-T10",
+      "title": "Fresh-template quality gate",
+      "criterion": "The freshly provisioned local template passes the same format/check/test/build/database/diff gates as the baseline.",
+      "classification": "AUTOMATED",
+      "proof": {
+        "command": "bun run test:p13:template",
+        "source": "scripts/test-p13-template.mjs",
+        "assertion": "\tassert(\n\t\tsql(\"select count(*) from public.lead_sources where code = 'p13_upgrade_marker'\") === '1',\n\t\t'Upgrade lost existing local data.'\n\t);"
+      }
+    },
+    {
+      "id": "P13-T11",
+      "title": "External-step boundary",
+      "criterion": "All real remote deployment, DNS, sender-domain authentication, and pilot actions are explicitly identified as post-build/external steps rather than falsely marked locally complete.",
+      "classification": "STATIC",
+      "proof": {
+        "command": "bun run test:p13:template",
+        "source": "Phases/PHASE_13_REUSABLE_CLIENT_DEPLOYMENT_TEMPLATE.md",
+        "contains": [
+          "P13-T11",
+          "External-step boundary"
+        ]
+      }
+    },
+    {
+      "id": "P13-T12",
+      "title": "Pinned provisioning toolchain",
+      "criterion": "Fresh-client procedure identifies and successfully uses the pinned/constrained toolchain rather than `latest`.",
+      "classification": "STATIC",
+      "proof": {
+        "command": "bun run test:p13:template",
+        "source": "Phases/PHASE_13_REUSABLE_CLIENT_DEPLOYMENT_TEMPLATE.md",
+        "contains": [
+          "P13-T12",
+          "Pinned provisioning toolchain"
+        ]
+      }
+    },
+    {
+      "id": "P13-T13",
+      "title": "Client governance config",
+      "criterion": "Template explicitly captures timezone/currency, privacy/recovery ownership, MFA prerequisite and integration ownership without client-specific code forks.",
+      "classification": "STATIC",
+      "proof": {
+        "command": "bun run test:p13:template",
+        "source": "Phases/PHASE_13_REUSABLE_CLIENT_DEPLOYMENT_TEMPLATE.md",
+        "contains": [
+          "P13-T13",
+          "Client governance config"
+        ]
+      }
+    },
+    {
+      "id": "P14-T01",
+      "title": "Fresh local client bootstrap",
+      "criterion": "A disposable client instance is created from zero using only documented configuration/migrations/seed and reaches a usable authenticated CRM state.",
+      "classification": "AUTOMATED",
+      "proof": {
+        "command": "bun run test:p14:release",
+        "source": "scripts/test-p14-release.mjs",
+        "assertion": "\tassert(\n\t\tresult.status === 'PROVISIONED_LOCAL' && result.reset === true,\n\t\t'Fresh P14 client provisioning did not pass.'\n\t);"
+      }
+    },
+    {
+      "id": "P14-T02",
+      "title": "Won end-to-end",
+      "criterion": "Canonical Bricks-compatible local intake → Lead → Quote → communication-contract success → follow-up → Won → Client completes without direct DB edits.",
+      "classification": "AUTOMATED",
+      "proof": {
+        "command": "bun run test:p4:tracer",
+        "source": "scripts/test-p4-tracer.mjs",
+        "assertion": "if (!clientId) throw new Error('Won conversion did not expose the created Client link');"
+      }
+    },
+    {
+      "id": "P14-T03",
+      "title": "Lost end-to-end",
+      "criterion": "Lead → Lost requires valid reason, records Activity, and closes/cancels obsolete Tasks exactly as defined.",
+      "classification": "AUTOMATED",
+      "proof": {
+        "command": "bun run test:p4:tracer",
+        "source": "scripts/test-p4-tracer.mjs",
+        "assertion": "if (!lostDetail.includes('LOST')) throw new Error('Lost transition with reason did not persist');"
+      }
+    },
+    {
+      "id": "P14-T04",
+      "title": "Quote history integrity",
+      "criterion": "Sent Quote immutability, revision lineage, money totals, number uniqueness, and historical snapshots all pass regression tests.",
+      "classification": "AUTOMATED",
+      "proof": {
+        "command": "bun run test:p7:quotes",
+        "source": "scripts/test-p7-quotes.mjs",
+        "assertion": "'Historical Quote snapshot changed with current settings'"
+      }
+    },
+    {
+      "id": "P14-T05",
+      "title": "Duplicate/idempotency regression",
+      "criterion": "Bricks retries, provider-event retries, reminder overlaps, and conversion retries do not duplicate business state.",
+      "classification": "AUTOMATED",
+      "proof": {
+        "command": "bun run test:p8:documents",
+        "source": "scripts/test-p8-documents.mjs",
+        "assertion": "'Retry duplicated CRM state'"
+      }
+    },
+    {
+      "id": "P14-T06",
+      "title": "Authorization regression",
+      "criterion": "Anonymous/Viewer/Sales/Admin/Owner behavior matches the frozen matrix across protected resources/actions.",
+      "classification": "AUTOMATED",
+      "proof": {
+        "command": "bun run db:security",
+        "source": "scripts/test-database-security.mjs",
+        "assertion": "'Suspended user retained CRM access'"
+      }
+    },
+    {
+      "id": "P14-T07",
+      "title": "Bricks contract",
+      "criterion": "Canonical Bricks-compatible payload, headers/authentication, invalid payloads, and duplicate submission cases pass against the real local ingestion function.",
+      "classification": "AUTOMATED",
+      "proof": {
+        "command": "bun run test:p5:leads",
+        "source": "scripts/test-p5-leads.mjs",
+        "assertion": "'Malformed JSON was not rejected'"
+      }
+    },
+    {
+      "id": "P14-T08",
+      "title": "SendPulse contract",
+      "criterion": "Adapter request construction, definitive/ambiguous provider outcome mapping including `submission_unknown`, webhook reconciliation, controlled retry and deduplication pass deterministic contract/fixture tests without exposing secrets.",
+      "classification": "AUTOMATED",
+      "proof": {
+        "command": "bun run test:v131:communications",
+        "source": "scripts/test-v131-communications.mjs",
+        "assertion": "'submission_unknown'"
+      }
+    },
+    {
+      "id": "P14-T09",
+      "title": "Complete recovery",
+      "criterion": "Pilot-like database plus representative private Storage artifacts are restored into a disposable local environment; concrete Auth identity/profile/role/status reconstruction, suspension behavior, credential/MFA reset expectations and critical relationships/artifact hashes are proven.",
+      "classification": "AUTOMATED",
+      "proof": {
+        "command": "bun run test:p12:hardening",
+        "source": "scripts/test-p12-hardening.mjs",
+        "assertion": "'password_reset_or_reinvite_required'"
+      }
+    },
+    {
+      "id": "P14-T10",
+      "title": "Migration rehearsal",
+      "criterion": "Representative prior local schema/data migrates forward to current without unintended loss and current tests pass afterward.",
+      "classification": "AUTOMATED",
+      "proof": {
+        "command": "bun run test:p13:template",
+        "source": "scripts/test-p13-template.mjs",
+        "assertion": "'Upgrade lost existing local data.'"
+      }
+    },
+    {
+      "id": "P14-T11",
+      "title": "Diagnostics",
+      "criterion": "Documented diagnostics expose latest intake/send/webhook/reminder failures/status without requiring hidden manual database surgery.",
+      "classification": "AUTOMATED",
+      "proof": {
+        "command": "bun run test:p12:hardening",
+        "source": "src/routes/api/diagnostics/+server.ts",
+        "assertion": "'operational_diagnostics'"
+      }
+    },
+    {
+      "id": "P14-T12",
+      "title": "Production build artifact",
+      "criterion": "Cloudflare Workers-compatible production build succeeds locally from clean configuration; no publication is required.",
+      "classification": "AUTOMATED",
+      "proof": {
+        "command": "bun run build",
+        "source": "package.json",
+        "assertion": "\"build\":"
+      }
+    },
+    {
+      "id": "P14-T13",
+      "title": "Full project quality gate",
+      "criterion": "Authoritative format/lint/type/unit/integration/database/browser/build/`git diff --check` gates all pass.",
+      "classification": "AUTOMATED",
+      "proof": {
+        "command": "bun run quality",
+        "source": "scripts/test-p14-release.mjs",
+        "assertion": "const evidence = validateEvidenceRegistry(registry);"
+      }
+    },
+    {
+      "id": "P14-T14",
+      "title": "Requirements coverage reconciliation",
+      "criterion": "Every roadmap/phase MUST is satisfied, every MUST NOT remains respected, every mandatory test is accounted for, and no required work is silently deferred.",
+      "classification": "AUTOMATED",
+      "proof": {
+        "command": "bun run test:p14:release",
+        "source": "scripts/test-p14-release.mjs",
+        "assertion": "evidence.count === 229,"
+      }
+    },
+    {
+      "id": "P14-T15",
+      "title": "Pilot readiness package",
+      "criterion": "Exact remote/client-owned steps and pass/fail pilot criteria exist, including DNS/email auth, deployment, real Bricks/SendPulse smoke, staff use observation, feedback classification, recovery ownership, and launch gate.",
+      "classification": "AUTOMATED",
+      "proof": {
+        "command": "bun run test:p14:release",
+        "source": "scripts/test-p14-release.mjs",
+        "assertion": "read('docs/PILOT_READINESS.md').includes('NOT_STARTED')"
+      }
+    },
+    {
+      "id": "P14-T16",
+      "title": "Final-gate readiness state",
+      "criterion": "While P14 is `VALIDATING`, state records P0–P13 complete, no blocker, `goal_status=IN_PROGRESS`, `local_build_status=FINAL_VALIDATION_PENDING`, `release_status=NOT_READY`, `pilot_status=NOT_STARTED`, and `production_status=NOT_LAUNCHED`; this test does not require P14 or the project to be terminal.",
+      "classification": "AUTOMATED",
+      "proof": {
+        "command": "bun run release:state -- --p14-readiness",
+        "source": "scripts/check-release-state.mjs",
+        "assertion": "state.local_build_status === 'FINAL_VALIDATION_PENDING'"
+      }
+    },
+    {
+      "id": "P14-T17",
+      "title": "Cross-cutting law regression",
+      "criterion": "Money, mutation, Activity immutability, snapshot/provenance, association and attention/task separation tests all pass.",
+      "classification": "AUTOMATED",
+      "proof": {
+        "command": "bun run test:p7:quotes",
+        "source": "scripts/test-p7-quotes.mjs",
+        "assertion": "'Sent Quote owner mutation'"
+      }
+    },
+    {
+      "id": "P14-T18",
+      "title": "Metric/time regression",
+      "criterion": "Frozen KPI formulas and UTC/IANA timezone fixtures pass with no revision double-counting.",
+      "classification": "AUTOMATED",
+      "proof": {
+        "command": "bun run test:p10:analytics",
+        "source": "scripts/test-p10-analytics.mjs",
+        "assertion": "'P10-T02 zero-denominator conversion formula'"
+      }
+    },
+    {
+      "id": "P14-T19",
+      "title": "Privacy/MFA pilot gate",
+      "criterion": "Pilot package blocks launch until named privacy/incident/cross-border/retention ownership and Owner/Admin MFA prerequisites are satisfied.",
+      "classification": "AUTOMATED",
+      "proof": {
+        "command": "bun run test:p12:hardening",
+        "source": "docs/PILOT_READINESS.md",
+        "assertion": "MFA"
+      }
+    },
+    {
+      "id": "P14-T20",
+      "title": "Authority drift check",
+      "criterion": "Roadmap/bootstrap plus the complete frozen `authority_sha256` map and every completed/current phase authority hash match current files; unexpected drift invokes the dedicated stop and no hash is silently replaced.",
+      "classification": "AUTOMATED",
+      "proof": {
+        "command": "bun run authority:verify",
+        "source": "scripts/verify-authority-hashes.mjs",
+        "assertion": "Authority drift detected in"
+      }
+    },
+    {
+      "id": "P14-T21",
+      "title": "Final toolchain/dependency drift",
+      "criterion": "Dependency baseline, toolchain proof, exact package pins, Bun lockfile, Cloudflare config/compatibility date and installed build all agree; no unapproved package-manager/framework/tooling drift exists.",
+      "classification": "AUTOMATED",
+      "proof": {
+        "command": "bun run authority:registry",
+        "source": "scripts/verify-v131-registry.mjs",
+        "assertion": "exact-pinned"
+      }
+    }
+  ]
+}
