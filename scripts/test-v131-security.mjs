@@ -170,6 +170,35 @@ then 'ok' else 'bad' end;
 );
 if (trustedNoteGrant !== 'ok') throw new Error('activity note action has an unsafe EXECUTE grant');
 
+const rh04Privileges = sql(
+	local.DB_URL,
+	`
+select case when
+  has_function_privilege('authenticated', 'public.record_quote_send_ack(uuid,text,text)'::regprocedure, 'EXECUTE')
+  and not has_function_privilege('anon', 'public.record_quote_send_ack(uuid,text,text)'::regprocedure, 'EXECUTE')
+  and has_function_privilege('service_role', 'public.prepare_task_reminder(uuid,uuid)'::regprocedure, 'EXECUTE')
+  and has_function_privilege('service_role', 'public.start_task_reminder(uuid,uuid)'::regprocedure, 'EXECUTE')
+  and has_function_privilege('service_role', 'public.mark_task_reminder_unknown(uuid,uuid,text,text)'::regprocedure, 'EXECUTE')
+  and has_function_privilege('service_role', 'public.reconcile_task_reminder(uuid,text)'::regprocedure, 'EXECUTE')
+  and has_table_privilege('service_role', 'public.automation_runs', 'SELECT')
+  and exists (
+    select 1 from pg_constraint
+    where conrelid = 'public.automation_runs'::regclass
+      and conname = 'automation_runs_status_check'
+      and pg_get_constraintdef(oid) like '%partial_failure%'
+  )
+  and exists (
+    select 1 from pg_constraint
+    where conrelid = 'public.tasks'::regclass
+      and conname = 'tasks_reminder_status_check'
+      and pg_get_constraintdef(oid) like '%submission_unknown%'
+  )
+then 'ok' else 'bad' end;
+`
+);
+if (rh04Privileges !== 'ok')
+	throw new Error('RH04 reminder/reconciliation privileges or state constraints are unsafe');
+
 const boundaryTriggers = sql(
 	local.DB_URL,
 	`

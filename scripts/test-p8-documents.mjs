@@ -324,7 +324,8 @@ async function startApp() {
 			SENDPULSE_API_BASE_URL: providerUrl,
 			SENDPULSE_SENDER_EMAIL: 'sales@example.test',
 			SENDPULSE_SENDER_NAME: 'Zephyr P8',
-			SENDPULSE_WEBHOOK_SECRET: webhookSecret
+			SENDPULSE_WEBHOOK_SECRET: webhookSecret,
+			ZEPHYR_TEST_FAIL_QUOTE_FINALIZATION_ONCE: '1'
 		}
 	});
 	await waitFor(`${appUrl}/login`);
@@ -386,12 +387,67 @@ async function cleanup() {
 let passed = 0;
 try {
 	const user = await createUser('sales');
+	const finalizationLead = await createLead('finalization-failure');
+	await reachDecision(finalizationLead, user);
+	const finalizationQuote = await createReadyQuote(finalizationLead, user, 'finalization-failure');
 	const firstLead = await createLead('delivery');
 	await reachDecision(firstLead, user);
 	const firstQuote = await createReadyQuote(firstLead, user, 'delivery');
 	await startProvider();
 	await startApp();
 	await loginApp(user);
+
+	const finalizationFailure = await sendQuoteThroughApp(finalizationQuote);
+	assert(
+		!finalizationFailure.response.ok &&
+			String(finalizationFailure.body?.error).toLowerCase().includes('reconciliation'),
+		'Provider success followed by quote finalization failure was not reported as reconciliation-required'
+	);
+	let finalizationMessages = await messagesFor(finalizationQuote.id);
+	assert(
+		finalizationMessages.length === 1 &&
+			finalizationMessages[0].delivery_status === 'submission_unknown' &&
+			finalizationMessages[0].provider_message_id,
+		'Provider identity was not retained after quote finalization failure'
+	);
+	const providerCallsAfterFinalizationFailure = providerAttempt;
+	const blockedFinalizationRetry = await sendQuoteThroughApp(
+		await serviceQuote(finalizationQuote.id)
+	);
+	assert(!blockedFinalizationRetry.response.ok, 'Quote finalization uncertainty was retryable');
+	assert(
+		providerAttempt === providerCallsAfterFinalizationFailure,
+		'Quote finalization retry called SendPulse a second time'
+	);
+	const finalizationReconciled = await mustRpc(
+		'reconcile_quote_submission',
+		{
+			p_logical_key: finalizationMessages[0].logical_key,
+			p_provider_message_id: finalizationMessages[0].provider_message_id
+		},
+		serviceRoleKey
+	);
+	assert(
+		finalizationReconciled?.provider_message_id === finalizationMessages[0].provider_message_id,
+		'Quote finalization reconciliation did not preserve provider identity'
+	);
+	finalizationMessages = await messagesFor(finalizationQuote.id);
+	const finalizationActivities = await serviceRest(
+		`/rest/v1/activities?quote_id=eq.${finalizationQuote.id}&event_type=eq.quote_sent&select=id`
+	);
+	const finalizationTasks = await serviceRest(
+		`/rest/v1/tasks?quote_id=eq.${finalizationQuote.id}&type=eq.follow_up&select=id`
+	);
+	assert(
+		finalizationMessages.length === 1 &&
+			finalizationMessages[0].delivery_status === 'submitted' &&
+			(await serviceQuote(finalizationQuote.id)).status === 'sent' &&
+			finalizationActivities.length === 1 &&
+			finalizationTasks.length === 1,
+		'Quote finalization reconciliation duplicated or omitted downstream state'
+	);
+	console.log('RH04 quote provider-success/finalization-failure reconciliation passed');
+	passed += 1;
 
 	const send = await sendQuoteThroughApp(firstQuote);
 	assert(
@@ -660,7 +716,7 @@ try {
 	await cleanup();
 }
 
-assert(passed === 13, `Expected 13 P8 focused tests, received ${passed}`);
+assert(passed === 14, `Expected 14 P8 focused tests, received ${passed}`);
 console.log(
 	`P8 focused integration tests passed (${passed} tests; P8-T11/P8-T13/P8-T15/P8-T16/P8-T17 are covered by adjacent unit/security gates)`
 );

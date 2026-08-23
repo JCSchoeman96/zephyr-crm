@@ -1,4 +1,5 @@
 import { execFileSync, spawn } from 'node:child_process';
+import { randomUUID } from 'node:crypto';
 import { createServer } from 'node:http';
 
 const root = process.cwd();
@@ -296,6 +297,15 @@ function startProvider() {
 		}
 		if (request.url === '/smtp/emails') {
 			providerSendCount += 1;
+			if (providerMode === 'malformed') {
+				response.writeHead(200, { 'content-type': 'application/json' });
+				response.end('{malformed-provider-response');
+				return;
+			}
+			if (providerMode === 'unknown') {
+				request.socket.destroy();
+				return;
+			}
 			if (providerMode === 'failure') {
 				response.writeHead(502, { 'content-type': 'application/json' });
 				response.end(JSON.stringify({ result: false, error: 'P9 deterministic provider failure' }));
@@ -342,7 +352,8 @@ async function startApp() {
 			SENDPULSE_CLIENT_SECRET: 'p9-secret',
 			SENDPULSE_API_BASE_URL: providerUrl,
 			SENDPULSE_SENDER_EMAIL: 'sales@example.test',
-			SENDPULSE_SENDER_NAME: 'Zephyr P9'
+			SENDPULSE_SENDER_NAME: 'Zephyr P9',
+			ZEPHYR_TEST_FAIL_REMINDER_FINALIZATION_ONCE: '1'
 		}
 	});
 	await waitFor(`${appUrl}/login`);
@@ -444,6 +455,98 @@ try {
 
 	await startProvider();
 	await startApp();
+	const persistenceLead = await createLead('provider-success-db-failure', sales);
+	const persistenceTask = await createTask(
+		persistenceLead,
+		sales,
+		'provider success DB failure',
+		oldDue
+	);
+	const persistenceRunId = randomUUID();
+	const persistenceProviderBefore = providerSendCount;
+	const persistenceRun = await runScheduler(persistenceRunId);
+	assert(
+		persistenceRun.response.ok && persistenceRun.body?.status === 'partial_failure',
+		`Provider success plus reminder persistence failure was not reported as partial failure: ${JSON.stringify(persistenceRun.body)}`
+	);
+	let persistenceState = await taskById(persistenceTask.id);
+	let persistenceMessages = await serviceRows(
+		`/rest/v1/outbound_messages?task_id=eq.${persistenceTask.id}&purpose=eq.task_reminder&select=*`
+	);
+	assert(
+		providerSendCount === persistenceProviderBefore + 1 &&
+			persistenceState.reminder_status === 'submission_unknown' &&
+			persistenceMessages.length === 1 &&
+			persistenceMessages[0].delivery_status === 'submission_unknown' &&
+			persistenceMessages[0].provider_message_id,
+		'Provider success plus reminder persistence failure did not preserve one uncertain message'
+	);
+	const persistenceProviderId = persistenceMessages[0].provider_message_id;
+	const providerCallsBeforePersistenceRetry = providerSendCount;
+	const persistenceRetry = await runScheduler(randomUUID());
+	assert(persistenceRetry.response.ok, 'Reminder retry after persistence uncertainty failed');
+	assert(
+		providerSendCount === providerCallsBeforePersistenceRetry,
+		'Reminder persistence uncertainty triggered a blind provider retry'
+	);
+	await mustRpc(
+		'reconcile_task_reminder',
+		{ p_provider_message_id: persistenceProviderId, p_task_id: persistenceTask.id },
+		serviceRoleKey
+	);
+	persistenceState = await taskById(persistenceTask.id);
+	persistenceMessages = await serviceRows(
+		`/rest/v1/outbound_messages?task_id=eq.${persistenceTask.id}&purpose=eq.task_reminder&select=*`
+	);
+	const persistenceActivities = await serviceRows(
+		`/rest/v1/activities?task_id=eq.${persistenceTask.id}&event_type=eq.task_reminder_sent&select=id`
+	);
+	assert(
+		persistenceState.reminder_status === 'sent' &&
+			persistenceMessages.length === 1 &&
+			persistenceMessages[0].delivery_status === 'submitted' &&
+			persistenceActivities.length === 1,
+		'Reminder reconciliation did not complete exactly one downstream transition'
+	);
+	const duplicateCompletedRun = await runScheduler(persistenceRunId);
+	assert(
+		duplicateCompletedRun.response.ok &&
+			duplicateCompletedRun.body?.idempotent === true &&
+			duplicateCompletedRun.body?.status === 'partial_failure' &&
+			providerSendCount === providerCallsBeforePersistenceRetry,
+		'Completed automation run ID was re-executed instead of returning its stored result'
+	);
+	console.log('RH04 reminder provider-success/persistence-failure reconciliation passed');
+	passed += 1;
+	console.log('RH04 completed automation run idempotency passed');
+	passed += 1;
+
+	const staleClaimLead = await createLead('stale-claim', sales);
+	const staleClaimTask = await createTask(staleClaimLead, sales, 'stale reminder claim', oldDue);
+	const staleClaimRunId = randomUUID();
+	const staleClaim = await mustRpc(
+		'prepare_task_reminder',
+		{ p_run_id: staleClaimRunId, p_task_id: staleClaimTask.id },
+		serviceRoleKey
+	);
+	assert(
+		staleClaim.status === 'claimed' && staleClaim.claimed === true,
+		'Reminder claim was not created'
+	);
+	sql(
+		`update public.tasks set reminder_claimed_at = now() - interval '30 minutes', lock_version = lock_version + 1 where id = ${sqlLiteral(staleClaimTask.id)}::uuid;`
+	);
+	const staleProviderBefore = providerSendCount;
+	const staleRun = await runScheduler(randomUUID());
+	assert(staleRun.response.ok, 'Stale reminder claim could not be recovered');
+	assert(
+		providerSendCount === staleProviderBefore + 1 &&
+			(await taskById(staleClaimTask.id)).reminder_status === 'sent',
+		'Stale claim handling did not safely recover one reminder attempt'
+	);
+	console.log('RH04 stale reminder claim recovery passed');
+	passed += 1;
+
 	const schedulerLead = await createLead('scheduler', sales);
 	const dueTask = await createTask(schedulerLead, sales, 'scheduler happy path', oldDue);
 	const beforeProviderCount = providerSendCount;
@@ -516,6 +619,67 @@ try {
 		'Provider retry did not reuse one OutboundMessage safely'
 	);
 	console.log('P9-T05 retry safety passed');
+	passed += 1;
+
+	const unknownLead = await createLead('unknown-reminder', sales);
+	const unknownTask = await createTask(unknownLead, sales, 'unknown reminder outcome', oldDue);
+	providerMode = 'unknown';
+	const unknownProviderBefore = providerSendCount;
+	const unknownRun = await runScheduler(randomUUID());
+	assert(unknownRun.response.ok, 'Unknown reminder provider outcome failed the processor request');
+	let unknownState = await taskById(unknownTask.id);
+	let unknownMessages = await serviceRows(
+		`/rest/v1/outbound_messages?task_id=eq.${unknownTask.id}&purpose=eq.task_reminder&select=*`
+	);
+	assert(
+		providerSendCount === unknownProviderBefore + 1 &&
+			unknownState.reminder_status === 'submission_unknown' &&
+			unknownMessages.length === 1 &&
+			unknownMessages[0].delivery_status === 'submission_unknown',
+		'Lost reminder acknowledgement was not persisted as submission_unknown'
+	);
+	providerMode = 'success';
+	const unknownRetry = await runScheduler(randomUUID());
+	assert(unknownRetry.response.ok, 'Unknown reminder retry request failed');
+	assert(
+		providerSendCount === unknownProviderBefore + 1,
+		'Unknown reminder outcome was blindly retried'
+	);
+	await mustRpc(
+		'reconcile_task_reminder',
+		{
+			p_provider_message_id: `${prefix}-reconciled-reminder`,
+			p_task_id: unknownTask.id
+		},
+		serviceRoleKey
+	);
+	unknownState = await taskById(unknownTask.id);
+	unknownMessages = await serviceRows(
+		`/rest/v1/outbound_messages?task_id=eq.${unknownTask.id}&purpose=eq.task_reminder&select=*`
+	);
+	assert(
+		unknownState.reminder_status === 'sent' && unknownMessages[0].delivery_status === 'submitted',
+		'Unknown reminder reconciliation did not complete the original logical intent'
+	);
+	console.log('RH04 unknown reminder outcome and reconciliation passed');
+	passed += 1;
+
+	const malformedLead = await createLead('malformed-reminder', sales);
+	const malformedTask = await createTask(
+		malformedLead,
+		sales,
+		'malformed reminder outcome',
+		oldDue
+	);
+	providerMode = 'malformed';
+	const malformedRun = await runScheduler(randomUUID());
+	assert(malformedRun.response.ok, 'Malformed provider response failed the processor request');
+	assert(
+		(await taskById(malformedTask.id)).reminder_status === 'submission_unknown',
+		'Malformed provider response was treated as a definitive retryable failure'
+	);
+	providerMode = 'success';
+	console.log('RH04 malformed reminder response classification passed');
 	passed += 1;
 
 	const staleLead = await createLead('stale', sales);
@@ -672,7 +836,7 @@ try {
 	}
 }
 
-assert(passed === 9, `Expected 9 focused P9 tests, received ${passed}`);
+assert(passed === 14, `Expected 14 focused P9 tests, received ${passed}`);
 console.log(
 	`P9 focused automation tests passed (${passed} tests; P9-T10 is the project quality gate)`
 );

@@ -111,6 +111,21 @@ async function runDatabaseContracts(local) {
 		'P12 migration did not reset cleanly'
 	);
 	console.log('P12-T09 migration reset passed');
+	const rh04Migration = await readFile(
+		'supabase/migrations/20260823110000_rh04_delivery_reliability.sql',
+		'utf8'
+	);
+	for (const required of [
+		'submission_unknown_total',
+		'stale_submitting_total',
+		'partial_runs_last_24h',
+		'submission_unknown_tasks',
+		'stale_submitting_tasks',
+		'latest_run_error'
+	]) {
+		assert(rh04Migration.includes(required), `RH04 diagnostics evidence is missing ${required}`);
+	}
+	console.log('RH04 uncertainty, stale-state, partial-run diagnostics evidence passed');
 
 	run('bun', ['run', 'db:security']);
 	console.log('P12-T01 anonymous denial and P12-T02 role matrix passed');
@@ -144,6 +159,7 @@ async function runDatabaseContracts(local) {
 
 async function runSecurityAndInputContracts(local) {
 	await startApp(local);
+	const xssSubmissionId = randomUUID();
 	const page = await fetch(`${appUrl}/login`);
 	const csp = page.headers.get('content-security-policy') ?? '';
 	assert(
@@ -179,7 +195,7 @@ async function runSecurityAndInputContracts(local) {
 		},
 		body: JSON.stringify({
 			form_id: 'contact-form',
-			external_submission_id: `${prefix}-xss`,
+			external_submission_id: xssSubmissionId,
 			first_name: 'Input test',
 			email: `${prefix}@example.test`,
 			message: '<script>alert(1)</script>'
@@ -199,7 +215,7 @@ async function runSecurityAndInputContracts(local) {
 	);
 	sql(
 		local.DB_URL,
-		`set session_replication_role = replica; delete from public.leads where external_submission_id = '${prefix}-xss'; set session_replication_role = origin;`
+		`set session_replication_role = replica; delete from public.leads where external_submission_id = '${xssSubmissionId}'; set session_replication_role = origin;`
 	);
 	console.log('P12-T05 XSS-safe rendering and input validation passed');
 }
