@@ -176,6 +176,27 @@ where conname = any(array[
 		'Forward upgrade lost existing reference data'
 	);
 	console.log('P12-T10 P11-to-P12 forward upgrade rehearsal passed');
+
+	// The rehearsal intentionally applies the historical P12 migration to a
+	// disposable pair of operational tables. Restore the complete current
+	// schema before later P12 contracts or the next quality command runs; a
+	// release test must not leave the local database at a historical schema.
+	run('bun', ['run', 'db:reset']);
+	assert(
+		sql(
+			local.DB_URL,
+			"select count(*) from information_schema.columns where table_schema = 'public' and table_name = 'automation_runs' and column_name = 'unknown_count';"
+		) === '1',
+		'Current RH04 automation schema was not restored after the P12 rehearsal'
+	);
+	assert(
+		sql(
+			local.DB_URL,
+			"select count(*) from pg_constraint where conname = 'automation_runs_input_bounds';"
+		) === '1',
+		'Current RH06 input-boundary schema was not restored after the P12 rehearsal'
+	);
+	console.log('P12 current-schema restoration passed');
 }
 
 async function runSecurityAndInputContracts(local) {
