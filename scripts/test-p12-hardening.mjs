@@ -102,6 +102,32 @@ async function startApp(local) {
 	await waitForServer(`${appUrl}/login`);
 }
 
+async function waitForBricksRpc(local) {
+	for (let attempt = 0; attempt < 80; attempt += 1) {
+		try {
+			const response = await fetch(`${local.API_URL}/rest/v1/rpc/ingest_bricks_lead`, {
+				method: 'POST',
+				headers: {
+					apikey: local.SERVICE_ROLE_KEY,
+					Authorization: `Bearer ${local.SERVICE_ROLE_KEY}`,
+					'content-type': 'application/json'
+				},
+				body: JSON.stringify({
+					p_form_id: 'contact-form',
+					p_external_submission_id: randomUUID(),
+					p_payload: {}
+				})
+			});
+			const body = await response.text();
+			if (response.status < 500 && !body.includes('schema cache')) return;
+		} catch {
+			// PostgREST is still restarting after the clean database reset.
+		}
+		await new Promise((resolve) => setTimeout(resolve, 250));
+	}
+	throw new Error('Timed out waiting for the Bricks RPC schema cache after database reset');
+}
+
 async function stopApp() {
 	if (!app || app.exitCode !== null) return;
 	const process = app;
@@ -215,6 +241,7 @@ where conname = any(array[
 }
 
 async function runSecurityAndInputContracts(local) {
+	await waitForBricksRpc(local);
 	await startApp(local);
 	const xssSubmissionId = randomUUID();
 	const page = await fetch(`${appUrl}/login`);
