@@ -547,6 +547,29 @@ try {
 	passed += 2;
 
 	const providerMessageId = firstMessages[0].provider_message_id;
+	const webhookBody = JSON.stringify({
+		message_id: providerMessageId,
+		event: 'delivered',
+		event_id: `${prefix}-boundary`
+	});
+	const webhookSignature = createHmac('sha256', webhookSecret).update(webhookBody).digest('hex');
+	const rejectedWebhook = await appJson('/api/webhooks/sendpulse', {
+		method: 'POST',
+		headers: { 'content-type': 'text/plain', 'x-sendpulse-signature': webhookSignature },
+		body: webhookBody
+	});
+	const wrongSignature = await appJson('/api/webhooks/sendpulse', {
+		method: 'POST',
+		headers: { 'content-type': 'application/json', 'x-sendpulse-signature': '00' },
+		body: webhookBody
+	});
+	assert(
+		rejectedWebhook.response.status === 415 && wrongSignature.response.status === 401,
+		'SendPulse webhook did not enforce content type and signature boundaries'
+	);
+	console.log('P8-T16 webhook defense-in-depth passed');
+	passed += 1;
+
 	const deliveredPayload = {
 		event_id: `${prefix}-delivery`,
 		message_id: providerMessageId,
@@ -716,7 +739,7 @@ try {
 	await cleanup();
 }
 
-assert(passed === 14, `Expected 14 P8 focused tests, received ${passed}`);
+assert(passed === 15, `Expected 15 P8 focused tests, received ${passed}`);
 console.log(
-	`P8 focused integration tests passed (${passed} tests; P8-T11/P8-T13/P8-T15/P8-T16/P8-T17 are covered by adjacent unit/security gates)`
+	`P8 focused integration tests passed (${passed} tests; P8-T11/P8-T13/P8-T15/P8-T17 are covered by adjacent unit/security gates)`
 );

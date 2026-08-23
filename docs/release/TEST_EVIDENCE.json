@@ -1594,7 +1594,7 @@
       "proof": {
         "command": "bun run test:p8:documents",
         "source": "scripts/test-p8-documents.mjs",
-        "assertion": "assert(passed === 13, `Expected 13 P8 focused tests, received ${passed}`);"
+        "assertion": "assert(passed === 15, `Expected 15 P8 focused tests, received ${passed}`);"
       }
     },
     {
@@ -1616,7 +1616,7 @@
       "proof": {
         "command": "bun run test:p8:documents",
         "source": "scripts/test-p8-documents.mjs",
-        "assertion": "assert(passed === 13, `Expected 13 P8 focused tests, received ${passed}`);"
+        "assertion": "assert(\n\t\tretryMessages.length === 1 && retryMessages[0].attempt_count === 2,\n\t\t'Retry created a duplicate outbound message or did not increment the attempt'\n\t);"
       }
     },
     {
@@ -1652,7 +1652,7 @@
       "proof": {
         "command": "bun run test:p8:documents",
         "source": "scripts/test-p8-documents.mjs",
-        "assertion": "assert(passed === 13, `Expected 13 P8 focused tests, received ${passed}`);"
+        "assertion": "assert(\n\t\trejectedWebhook.response.status === 415 && wrongSignature.response.status === 401,\n\t\t'SendPulse webhook did not enforce content type and signature boundaries'\n\t);"
       }
     },
     {
@@ -1787,7 +1787,7 @@
       "proof": {
         "command": "bun run test:p9:automation",
         "source": "scripts/test-p9-automation.mjs",
-        "assertion": "assert(passed === 9, `Expected 9 focused P9 tests, received ${passed}`);"
+        "assertion": "assert(passed === 14, `Expected 14 focused P9 tests, received ${passed}`);"
       }
     },
     {

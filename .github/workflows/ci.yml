@@ -9,26 +9,155 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: quality-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
-  quality:
+  static:
+    name: static
     runs-on: ubuntu-latest
+    timeout-minutes: 25
     steps:
-      - uses: actions/checkout@v4
-      - uses: oven-sh/setup-bun@v2
+      - name: Checkout
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6
         with:
           bun-version: '1.2.22'
-      - run: bun install --frozen-lockfile
-      - run: bun run format:check
-      - run: bun run lint
-      - run: bun run check
-      - run: bun run test:unit -- --run
-      - run: bun run test:e2e:install
-      - run: bun run test:e2e
-      - run: bun run build
-      - run: bun run security:bundle
-      - run: bun run db:start
-      - run: bun run db:reset
-      - run: bun run db:test
-      - if: always()
+      - name: Install frozen dependencies
+        run: bun install --frozen-lockfile
+      - name: Verify authority registry
+        run: bun run authority:registry
+      - name: Regenerate and verify requirements coverage
+        run: bun run authority:coverage
+      - name: Reject generated coverage drift
+        run: git diff --exit-code -- docs/REQUIREMENTS_COVERAGE.md
+      - name: Verify frozen authority hashes
+        run: bun run authority:verify
+      - name: Verify CI contract
+        run: bun run ci:contract
+      - name: Verify release evidence registry
+        run: bun run release:evidence:verify
+      - name: Verify release manifest
+        run: bun run release:manifest:verify
+      - name: Verify release contract
+        run: bun run test:release:contract
+      - name: Check formatting
+        run: bun run format:check
+      - name: Run lint
+        run: bun run lint
+      - name: Run Svelte and TypeScript checks
+        run: bun run check
+      - name: Run unit tests
+        run: bun run test:unit -- --run
+      - name: Test generated-type checker
+        run: bun run test:db-types
+      - name: Check design tokens
+        run: bun run tokens:check
+
+  database-domain-security:
+    name: database-domain-security
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6
+        with:
+          bun-version: '1.2.22'
+      - name: Install frozen dependencies
+        run: bun install --frozen-lockfile
+      - name: Start local Supabase
+        run: bun run db:start
+      - name: Reset local database
+        run: bun run db:reset
+      - name: Lint local database
+        run: bun run db:test
+      - name: Check generated database types
+        run: bun run db:types:check
+      - name: Run database security contract
+        run: bun run db:security
+      - name: Run v1.3.1 security contract
+        run: bun run test:v131:security
+      - name: Run Auth integration
+        run: bun run auth:integration
+      - name: Run P4 domain contract
+        run: bun run test:p4:domain
+      - name: Run P4 tracer
+        run: bun run test:p4:tracer
+      - name: Run P5 Lead contract
+        run: bun run test:p5:leads
+      - name: Run P6 Client contract
+        run: bun run test:p6:clients
+      - name: Run P7 Quote contract
+        run: bun run test:p7:quotes
+      - name: Run P8 document and communication contract
+        run: bun run test:p8:documents
+      - name: Run v1.3.1 communications contract
+        run: bun run test:v131:communications
+      - name: Run P9 automation contract
+        run: bun run test:p9:automation
+      - name: Run P10 analytics contract
+        run: bun run test:p10:analytics
+      - name: Run P11 hardening contract
+        run: bun run test:p11:hardening
+      - name: Run P12 security and recovery contract
+        run: bun run test:p12:hardening
+      - name: Install browser for template checks
+        run: bun run test:e2e:install
+      - name: Run P13 deployment-template contract
+        run: bun run test:p13:template
+      - name: Run v1.3.1 recovery contract
+        run: bun run test:v131:recovery
+      - name: Stop local Supabase
+        if: always()
         run: bun run db:stop
-      - run: git diff --check
+
+  browser-build:
+    name: browser-build
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6
+        with:
+          bun-version: '1.2.22'
+      - name: Install frozen dependencies
+        run: bun install --frozen-lockfile
+      - name: Install Chromium
+        run: bun run test:e2e:install
+      - name: Run browser smoke tests
+        run: bun run test:e2e
+      - name: Build Worker and Static Assets artifact
+        run: bun run build
+      - name: Scan public build for trusted environment names
+        run: bun run security:bundle
+
+  release-contract:
+    name: release-contract
+    needs: [static, database-domain-security, browser-build]
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6
+        with:
+          bun-version: '1.2.22'
+      - name: Install frozen dependencies
+        run: bun install --frozen-lockfile
+      - name: Recheck CI contract at release boundary
+        run: bun run ci:contract
+      - name: Recheck release evidence registry
+        run: bun run release:evidence:verify
+      - name: Recheck release manifest
+        run: bun run release:manifest:verify
+      - name: Recheck release contract
+        run: bun run test:release:contract
+      - name: Check final diff hygiene
+        run: bun run diff:check
