@@ -127,12 +127,19 @@ async function createUser(label, role) {
 	sql(
 		`update public.profiles set role = ${sqlLiteral(role)}, status = 'active' where id = ${sqlLiteral(id)}::uuid;`
 	);
-	const session = await request('/auth/v1/token?grant_type=password', {
-		method: 'POST',
-		body: { email, password }
-	});
-	assert(session.ok && session.body?.access_token, `Could not sign in local ${label} test user`);
-	return { id, token: session.body.access_token };
+	let session;
+	for (let attempt = 0; attempt < 6; attempt += 1) {
+		session = await request('/auth/v1/token?grant_type=password', {
+			method: 'POST',
+			body: { email, password }
+		});
+		if (session.ok && session.body?.access_token) return { id, token: session.body.access_token };
+		await new Promise((resolve) => setTimeout(resolve, 250));
+	}
+	assert(
+		false,
+		`Could not sign in local ${label} test user (HTTP ${session?.status}: ${JSON.stringify(session?.body)})`
+	);
 }
 
 async function deleteUsers() {
