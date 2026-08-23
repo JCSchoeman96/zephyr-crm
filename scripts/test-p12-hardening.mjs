@@ -7,7 +7,8 @@ import { tmpdir } from 'node:os';
 const root = process.cwd();
 const runId = `${Date.now()}-${process.pid}`;
 const prefix = `p12-${runId}`;
-const appUrl = 'http://127.0.0.1:4184';
+const appPort = 4186;
+const appUrl = `http://127.0.0.1:${appPort}`;
 const storagePath = `quotes/${randomUUID()}/p12-recovery.pdf`;
 let app;
 let backupDirectory;
@@ -55,6 +56,9 @@ function identifier(value) {
 
 async function waitForServer(url) {
 	for (let attempt = 0; attempt < 80; attempt += 1) {
+		if (app?.exitCode !== null && app?.exitCode !== undefined) {
+			throw new Error(`P12 application server exited before readiness (code ${app.exitCode})`);
+		}
 		try {
 			const response = await fetch(url);
 			if (response.ok || response.status < 500) return;
@@ -78,7 +82,7 @@ async function storageRequest(apiUrl, serviceRoleKey, path, init = {}) {
 }
 
 async function startApp(local) {
-	app = spawn('bun', ['run', 'dev', '--', '--host', '127.0.0.1', '--port', '4184'], {
+	app = spawn('bun', ['run', 'dev', '--', '--host', '127.0.0.1', '--port', String(appPort)], {
 		cwd: root,
 		stdio: 'ignore',
 		env: {
@@ -98,10 +102,21 @@ async function startApp(local) {
 	await waitForServer(`${appUrl}/login`);
 }
 
-function stopApp() {
-	if (!app) return;
-	app.kill('SIGTERM');
+async function stopApp() {
+	if (!app || app.exitCode !== null) return;
+	const process = app;
 	app = undefined;
+	await new Promise((resolve) => {
+		const timeout = setTimeout(() => {
+			process.kill('SIGKILL');
+			resolve();
+		}, 5000);
+		process.once('exit', () => {
+			clearTimeout(timeout);
+			resolve();
+		});
+		process.kill('SIGTERM');
+	});
 }
 
 async function runDatabaseContracts(local) {
@@ -243,7 +258,11 @@ async function runSecurityAndInputContracts(local) {
 			message: '<script>alert(1)</script>'
 		})
 	});
-	assert(unsafeLead.status === 201, `Valid bounded input was rejected (${unsafeLead.status})`);
+	const unsafeLeadBody = await unsafeLead.text();
+	assert(
+		unsafeLead.status === 201,
+		`Valid bounded input was rejected (${unsafeLead.status}): ${unsafeLeadBody.slice(0, 300)}`
+	);
 	const leadSource = await readFile('src/routes/leads/[id]/+page.svelte', 'utf8');
 	const quoteSource = await readFile('src/routes/quotes/[id]/+page.svelte', 'utf8');
 	const intakeSource = await readFile('src/lib/server/bricks-intake.ts', 'utf8');
@@ -346,7 +365,7 @@ async function main() {
 	);
 	await runDatabaseContracts(local);
 	await runSecurityAndInputContracts(local);
-	stopApp();
+	await stopApp();
 	await runBackupRecovery(local);
 	await runLifecycleContracts();
 	run('bun', ['run', 'build']);
@@ -371,7 +390,7 @@ async function main() {
 try {
 	await main();
 } finally {
-	stopApp();
+	await stopApp();
 	if (restoreDatabase) {
 		const local = statusEnv();
 		if (local.DB_URL) sql(local.DB_URL, `drop database if exists ${identifier(restoreDatabase)};`);

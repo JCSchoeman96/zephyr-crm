@@ -3,7 +3,8 @@ import { execFileSync, spawn } from 'node:child_process';
 const root = process.cwd();
 const runId = `${Date.now()}`;
 const prefix = `p7-${runId}`;
-const appUrl = 'http://127.0.0.1:4179';
+const appPort = 4188;
+const appUrl = `http://127.0.0.1:${appPort}`;
 const users = [];
 const leads = [];
 const quoteIds = [];
@@ -320,7 +321,7 @@ async function waitFor(url) {
 }
 
 async function startApp() {
-	app = spawn('bun', ['run', 'dev', '--', '--host', '127.0.0.1', '--port', '4179'], {
+	app = spawn('bun', ['run', 'dev', '--', '--host', '127.0.0.1', '--port', String(appPort)], {
 		cwd: root,
 		stdio: 'ignore',
 		env: {
@@ -335,9 +336,20 @@ async function startApp() {
 }
 
 async function stopApp() {
-	if (!app) return;
-	app.kill('SIGTERM');
+	if (!app || app.exitCode !== null) return;
+	const process = app;
 	app = null;
+	await new Promise((resolve) => {
+		const timeout = setTimeout(() => {
+			process.kill('SIGKILL');
+			resolve();
+		}, 5000);
+		process.once('exit', () => {
+			clearTimeout(timeout);
+			resolve();
+		});
+		process.kill('SIGTERM');
+	});
 }
 
 async function loginApp(user) {

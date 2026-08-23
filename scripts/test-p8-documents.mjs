@@ -6,7 +6,8 @@ import { readFileSync } from 'node:fs';
 const root = process.cwd();
 const runId = `${Date.now()}`;
 const prefix = `p8-${runId}`;
-const appUrl = 'http://127.0.0.1:4179';
+const appPort = 4187;
+const appUrl = `http://127.0.0.1:${appPort}`;
 const providerUrl = 'http://127.0.0.1:4180';
 const webhookSecret = `p8-webhook-${runId}`;
 const users = [];
@@ -308,7 +309,7 @@ function startProvider() {
 }
 
 async function startApp() {
-	app = spawn('bun', ['run', 'dev', '--', '--host', '127.0.0.1', '--port', '4179'], {
+	app = spawn('bun', ['run', 'dev', '--', '--host', '127.0.0.1', '--port', String(appPort)], {
 		cwd: root,
 		stdio: 'ignore',
 		env: {
@@ -329,6 +330,23 @@ async function startApp() {
 		}
 	});
 	await waitFor(`${appUrl}/login`);
+}
+
+async function stopApp() {
+	if (!app || app.exitCode !== null) return;
+	const process = app;
+	app = undefined;
+	await new Promise((resolve) => {
+		const timeout = setTimeout(() => {
+			process.kill('SIGKILL');
+			resolve();
+		}, 5000);
+		process.once('exit', () => {
+			clearTimeout(timeout);
+			resolve();
+		});
+		process.kill('SIGTERM');
+	});
 }
 
 async function sendQuoteThroughApp(quote) {
@@ -734,7 +752,7 @@ try {
 	console.log('P8-T18 hard-bounce remediation and idempotency passed');
 	passed += 1;
 } finally {
-	if (app) app.kill('SIGTERM');
+	await stopApp();
 	if (provider) await new Promise((resolve) => provider.close(resolve));
 	await cleanup();
 }
