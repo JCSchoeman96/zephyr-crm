@@ -23,7 +23,10 @@ The alternative path is tested from a fresh Lead: a Lost transition without a re
 - `supabase/functions/ingest-bricks-lead/index.ts` is the deployable Edge Function boundary. It validates a bounded JSON or form request, checks the shared Authorization secret, and calls the service-role-only `ingest_bricks_lead` database action.
 - `/api/webhooks/bricks` is the equivalent local SvelteKit trusted boundary used by the disposable local tracer. It keeps the same secret, validation, service-role, and idempotency contract so local proof does not call a browser mutation path.
 - `src/lib/domain/communications/sendpulse-adapter.ts` owns provider-specific OAuth and SMTP request/response mapping. The tracer runs it against a local deterministic provider contract; no remote SendPulse credentials or real send are required for local closure.
-- `prepare_quote_send` and `complete_quote_send` separate the persisted sending claim from provider acknowledgement. Completion is idempotent and atomically updates the Quote, Lead attention state, follow-up Task, and Activities.
+- `prepare_quote_send` and `complete_quote_send` separate the persisted
+  outbound claim/submitting transition from provider acknowledgement.
+  Completion is idempotent and atomically updates the Quote, Lead attention
+  state, follow-up Task, and Activities.
 
 ## Proof commands
 

@@ -93,11 +93,24 @@ open → cancelled
 
 ## Outbound Message lifecycle
 
-Canonical values are lowercase:
+Canonical `delivery_status` values are lowercase:
 
 ```text
-pending → sending → submitted
+pending → claimed → submitting
+                         ├── submitted
+                         │     ├── delivered
+                         │     ├── bounced
+                         │     └── failed
+                         ├── failed
+                         └── submission_unknown
 ```
+
+`pending` is a persisted logical send intent. `claimed` records that one
+trusted worker owns the logical message and its current attempt, and
+`submitting` means that the provider request is in progress. `submitted`
+requires a provider acknowledgement. `failed` is a definitive failure,
+while `submission_unknown` means that the request may have reached the
+provider but no definitive acknowledgement was received.
 
 From `submitted`, provider observations may produce:
 
@@ -107,7 +120,34 @@ bounced
 failed
 ```
 
-The primary state is delivery/submission state. Engagement events such as `opened` and `clicked` are MessageEvent types and never replace the delivery state. A provider acknowledgement can be `submitted` while delivery remains uncertain until a provider event arrives. Hard bounce requires remediation evidence and must not be silently treated as successful delivery.
+The primary state is delivery/submission state. Engagement events such as
+`opened` and `clicked` are MessageEvent types and never replace the delivery
+state. A `submission_unknown` message must not be blindly resent: provider
+correlation and an authorised reconciliation decision are required before any
+controlled retry. A controlled retry creates a new attempt under the same
+logical message and never creates a second logical initial-send intent. Hard
+bounce requires remediation evidence and must not be silently treated as
+successful delivery.
+
+## Outbound Message Attempt lifecycle
+
+Each logical message keeps append-only attempt evidence. The submission
+lifecycle of an attempt is:
+
+```text
+claimed → submitting → submitted
+                         ├── failed
+                         └── submission_unknown
+```
+
+Trusted completion and reconciliation may add provider identifiers, terminal
+timestamps, and provider observations to the attempt; ordinary browser
+updates and deletes are prohibited. A provider `delivered` or `bounced`
+observation is recorded as MessageEvent evidence and updates the logical
+OutboundMessage delivery state according to the provider contract. A retry
+after a controlled decision appends a new attempt number and idempotency key
+under the same logical message. No automatic resend is allowed from
+`submission_unknown`.
 
 ## User lifecycle
 

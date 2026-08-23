@@ -9,7 +9,27 @@ Security is enforced at the database and trusted-operation boundaries. UI hiding
 
 Supabase Auth is the identity authority. Staff accounts are invitation-only; public self-registration is not part of the product. Each Auth user has one Profile with role and status metadata. Initial Profile statuses are `invited`, `active`, and `suspended`; initial roles are `owner`, `admin`, `sales`, and `viewer`.
 
-Owner/Admin privileged actions require the current session's AAL2/MFA claim when the action is classified as privileged. The application must verify current authenticated identity and claims server-side; a browser-supplied role, status, or `raw_user_meta_data` value is never trusted.
+Owner/Admin privileged actions require the current session's AAL2/MFA claim.
+The server must verify current authenticated identity and claims at the
+trusted action boundary; a browser-supplied role, status, or
+`raw_user_meta_data` value is never trusted.
+
+The privileged Owner/Admin action classes requiring current-session AAL2 are:
+
+- **User/role administration:** invitation/provisioning, role or status
+  changes, suspension/reactivation, and privileged Profile access changes.
+- **Integrations/security settings:** AppSetting changes, integration
+  credentials or secrets, webhook authentication, and security configuration.
+- **Exceptional reopen/correction:** `reopen_lead` and any exceptional
+  lifecycle or data correction that is classified as privileged.
+- **Recovery/admin actions:** backup/restore, recovery configuration,
+  migration/repair administration, and other privileged recovery operations.
+- **Other explicitly privileged actions:** any action explicitly classified as
+  privileged by this `SECURITY_MODEL` or a higher-priority frozen authority.
+
+Owner/Admin role membership alone is insufficient for these classes. The
+current session must satisfy AAL2 when the operation executes, and the action
+must still pass its role, status, RLS, domain, concurrency, and audit checks.
 
 Suspended users are denied normal CRM access even if a previously issued session exists. Logout, session expiry, password reset/re-invite, and MFA re-enrollment expectations are documented in operational procedures and tested at the release gate.
 
@@ -52,6 +72,27 @@ RLS is enabled on every exposed business table, including Profiles, configuratio
 - Storage buckets containing Quote documents are private; access uses authorized signed URLs or trusted download actions.
 
 Policies use database-derived identity and role from the authenticated JWT/profile relationship. User-controlled metadata, URL parameters, form fields, or browser state cannot grant authority.
+
+## Protected-field/action mutation matrix
+
+RLS controls which rows a role can see and which ordinary fields it may edit;
+it is not authority to write lifecycle, identity, provider, snapshot, lock, or
+configuration fields. The following matrix is the frozen boundary for the
+protected resources:
+
+| Resource | Ordinary RLS CRUD | Protected fields/transitions | Trusted action boundary |
+|---|---|---|---|
+| Lead | Permitted contact, attribution, notes, and other explicitly editable Lead fields under row policy. | `pipeline_stage`, `attention_state`, `assigned_to`, lost-reason/notes, conversion link, pause/resume facts, normalized phone, and `lock_version`; terminal and lifecycle transitions. | `set_lead_attention`, `assign_lead`, `transition_lead`, `mark_lead_lost`, `reopen_lead`, `convert_lead`, `pause_lead`, and `resume_lead`. |
+| Quote | Draft content and QuoteItems only through the authorized draft boundary and row policy. | Lead/Client associations, status, quote number/revision lineage, tax and server-calculated totals, seller/recipient/commercial `quote_snapshot`, document path/hash/provenance, acceptance fields, and `lock_version`; sent/terminal immutability. | Trusted Quote draft, ready/finalise, document, send, revise, accept, and cancel actions, including `save_quote_draft`, `mark_quote_ready`, `prepare_quote_send`, `complete_quote_send`, `revise_quote`, and `accept_quote`. |
+| Task | Permitted title, description, due date, assignment, and work-detail edits under row policy. | Status and terminal timestamps, reminder status/claim/outbound link, parent associations, creator, and `lock_version`; completion, cancellation, rescheduling, and automation transitions. | `complete_task`, `reschedule_task`, `cancel_task`, and the trusted reminder processor/notification boundary. |
+| OutboundMessage | No generic browser mutation; authorised reads and trusted creation only. | Logical idempotency key, provider identity/status/timestamps, attempt count, recipient snapshot, Lead/Client/Quote/Task associations, uncertainty/error evidence, and delivery observations. | Trusted quote-send and reminder-send boundaries, `prepare_quote_send`, `complete_quote_send`, `fail_quote_send`, `mark_quote_send_unknown`, `reconcile_quote_submission`, and `process_sendpulse_event`. |
+| Profile | Personal fields explicitly allowed by Profile RLS, such as permitted name maintenance. | Auth identity link, email identity, role, status, suspension/access state, and other security attributes. | Invitation/provisioning administration and `set_profile_access`; role/status changes are never generic browser CRUD. |
+| AppSetting | No generic CRUD for ordinary users; only the authorised settings path. | Every setting value and description, especially integration, security, sender, automation, and numbering configuration; secrets remain outside browser authority. | `set_app_setting` and the trusted client-configuration/admin settings boundary. |
+
+The matrix is also enforced by database protected-field triggers and trusted
+function checks. Activity remains append-only evidence: ordinary UPDATE/DELETE
+is prohibited, while privileged corrections create separate security-audit
+evidence.
 
 ## Trusted mutation boundaries
 

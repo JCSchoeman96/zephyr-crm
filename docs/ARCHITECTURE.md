@@ -106,7 +106,12 @@ Integrations are adapters around domain operations:
 - Supabase Storage: private quote-document artifacts.
 - Supabase Cron: scheduler that invokes trusted processors.
 
-Provider-specific request and response details stay within adapter modules. Core domain code consumes stable outcomes such as `submitted`, `delivered`, `bounced`, `failed`, or `submission_unknown`; it does not call provider APIs directly. An uncertain acknowledgement is reconciled by provider correlation before any controlled retry.
+Provider-specific request and response details stay within adapter modules. Core
+domain code consumes the logical submission states `pending`, `claimed`,
+`submitting`, `submitted`, `failed`, and `submission_unknown`, plus provider
+observations such as `delivered` and `bounced`; it does not call provider APIs
+directly. An uncertain acknowledgement is reconciled by provider correlation
+before any controlled retry.
 
 ## Data and document authority
 

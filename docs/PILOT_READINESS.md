@@ -77,9 +77,10 @@ handoff; the local build does not mark these items complete.
 - [ ] Configure the client Bricks form ID, webhook URL, authentication secret,
       field mapping, duplicate submission behavior, and an authenticated smoke
       submission.
-- [ ] Send a controlled real transactional message to an approved test recipient;
-      reconcile submitted, delivered, bounced, failed, and uncertain provider
-      outcomes against CRM records.
+- [ ] Send a controlled real transactional message to an approved test
+      recipient; reconcile pending/claimed/submitting/submitted, failed, and
+      submission-unknown outcomes plus delivered/bounced provider observations
+      against CRM records.
 
 ### Staff, observation, and feedback
 
