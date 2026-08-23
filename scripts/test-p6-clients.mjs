@@ -199,21 +199,17 @@ async function convert(lead, user) {
 }
 
 async function addHistoryAndTask(lead, user) {
-	await rest(
-		'/rest/v1/activities',
+	const note = await mustRpc(
+		'add_activity_note',
 		{
-			method: 'POST',
-			headers: { 'content-type': 'application/json', Prefer: 'return=minimal' },
-			body: JSON.stringify({
-				lead_id: lead.id,
-				actor_id: user.id,
-				event_type: 'note_added',
-				metadata: { test: 'p6-history' },
-				summary: 'P6 historical activity'
-			})
+			p_lead_id: lead.id,
+			p_summary: 'P6 historical activity',
+			p_metadata: { test: 'p6-history' }
 		},
-		user
+		anonKey,
+		await signIn(user)
 	);
+	assert(note.activity_id, 'Trusted activity note action did not return an Activity');
 	const created = await rest(
 		'/rest/v1/tasks',
 		{

@@ -1499,6 +1499,18 @@ export type Database = {
 						};
 						Returns: Json;
 				  };
+			add_activity_note: {
+				Args: {
+					p_client_id?: string;
+					p_lead_id?: string;
+					p_metadata?: Json;
+					p_outbound_message_id?: string;
+					p_quote_id?: string;
+					p_summary?: string;
+					p_task_id?: string;
+				};
+				Returns: Json;
+			};
 			assign_lead: {
 				Args: {
 					p_assigned_to: string;
