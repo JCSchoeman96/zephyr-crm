@@ -2661,7 +2661,7 @@
       "criterion": "While P14 is `VALIDATING`, state records P0–P13 complete, no blocker, `goal_status=IN_PROGRESS`, `local_build_status=FINAL_VALIDATION_PENDING`, `release_status=NOT_READY`, `pilot_status=NOT_STARTED`, and `production_status=NOT_LAUNCHED`; this test does not require P14 or the project to be terminal.",
       "classification": "AUTOMATED",
       "proof": {
-        "command": "bun run release:state -- --p14-readiness",
+        "command": "bun run release:state:p14",
         "source": "scripts/check-release-state.mjs",
         "assertion": "state.local_build_status === 'FINAL_VALIDATION_PENDING'"
       }

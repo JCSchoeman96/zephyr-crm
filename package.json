@@ -47,7 +47,7 @@
 		"test:p13:template": "bun scripts/test-p13-template.mjs",
 		"test:p14:release": "bun scripts/test-p14-release.mjs",
 		"release:state": "node scripts/check-release-state.mjs",
-		"release:state:p14": "node scripts/check-release-state.mjs --p14-readiness",
+		"release:state:p14": "node scripts/check-release-state.mjs --p14-readiness --state=docs/release/P14_READINESS_STATE.json",
 		"release:state:final": "node scripts/check-release-state.mjs --final",
 		"release:evidence:generate": "node scripts/generate-test-evidence.mjs",
 		"release:evidence:verify": "node scripts/verify-test-evidence.mjs docs/release/TEST_EVIDENCE.json",

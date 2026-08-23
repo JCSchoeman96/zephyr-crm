@@ -178,6 +178,14 @@ assert.throws(
 	'P14 readiness must not require or record P14 as complete.'
 );
 
+const trackedP14Readiness = JSON.parse(
+	readFileSync('docs/release/P14_READINESS_STATE.json', 'utf8')
+);
+assert.doesNotThrow(
+	() => validateP14ReadinessState(trackedP14Readiness),
+	'Tracked P14 readiness state must be independently executable from a clean checkout.'
+);
+
 const finalState = {
 	...p14Readiness,
 	goal_status: 'COMPLETE',

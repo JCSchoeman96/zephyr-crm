@@ -123,7 +123,7 @@ const proofOverrides = {
 		assertion: "read('docs/PILOT_READINESS.md').includes('NOT_STARTED')"
 	},
 	'P14-T16': {
-		command: 'bun run release:state -- --p14-readiness',
+		command: 'bun run release:state:p14',
 		source: 'scripts/check-release-state.mjs',
 		assertion: "state.local_build_status === 'FINAL_VALIDATION_PENDING'"
 	},
