@@ -23,5 +23,5 @@ architecture already satisfies it; the cited evidence remains the controlling pr
 | ZH-014 | NON-BLOCKER | `docs/ARCHITECTURE.md` already defines DB-centric layering and no misleading service scaffolding is required, P14-T34 |
 | ZH-015 | FIXED | `scripts/verify-test-evidence.mjs`, `scripts/generate-test-evidence.mjs`, v1.3.2 registry, P14-T34 |
 | ZH-016 | FIXED | `tests/e2e/domain/product-flow.e2e.ts`, `tests/e2e/domain/role-accessibility.e2e.ts`, P14-T33 |
-| ZH-017 | FIXED | `.agent/goal-loop/STATE.json`, release evidence/manifest, P14-T34 |
+| ZH-017 | FIXED | `docs/release/P14_READINESS_STATE.json`, release evidence/manifest, P14-T34 |
 | ZH-018 | FIXED | `scripts/test-p14-mutation-parity.mjs` executes current-schema boundary suites, P14-T35 |

@@ -1,5 +1,5 @@
 import { execFileSync } from 'node:child_process';
-import { readFileSync, readdirSync } from 'node:fs';
+import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { validateEvidenceRegistry } from './verify-test-evidence.mjs';
 
@@ -21,6 +21,13 @@ function assert(condition, message) {
 
 function read(path) {
 	return readFileSync(join(root, path), 'utf8');
+}
+
+function releaseStatePath() {
+	const localStatePath = '.agent/goal-loop/STATE.json';
+	return existsSync(join(root, localStatePath))
+		? localStatePath
+		: 'docs/release/P14_READINESS_STATE.json';
 }
 
 function provisionFreshClient() {
@@ -100,7 +107,7 @@ function validatePilotPackage() {
 }
 
 function runP14SpecificChecks() {
-	const state = JSON.parse(read('.agent/goal-loop/STATE.json'));
+	const state = JSON.parse(read(releaseStatePath()));
 	const stateGate = state.execution_stage === 'PHASE_LOOP' ? 'release:state:p14' : 'release:state';
 	const checks = [
 		'release:state:parity',

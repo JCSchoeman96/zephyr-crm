@@ -1,5 +1,9 @@
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
+
+const defaultStatePath = existsSync(resolve(process.cwd(), '.agent/goal-loop/STATE.json'))
+	? '.agent/goal-loop/STATE.json'
+	: 'docs/release/P14_READINESS_STATE.json';
 
 function assert(condition, message) {
 	if (!condition) throw new Error(`Release state: ${message}`);
@@ -118,7 +122,7 @@ export function validateFinalReleaseState(state) {
 	return true;
 }
 
-export function readReleaseState(statePath = '.agent/goal-loop/STATE.json') {
+export function readReleaseState(statePath = defaultStatePath) {
 	return JSON.parse(readFileSync(resolve(process.cwd(), statePath), 'utf8'));
 }
 
@@ -127,7 +131,7 @@ function main() {
 	const statePath = process.argv
 		.find((argument) => argument.startsWith('--state='))
 		?.slice('--state='.length);
-	const state = readReleaseState(statePath ?? '.agent/goal-loop/STATE.json');
+	const state = readReleaseState(statePath ?? defaultStatePath);
 	if (args.has('--p14-readiness')) {
 		validateP14ReadinessState(state);
 		console.log('P14-T16 non-terminal final-gate readiness passed');

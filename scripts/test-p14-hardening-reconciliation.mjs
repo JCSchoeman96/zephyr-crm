@@ -20,7 +20,10 @@ const disposition = read('docs/release/P14_HARDENING_DISPOSITION.md');
 const hashes = JSON.parse(read('docs/AUTHORITY_HASHES.json'));
 const evidence = JSON.parse(read('docs/release/TEST_EVIDENCE.json'));
 const manifest = JSON.parse(read('docs/release/RELEASE_MANIFEST.json'));
-const state = JSON.parse(read('.agent/goal-loop/STATE.json'));
+const statePath = existsSync('.agent/goal-loop/STATE.json')
+	? '.agent/goal-loop/STATE.json'
+	: 'docs/release/P14_READINESS_STATE.json';
+const state = JSON.parse(read(statePath));
 const packageJson = JSON.parse(read('package.json'));
 const workflow = read('.github/workflows/ci.yml');
 

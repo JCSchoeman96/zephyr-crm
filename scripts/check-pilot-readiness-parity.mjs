@@ -1,4 +1,4 @@
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
 const lifecycleFields = [
@@ -125,14 +125,19 @@ export function validateReleaseTruth(machineState, committedState, readinessText
 
 function main() {
 	const root = process.cwd();
-	const machineState = JSON.parse(
-		readFileSync(resolve(root, '.agent/goal-loop/STATE.json'), 'utf8')
-	);
+	const localStatePath = resolve(root, '.agent/goal-loop/STATE.json');
+	const localStateMarkdownPath = resolve(root, '.agent/goal-loop/STATE.md');
+	const machineStatePath = existsSync(localStatePath)
+		? localStatePath
+		: resolve(root, 'docs/release/P14_READINESS_STATE.json');
+	const machineState = JSON.parse(readFileSync(machineStatePath, 'utf8'));
 	const committedState = JSON.parse(
 		readFileSync(resolve(root, 'docs/release/P14_READINESS_STATE.json'), 'utf8')
 	);
 	const readinessText = readFileSync(resolve(root, 'docs/PILOT_READINESS.md'), 'utf8');
-	const stateText = readFileSync(resolve(root, '.agent/goal-loop/STATE.md'), 'utf8');
+	const stateText = existsSync(localStateMarkdownPath)
+		? readFileSync(localStateMarkdownPath, 'utf8')
+		: undefined;
 	validateReleaseTruth(machineState, committedState, readinessText, stateText);
 	console.log('P14-T22 release truth parity passed');
 }

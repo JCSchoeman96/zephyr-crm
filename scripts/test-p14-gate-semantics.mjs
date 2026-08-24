@@ -8,6 +8,7 @@ const playwrightConfig = readFileSync('playwright.config.ts', 'utf8');
 const previewScript = readFileSync('scripts/test-p14-preview.mjs', 'utf8');
 const browserHelpers = readFileSync('tests/e2e/domain/helpers.ts', 'utf8');
 const quoteActions = readFileSync('src/lib/server/quote-actions.ts', 'utf8');
+const readinessState = readFileSync('docs/release/P14_READINESS_STATE.json', 'utf8');
 
 assert(!releaseScript.includes("['run', 'quality']"), 'P14 release proof must not invoke quality.');
 assert(
@@ -47,6 +48,9 @@ assert.match(playwrightConfig, /scripts\/test-p14-preview\.mjs/);
 assert.match(previewScript, /mkdtempSync/);
 assert.match(previewScript, /--env-file/);
 assert.doesNotMatch(previewScript, /--var/);
+assert.match(releaseScript, /docs\/release\/P14_READINESS_STATE\.json/);
+assert.match(releaseScript, /existsSync/);
+assert.match(readinessState, /"execution_stage": "COMPLETE"/);
 assert.match(browserHelpers, /staffSequence/);
 assert.match(browserHelpers, /staffSequence\s*\+=\s*1|\+\+staffSequence/);
 assert(
