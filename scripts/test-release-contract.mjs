@@ -124,17 +124,29 @@ assertStaticEvidence('P0-T12', [
 		'docs/METRICS_CONTRACT.md',
 		['inclusive UTC calendar dates', 'configured IANA timezone', 'Won / (Won + Lost) * 100']
 	],
-	['docs/DOMAIN_MODEL.md', ['### ClientContact', '`ClientContact` belongs to one Client']],
 	[
-		'src/lib/domain/contacts/phone.ts',
+		'docs/DOMAIN_MODEL.md',
 		[
-			'Normalize only numbers that already declare an international country code.',
-			"startsWith('+')"
+			'### ClientContact',
+			'`ClientContact` belongs to one Client',
+			'### Phone normalization',
+			'`phone` preserves the original display text',
+			'`phone_normalized` is a separate comparison/index value',
+			'Normalization occurs at the trusted server/database boundary',
+			'Only values that explicitly begin with `+`',
+			'Ambiguous national-format input without an explicit `+` country code produces `null`',
+			'never guesses an implicit country code'
 		]
 	],
 	[
-		'docs/TOOLCHAIN_PROOF.md',
-		['Bun package manager/runner', 'Every direct dependency is exact-pinned']
+		'DEPENDENCY_BASELINE_v1.0.0.md',
+		[
+			'## 2. Runtime and Build Responsibility',
+			'Bun',
+			'package-script runner',
+			'every direct dependency is exact-pinned',
+			'`bun.lock` is committed'
+		]
 	]
 ]);
 assertStaticEvidence('P0-T13', [

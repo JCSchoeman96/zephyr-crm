@@ -205,18 +205,27 @@ const p0Proofs = {
 			},
 			{
 				source: 'docs/DOMAIN_MODEL.md',
-				contains: ['### ClientContact', '`ClientContact` belongs to one Client']
-			},
-			{
-				source: 'src/lib/domain/contacts/phone.ts',
 				contains: [
-					'Normalize only numbers that already declare an international country code.',
-					"startsWith('+')"
+					'### ClientContact',
+					'`ClientContact` belongs to one Client',
+					'### Phone normalization',
+					'`phone` preserves the original display text',
+					'`phone_normalized` is a separate comparison/index value',
+					'Normalization occurs at the trusted server/database boundary',
+					'Only values that explicitly begin with `+`',
+					'Ambiguous national-format input without an explicit `+` country code produces `null`',
+					'never guesses an implicit country code'
 				]
 			},
 			{
-				source: 'docs/TOOLCHAIN_PROOF.md',
-				contains: ['Bun package manager/runner', 'Every direct dependency is exact-pinned']
+				source: 'DEPENDENCY_BASELINE_v1.0.0.md',
+				contains: [
+					'## 2. Runtime and Build Responsibility',
+					'Bun',
+					'package-script runner',
+					'every direct dependency is exact-pinned',
+					'`bun.lock` is committed'
+				]
 			}
 		]
 	},
