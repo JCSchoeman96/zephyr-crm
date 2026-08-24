@@ -114,6 +114,7 @@ async function testBrandInBrowser(local) {
 			PUBLIC_SUPABASE_URL: local.API_URL,
 			PUBLIC_SUPABASE_PUBLISHABLE_KEY: local.ANON_KEY ?? local.PUBLISHABLE_KEY,
 			PUBLIC_SITE_URL: appUrl,
+			ZEPHYR_COMPONENT_LAB_ENABLED: '1',
 			PUBLIC_CLIENT_CONFIG_JSON: JSON.stringify(browserConfiguration)
 		}
 	});

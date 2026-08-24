@@ -1,7 +1,7 @@
 # Zephyr CRM Frozen Roadmap
 
 **Status:** Frozen implementation authority (Phase 0)
-**Roadmap source:** `CRM_IMPLEMENTATION_ROADMAP_v1.3.1.md`
+**Roadmap source:** `CRM_IMPLEMENTATION_ROADMAP_v1.3.2.md`
 **Execution controller:** `AGENTS.md`
 **Deployment model:** One isolated stack per client
 
@@ -64,3 +64,11 @@ The frozen implementation authority is split by responsibility:
 - this file: phase order, boundaries and final state.
 
 No phase may introduce a competing definition for Lead, Client, Quote, Task, Activity, role, state, or deployment.
+
+## P14 hardening amendment
+
+The v1.3.2 patch preserves all P0–P13 semantics and P14-T01 through P14-T21.
+The frozen P14 hardening authority
+(`docs/hardening/ZEPHYR_CRM_P14_HARDENING_AND_IMPROVEMENT_AUTHORITY_v1.0.0.md`)
+adds ZH-001 through ZH-018 and P14-T22 through P14-T35. P14 closes before the
+global final gate; only the global gate may persist `PILOT_READY`.

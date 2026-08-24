@@ -13,6 +13,7 @@
 
 	let { data, form }: { data: PageData; form: ActionData } = $props();
 	const canMutate = $derived(data.profile.role !== 'viewer');
+	let contextType = $state('lead');
 
 	function dateTime(value: string | null) {
 		return value ? new Date(value).toLocaleString('en-ZA') : 'No due date';
@@ -23,6 +24,24 @@
 		if (task.status === 'cancelled') return 'neutral';
 		if (task.is_overdue) return 'danger';
 		return 'info';
+	}
+
+	function contextLabel(task: PageData['tasks'][number]) {
+		if (task.quote_id) {
+			const quote = data.quotes.find((item) => item.id === task.quote_id);
+			return quote ? `${quote.quote_number ?? 'Quote'} · ${quote.subject}` : 'Quote context';
+		}
+		if (task.client_id) {
+			const client = data.clients.find((item) => item.id === task.client_id);
+			return client ? `Client ${client.client_number} · ${client.display_name}` : 'Client context';
+		}
+		if (task.lead_id) {
+			const lead = data.leads.find((item) => item.id === task.lead_id);
+			return lead
+				? `Lead ${lead.lead_number ?? ''} · ${lead.first_name} ${lead.last_name}`
+				: 'Lead context';
+		}
+		return 'No context';
 	}
 </script>
 
@@ -36,7 +55,10 @@
 		title="Tasks"
 		description="Every open Task is an explicit next action; overdue is derived from its due time."
 	>
-		{#snippet actions()}<RealtimeStatus scope="tasks" tables={['tasks', 'leads']} />{/snippet}
+		{#snippet actions()}<RealtimeStatus
+				scope="tasks"
+				tables={['tasks', 'leads', 'quotes']}
+			/>{/snippet}
 	</PageHeader>
 	{#if form?.message}<ErrorState title="Task action failed" message={form.message} />{/if}
 
@@ -60,11 +82,34 @@
 			<h2>Create Task</h2>
 			<p class="muted">Use a concrete next action; automated rules remain server-configured.</p>
 			<form method="POST" action="?/create" class="create-form">
-				<Select id="task-lead" name="lead_id" label="Lead" required
-					><option value="">Select a Lead</option>{#each data.leads as lead (lead.id)}<option
-							value={lead.id}>{lead.first_name} {lead.last_name} · {lead.pipeline_stage}</option
-						>{/each}</Select
-				>
+				<Select id="task-context-type" label="Context type" bind:value={contextType}>
+					<option value="lead">Lead</option><option value="client">Client</option><option
+						value="quote">Quote</option
+					>
+				</Select>
+				{#if contextType === 'lead'}
+					<Select id="task-context-lead" name="context_id" label="Lead" required
+						><option value="">Select a Lead</option>{#each data.leads as lead (lead.id)}<option
+								value={lead.id}
+								>Lead {lead.lead_number ?? ''} · {lead.first_name}
+								{lead.last_name} · {lead.pipeline_stage}</option
+							>{/each}</Select
+					>
+				{:else if contextType === 'client'}
+					<Select id="task-context-client" name="context_id" label="Client" required
+						><option value="">Select a Client</option
+						>{#each data.clients as client (client.id)}<option value={client.id}
+								>Client {client.client_number} · {client.display_name}</option
+							>{/each}</Select
+					>
+				{:else}
+					<Select id="task-context-quote" name="context_id" label="Quote" required
+						><option value="">Select a Quote</option>{#each data.quotes as quote (quote.id)}<option
+								value={quote.id}
+								>{quote.quote_number ?? 'Quote'} · {quote.subject} · {quote.status}</option
+							>{/each}</Select
+					>
+				{/if}
 				<Select id="task-type" name="type" label="Type"
 					><option value="custom">Custom</option><option value="review_lead">Review lead</option
 					><option value="call_client">Call client</option><option value="prepare_quote"
@@ -73,6 +118,7 @@
 					><option value="confirm_acceptance">Confirm acceptance</option></Select
 				>
 				<Input id="task-title" name="title" label="Title" required />
+				<Input id="task-description" name="description" label="Description" />
 				<Input id="task-due" name="due_at" label="Due at" type="datetime-local" />
 				<Select id="task-assignee" name="assigned_to" label="Owner"
 					><option value="">Unassigned</option>{#each data.staff as member (member.id)}<option
@@ -98,15 +144,7 @@
 					><tbody>
 						{#each data.tasks as task (task.id)}
 							<tr>
-								<td
-									><strong>{task.title}</strong><span
-										>{task.lead_id
-											? `Lead ${task.lead_id.slice(0, 8)}`
-											: task.client_id
-												? `Client ${task.client_id.slice(0, 8)}`
-												: 'Quote-linked'}</span
-									></td
-								>
+								<td><strong>{task.title}</strong><span>{contextLabel(task)}</span></td>
 								<td>{task.type}</td><td>{dateTime(task.due_at)}</td><td
 									><Badge tone={tone(task)}>{task.is_overdue ? 'overdue' : task.status}</Badge></td
 								>

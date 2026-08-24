@@ -10,6 +10,14 @@ export const evidenceClassifications = new Set([
 	'HISTORICAL'
 ]);
 
+function authorityVersion(root) {
+	const hashes = JSON.parse(readFileSync(resolve(root, 'docs/AUTHORITY_HASHES.json'), 'utf8'));
+	if (typeof hashes.version !== 'string' || hashes.version.trim() === '') {
+		fail('authority hash registry version is missing');
+	}
+	return hashes.version;
+}
+
 function fail(message) {
 	throw new Error(`Release evidence registry: ${message}`);
 }
@@ -112,7 +120,10 @@ function validateLocalProof(entry, root) {
 export function validateEvidenceRegistry(registry, options = {}) {
 	const root = options.root ?? process.cwd();
 	const expectedIds = options.expectedIds ?? expectedAuthorityIds(root);
-	if (!registry || registry.version !== 'v1.3.1') fail('version must be v1.3.1');
+	const expectedVersion = options.version ?? authorityVersion(root);
+	if (!registry || registry.version !== expectedVersion) {
+		fail(`version must be ${expectedVersion}`);
+	}
 	if (!Array.isArray(registry.entries)) fail('entries must be an array');
 	const entries = new Map();
 	for (const entry of registry.entries) {

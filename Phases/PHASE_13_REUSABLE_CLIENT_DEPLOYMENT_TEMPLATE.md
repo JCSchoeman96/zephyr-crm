@@ -1,7 +1,7 @@
 # Phase 13 — Reusable Client Deployment Template & Local Deployment Readiness
 
 **Project:** Small Business CRM  
-**Roadmap Version:** 1.3.1
+**Roadmap Version:** 1.3.2
 **Phase:** 13  
 **Milestone:** M4 — Productisation  
 **Status:** Implementation Authority  

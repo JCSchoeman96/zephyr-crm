@@ -15,6 +15,7 @@
 	import RealtimeStatus from '$lib/realtime/RealtimeStatus.svelte';
 
 	let { data, form }: { data: PageData; form: ActionData } = $props();
+	const canMutate = $derived(data.profile.role !== 'viewer');
 
 	function stageTone(stage: string) {
 		if (stage === 'WON') return 'success';
@@ -114,53 +115,57 @@
 					description="The server validates every state transition."
 				/>
 				<div class="action-stack">
-					{#if data.lead.pipeline_stage === 'NEW'}
-						<form method="POST" action="?/qualify">
-							<input type="hidden" name="lock_version" value={data.lead.lock_version} /><Button
-								type="submit">Qualify lead</Button
-							>
-						</form>
-					{:else if data.lead.pipeline_stage === 'QUALIFICATION'}
-						<form method="POST" action="?/proposal">
-							<input type="hidden" name="lock_version" value={data.lead.lock_version} /><Button
-								type="submit">Move to proposal</Button
-							>
-						</form>
-					{:else if data.lead.pipeline_stage === 'PROPOSAL' && data.quotes.length === 0}
-						<p class="action-note">Create a quote below to continue the tracer bullet.</p>
-					{:else if data.lead.pipeline_stage === 'DECISION'}
-						<form method="POST" action="?/win">
-							<input type="hidden" name="lock_version" value={data.lead.lock_version} /><Button
-								type="submit">Mark won and create Client</Button
-							>
-						</form>
-					{:else if data.lead.pipeline_stage === 'WON'}
-						<p class="success-note">Converted to Client {data.lead.converted_client_id}</p>
-					{:else if data.lead.pipeline_stage === 'LOST'}
-						<p class="action-note">This lead is terminal under ordinary operations.</p>
-					{/if}
-					{#if data.lead.pipeline_stage !== 'WON' && data.lead.pipeline_stage !== 'LOST'}
-						<details class="lost-panel">
-							<summary>Mark lead lost</summary>
-							<form method="POST" action="?/lost" class="stack-form">
-								<input type="hidden" name="lock_version" value={data.lead.lock_version} />
-								<Select id="lost_reason_id" name="lost_reason_id" label="Lost reason" required>
-									<option value="">Select a reason</option>
-									{#each data.lostReasons as reason (reason.id)}<option value={reason.id}
-											>{reason.label}</option
-										>{/each}
-								</Select>
-								<Textarea id="lost_notes" name="lost_notes" label="Notes" rows={3} />
-								<Button type="submit" variant="danger">Mark lost</Button>
+					{#if canMutate}
+						{#if data.lead.pipeline_stage === 'NEW'}
+							<form method="POST" action="?/qualify">
+								<input type="hidden" name="lock_version" value={data.lead.lock_version} /><Button
+									type="submit">Qualify lead</Button
+								>
 							</form>
-						</details>
+						{:else if data.lead.pipeline_stage === 'QUALIFICATION'}
+							<form method="POST" action="?/proposal">
+								<input type="hidden" name="lock_version" value={data.lead.lock_version} /><Button
+									type="submit">Move to proposal</Button
+								>
+							</form>
+						{:else if data.lead.pipeline_stage === 'PROPOSAL' && data.quotes.length === 0}
+							<p class="action-note">Create a quote below to continue the tracer bullet.</p>
+						{:else if data.lead.pipeline_stage === 'DECISION'}
+							<form method="POST" action="?/win">
+								<input type="hidden" name="lock_version" value={data.lead.lock_version} /><Button
+									type="submit">Mark won and create Client</Button
+								>
+							</form>
+						{:else if data.lead.pipeline_stage === 'WON'}
+							<p class="success-note">Converted to Client {data.lead.converted_client_id}</p>
+						{:else if data.lead.pipeline_stage === 'LOST'}
+							<p class="action-note">This lead is terminal under ordinary operations.</p>
+						{/if}
+						{#if data.lead.pipeline_stage !== 'WON' && data.lead.pipeline_stage !== 'LOST'}
+							<details class="lost-panel">
+								<summary>Mark lead lost</summary>
+								<form method="POST" action="?/lost" class="stack-form">
+									<input type="hidden" name="lock_version" value={data.lead.lock_version} />
+									<Select id="lost_reason_id" name="lost_reason_id" label="Lost reason" required>
+										<option value="">Select a reason</option>
+										{#each data.lostReasons as reason (reason.id)}<option value={reason.id}
+												>{reason.label}</option
+											>{/each}
+									</Select>
+									<Textarea id="lost_notes" name="lost_notes" label="Notes" rows={3} />
+									<Button type="submit" variant="danger">Mark lost</Button>
+								</form>
+							</details>
+						{/if}
+					{:else}
+						<p class="read-only-note">Viewer access is read-only.</p>
 					{/if}
 				</div>
 			</Card>
 		</div>
 	</div>
 
-	{#if data.lead.pipeline_stage === 'PROPOSAL' && data.quotes.length === 0}
+	{#if canMutate && data.lead.pipeline_stage === 'PROPOSAL' && data.quotes.length === 0}
 		<Card class="quote-create-card">
 			<SectionHeader
 				title="Create a simple quote"
@@ -234,7 +239,7 @@
 									{money(quote.total)} · {quote.status}</span
 								>
 							</div>
-							{#if quote.status === 'ready'}
+							{#if quote.status === 'ready' && canMutate}
 								<form method="POST" action="?/sendQuote">
 									<input type="hidden" name="quote_id" value={quote.id} /><input
 										type="hidden"
@@ -244,6 +249,8 @@
 								</form>
 							{:else if quote.status === 'sent'}
 								<Badge tone="success">Submitted</Badge>
+							{:else if quote.status === 'ready'}
+								<span class="muted">Read-only</span>
 							{/if}
 						</div>
 					{/each}
@@ -258,78 +265,82 @@
 			description="Pipeline position, responsibility, and waiting state are managed separately."
 		/>
 		<div class="management-grid">
-			<form method="POST" action="?/assign" class="stack-form">
-				<input type="hidden" name="lock_version" value={data.lead.lock_version} />
-				<Select
-					id="assigned_to"
-					name="assigned_to"
-					label="Owner"
-					value={data.lead.assigned_to ?? ''}
-				>
-					<option value="">Unassigned</option>
-					{#each data.staff as member (member.id)}
-						<option value={member.id}>{member.full_name || member.email} · {member.role}</option>
-					{/each}
-				</Select>
-				<Button type="submit" size="sm">Save owner</Button>
-			</form>
-			{#if data.lead.pipeline_stage !== 'WON' && data.lead.pipeline_stage !== 'LOST'}
-				<form method="POST" action="?/setAttention" class="stack-form">
+			{#if canMutate}
+				<form method="POST" action="?/assign" class="stack-form">
 					<input type="hidden" name="lock_version" value={data.lead.lock_version} />
 					<Select
-						id="attention_state"
-						name="attention_state"
-						label="Attention state"
-						value={data.lead.attention_state}
+						id="assigned_to"
+						name="assigned_to"
+						label="Owner"
+						value={data.lead.assigned_to ?? ''}
 					>
-						<option value="none">None</option>
-						<option value="waiting_on_client">Waiting on client</option>
-						<option value="waiting_on_us">Waiting on us</option>
+						<option value="">Unassigned</option>
+						{#each data.staff as member (member.id)}
+							<option value={member.id}>{member.full_name || member.email} · {member.role}</option>
+						{/each}
 					</Select>
-					<Button type="submit" size="sm">Save attention</Button>
+					<Button type="submit" size="sm">Save owner</Button>
 				</form>
-				{#if data.lead.paused_at}
-					<form method="POST" action="?/resume" class="stack-form">
+				{#if data.lead.pipeline_stage !== 'WON' && data.lead.pipeline_stage !== 'LOST'}
+					<form method="POST" action="?/setAttention" class="stack-form">
 						<input type="hidden" name="lock_version" value={data.lead.lock_version} />
-						<p class="muted-copy">
-							Paused: {data.lead.pause_reason}
-							{#if data.lead.resume_at}
-								· resumes {new Date(data.lead.resume_at).toLocaleString('en-ZA')}{/if}
-						</p>
-						<Button type="submit" size="sm">Resume Lead</Button>
+						<Select
+							id="attention_state"
+							name="attention_state"
+							label="Attention state"
+							value={data.lead.attention_state}
+						>
+							<option value="none">None</option>
+							<option value="waiting_on_client">Waiting on client</option>
+							<option value="waiting_on_us">Waiting on us</option>
+						</Select>
+						<Button type="submit" size="sm">Save attention</Button>
 					</form>
-				{:else}
-					<form method="POST" action="?/pause" class="stack-form">
+					{#if data.lead.paused_at}
+						<form method="POST" action="?/resume" class="stack-form">
+							<input type="hidden" name="lock_version" value={data.lead.lock_version} />
+							<p class="muted-copy">
+								Paused: {data.lead.pause_reason}
+								{#if data.lead.resume_at}
+									· resumes {new Date(data.lead.resume_at).toLocaleString('en-ZA')}{/if}
+							</p>
+							<Button type="submit" size="sm">Resume Lead</Button>
+						</form>
+					{:else}
+						<form method="POST" action="?/pause" class="stack-form">
+							<input type="hidden" name="lock_version" value={data.lead.lock_version} />
+							<Textarea
+								id="pause_reason"
+								name="pause_reason"
+								label="Pause reason"
+								rows={2}
+								required
+							/>
+							<Input
+								id="resume_at"
+								name="resume_at"
+								label="Resume date (optional)"
+								type="datetime-local"
+							/>
+							<Button type="submit" size="sm">Pause Lead</Button>
+						</form>
+					{/if}
+				{/if}
+				{#if data.lead.pipeline_stage === 'LOST' && (data.profile.role === 'owner' || data.profile.role === 'admin')}
+					<form method="POST" action="?/reopen" class="stack-form reopen-form">
 						<input type="hidden" name="lock_version" value={data.lead.lock_version} />
 						<Textarea
-							id="pause_reason"
-							name="pause_reason"
-							label="Pause reason"
+							id="reopen_reason"
+							name="reopen_reason"
+							label="Reopen reason"
 							rows={2}
 							required
 						/>
-						<Input
-							id="resume_at"
-							name="resume_at"
-							label="Resume date (optional)"
-							type="datetime-local"
-						/>
-						<Button type="submit" size="sm">Pause Lead</Button>
+						<Button type="submit" size="sm">Reopen for qualification</Button>
 					</form>
 				{/if}
-			{/if}
-			{#if data.lead.pipeline_stage === 'LOST' && (data.profile.role === 'owner' || data.profile.role === 'admin')}
-				<form method="POST" action="?/reopen" class="stack-form reopen-form">
-					<input type="hidden" name="lock_version" value={data.lead.lock_version} />
-					<Textarea
-						id="reopen_reason"
-						name="reopen_reason"
-						label="Reopen reason"
-						rows={2}
-						required
-					/>
-					<Button type="submit" size="sm">Reopen for qualification</Button>
-				</form>
+			{:else}
+				<p class="read-only-note">Viewer access is read-only.</p>
 			{/if}
 		</div>
 	</Card>

@@ -290,19 +290,18 @@ async function sendQuote(id, user) {
 	return quoteById(id);
 }
 
-async function createClient() {
-	const created = await serviceRest('/rest/v1/clients', {
-		method: 'POST',
-		headers: { 'content-type': 'application/json', Prefer: 'return=representation' },
-		body: JSON.stringify({
-			type: 'company',
-			display_name: `${prefix} Client`,
-			company_name: `${prefix} Client`,
-			status: 'active'
-		})
-	});
-	const id = created[0]?.id;
-	assert(id, 'Could not create P7 client fixture');
+async function createClient(user) {
+	const fixtureLead = await createLead('client-fixture', user);
+	await reachDecision(fixtureLead, user);
+	const current = await leadById(fixtureLead.id);
+	const converted = await mustRpc(
+		'convert_lead',
+		{ p_lead_id: fixtureLead.id, p_lock_version: current.lock_version },
+		anonKey,
+		await signIn(user)
+	);
+	const id = converted.client_id;
+	assert(id, 'Could not create P7 client fixture through trusted conversion');
 	clientIds.push(id);
 	return id;
 }
@@ -446,7 +445,7 @@ async function main() {
 	const sales = await createUser('sales', 'sales');
 	const lead = await createLead('lifecycle', sales);
 	await reachDecision(lead, sales);
-	const clientId = await createClient();
+	const clientId = await createClient(sales);
 	await expectRpcFailure(
 		'save_quote_draft',
 		{
@@ -796,8 +795,11 @@ async function cleanup() {
 		}
 	}
 	try {
+		const clientCleanup = clientIds.length
+			? `delete from public.clients where id in (${clientIds.map((id) => `'${id}'`).join(',')});`
+			: '';
 		sql(
-			`delete from public.outbound_messages where lead_id in (select id from public.leads where external_submission_id like '${prefix}-%'); do $$ begin loop delete from public.quotes q where q.lead_id in (select id from public.leads where external_submission_id like '${prefix}-%') and not exists (select 1 from public.quotes child where child.supersedes_quote_id = q.id); exit when not found; end loop; end $$; delete from public.leads where external_submission_id like '${prefix}-%'; delete from public.inbound_submissions where external_submission_id like '${prefix}-%'; delete from public.clients where display_name like '${prefix}%';`
+			`delete from public.outbound_messages where lead_id in (select id from public.leads where external_submission_id like '${prefix}-%'); do $$ begin loop delete from public.quotes q where q.lead_id in (select id from public.leads where external_submission_id like '${prefix}-%') and not exists (select 1 from public.quotes child where child.supersedes_quote_id = q.id); exit when not found; end loop; end $$; delete from public.leads where external_submission_id like '${prefix}-%'; delete from public.inbound_submissions where external_submission_id like '${prefix}-%'; ${clientCleanup} delete from public.clients where display_name like '${prefix}%';`
 		);
 	} catch {
 		// A failing assertion still leaves cleanup best-effort and local-only.

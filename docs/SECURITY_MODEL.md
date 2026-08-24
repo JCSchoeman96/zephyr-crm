@@ -1,7 +1,7 @@
 # Zephyr CRM Security Model
 
 **Status:** Frozen implementation authority (Phase 0)
-**Version:** 1.2.1 (v1.3.1 reconciliation)
+**Version:** 1.2.2 (v1.3.2 hardening amendment)
 
 Security is enforced at the database and trusted-operation boundaries. UI hiding is not authorization.
 
@@ -116,6 +116,17 @@ process_sendpulse_event
 ```
 
 Each action checks the current authenticated user, Profile status, role, AAL2 requirement where applicable, current row state, lock version, idempotency key, and all required relationships. The browser cannot choose an arbitrary resulting status or totals.
+
+## Trusted-mutation parity
+
+The fully migrated schema is the effective authority. Every operation listed as
+trusted-only is tested against raw authenticated Data API INSERT/PATCH/DELETE
+attempts. Direct Client creation, protected Client status/source changes,
+ClientContact primary/status changes, forged Task parents/lifecycle/ownership,
+Lead pipeline/terminal mutation, Quote lifecycle/commercial mutation, Activity
+updates/deletes, and OutboundMessage mutation must fail for ordinary roles while
+the authorised trusted action succeeds. Useful RLS-secured reads remain
+available; UI hiding is never the security boundary.
 
 ## Secret boundary
 

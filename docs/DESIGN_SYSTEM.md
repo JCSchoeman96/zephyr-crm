@@ -8,7 +8,9 @@ Phase 2 establishes the reusable visual and layout foundation for later feature 
 - Shared primitive styles live in `src/lib/components/ui/ui.css`.
 - Application-shell styles live in `src/lib/components/shell/shell.css`.
 - Branding configuration is represented by `src/lib/config/brand.ts` and the `data-brand` token override.
-- The lightweight visual check route is `/system`.
+- The lightweight visual check route is `/system` when the private
+  `ZEPHYR_COMPONENT_LAB_ENABLED=1` local/test flag is enabled; it returns 404
+  in production-like configuration.
 
 ## Primitive inventory
 

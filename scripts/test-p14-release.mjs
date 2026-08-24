@@ -6,19 +6,13 @@ import { validateEvidenceRegistry } from './verify-test-evidence.mjs';
 const root = process.cwd();
 
 function run(command, args, options = {}) {
-	try {
-		return execFileSync(command, args, {
-			cwd: root,
-			encoding: 'utf8',
-			stdio: ['ignore', 'pipe', 'pipe'],
-			maxBuffer: 32 * 1024 * 1024,
-			...options
-		}).trim();
-	} catch (error) {
-		throw new Error(`${command} ${args.join(' ')} failed during the P14 release gate.`, {
-			cause: error
-		});
-	}
+	return execFileSync(command, args, {
+		cwd: root,
+		encoding: 'utf8',
+		stdio: ['ignore', 'pipe', 'pipe'],
+		maxBuffer: 32 * 1024 * 1024,
+		...options
+	}).trim();
 }
 
 function assert(condition, message) {
@@ -26,7 +20,7 @@ function assert(condition, message) {
 }
 
 function read(path) {
-	return readFileSync(path, 'utf8');
+	return readFileSync(join(root, path), 'utf8');
 }
 
 function provisionFreshClient() {
@@ -49,7 +43,7 @@ function provisionFreshClient() {
 
 function reconcileRequirements() {
 	const coverage = read('docs/REQUIREMENTS_COVERAGE.md');
-	const phaseFiles = readdirSync('Phases')
+	const phaseFiles = readdirSync(join(root, 'Phases'))
 		.filter((file) => /^PHASE_\d+_.+\.md$/.test(file))
 		.sort();
 	assert(phaseFiles.length === 15, 'P0–P14 phase authority set is incomplete.');
@@ -64,10 +58,10 @@ function reconcileRequirements() {
 			assert(coverage.includes(id), `${id} is missing from requirements coverage.`);
 	}
 	const registry = JSON.parse(read('docs/release/TEST_EVIDENCE.json'));
-	const evidence = validateEvidenceRegistry(registry);
+	const evidence = validateEvidenceRegistry(registry, { root });
 	assert(
-		evidence.count === 229,
-		`Mandatory evidence registry contains ${evidence.count} IDs, not 229.`
+		evidence.count === registry.entries.length,
+		'Mandatory evidence registry count does not match its unique entries.'
 	);
 	assert(
 		read('docs/PILOT_READINESS.md').includes('NOT_STARTED'),
@@ -105,28 +99,31 @@ function validatePilotPackage() {
 	console.log('P14-T15 pilot readiness package passed');
 }
 
-function runP14EvidenceCommands() {
-	for (const args of [
-		['run', 'test:p4:tracer'],
-		['run', 'test:p4:tracer'],
-		['run', 'test:p7:quotes'],
-		['run', 'test:p8:documents'],
-		['run', 'db:security'],
-		['run', 'test:p5:leads'],
-		['run', 'test:v131:communications'],
-		['run', 'test:p12:hardening'],
-		['run', 'test:p13:template'],
-		['run', 'test:p12:hardening'],
-		['run', 'build'],
-		['run', 'release:state:p14']
-	]) {
-		run('bun', args);
-	}
+function runP14SpecificChecks() {
+	const state = JSON.parse(read('.agent/goal-loop/STATE.json'));
+	const stateGate = state.execution_stage === 'PHASE_LOOP' ? 'release:state:p14' : 'release:state';
+	const checks = [
+		'release:state:parity',
+		stateGate,
+		'test:p14:gate-semantics',
+		'test:p14:browser-harness',
+		'test:p14:won-flow',
+		'test:p14:lost-flow',
+		'test:p14:client-integrity',
+		'test:p14:contact-integrity',
+		'test:p14:task-integrity',
+		'test:p14:document-fitness',
+		'test:p14:email-safety',
+		'test:p14:navigation',
+		'test:p14:product-flow',
+		'test:p14:hardening-reconciliation',
+		'test:p14:mutation-parity'
+	];
+	for (const script of checks) run('bun', ['run', script]);
 }
 
 provisionFreshClient();
-run('bun', ['run', 'quality']);
-runP14EvidenceCommands();
+runP14SpecificChecks();
 reconcileRequirements();
 validatePilotPackage();
-console.log('P14-T13 full project quality gate passed');
+console.log('P14-specific release gate passed without invoking ordinary quality recursively');

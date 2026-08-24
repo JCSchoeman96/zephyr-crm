@@ -52,6 +52,41 @@ export function validateP14ReadinessState(state) {
 	return true;
 }
 
+export function validateFinalProjectValidationState(state) {
+	assert(state && typeof state === 'object', 'state must be an object.');
+	assert(
+		state.execution_stage === 'FINAL_PROJECT_VALIDATION',
+		'execution_stage must be FINAL_PROJECT_VALIDATION.'
+	);
+	assert(
+		state.goal_status === 'IN_PROGRESS',
+		'goal_status must remain IN_PROGRESS during global final validation.'
+	);
+	assert(
+		state.current_phase === 'P14' && state.phase_status === 'COMPLETE',
+		'P14 must be COMPLETE before global final validation.'
+	);
+	assert(
+		hasPhases(
+			state,
+			Array.from({ length: 15 }, (_, index) => `P${index}`)
+		),
+		'P0–P14 completion list is incomplete.'
+	);
+	assert(
+		state.blocked === false && state.blocked_phase == null,
+		'final-validation state records a blocker.'
+	);
+	assert(
+		state.local_build_status === 'FINAL_VALIDATION_PENDING',
+		'local_build_status must remain FINAL_VALIDATION_PENDING during global final validation.'
+	);
+	assert(state.release_status === 'NOT_READY', 'release_status must remain NOT_READY.');
+	assert(state.pilot_status === 'NOT_STARTED', 'pilot_status must be NOT_STARTED.');
+	assert(state.production_status === 'NOT_LAUNCHED', 'production_status must be NOT_LAUNCHED.');
+	return true;
+}
+
 export function validateFinalReleaseState(state) {
 	assert(state && typeof state === 'object', 'state must be an object.');
 	assert(state.execution_stage === 'COMPLETE', 'execution_stage is not COMPLETE.');
@@ -103,9 +138,19 @@ function main() {
 		console.log('Global final release state passed');
 		return;
 	}
+	if (args.has('--final-validation')) {
+		validateFinalProjectValidationState(state);
+		console.log('Final project validation state passed');
+		return;
+	}
 	if (state.execution_stage === 'COMPLETE') {
 		validateFinalReleaseState(state);
 		console.log('Global final release state passed');
+		return;
+	}
+	if (state.execution_stage === 'FINAL_PROJECT_VALIDATION') {
+		validateFinalProjectValidationState(state);
+		console.log('Final project validation state passed');
 		return;
 	}
 	if (state.current_phase === 'P14' && state.phase_status === 'VALIDATING') {
@@ -114,7 +159,7 @@ function main() {
 		return;
 	}
 	throw new Error(
-		'Release state is neither P14 readiness nor terminal global completion; use --p14-readiness or --final for an explicit gate.'
+		'Release state is neither P14 readiness, final project validation, nor terminal global completion; use --p14-readiness, --final-validation, or --final for an explicit gate.'
 	);
 }
 

@@ -229,11 +229,35 @@ async function main() {
 			email: `${testPrefix}-client@example.test`
 		}
 	});
+	assertDenied(manualClient, 'raw Client creation without conversion');
+	let leadState = (
+		await request(`/rest/v1/leads?id=eq.${leadId}&select=id,lock_version`, { token: sales.token })
+	).body?.[0];
+	for (const stage of ['QUALIFICATION', 'PROPOSAL', 'DECISION']) {
+		const transition = await request('/rest/v1/rpc/transition_lead', {
+			method: 'POST',
+			token: sales.token,
+			body: {
+				p_lead_id: leadId,
+				p_to_stage: stage,
+				p_lock_version: leadState.lock_version
+			}
+		});
+		assert(transition.ok, `Could not prepare conversion fixture at ${stage}`);
+		leadState = (
+			await request(`/rest/v1/leads?id=eq.${leadId}&select=id,lock_version`, { token: sales.token })
+		).body?.[0];
+	}
+	const converted = await request('/rest/v1/rpc/convert_lead', {
+		method: 'POST',
+		token: sales.token,
+		body: { p_lead_id: leadId, p_lock_version: leadState.lock_version }
+	});
 	assert(
-		manualClient.ok && manualClient.body?.[0]?.id,
-		`Permitted manual Client creation failed (${manualClient.status})`
+		converted.ok && converted.body?.client_id,
+		'Trusted conversion did not create a Client fixture'
 	);
-	const manualClientId = manualClient.body[0].id;
+	const manualClientId = converted.body.client_id;
 	assertDenied(
 		await request('/rest/v1/clients', {
 			method: 'POST',
@@ -255,10 +279,7 @@ async function main() {
 			email: `${testPrefix}-contact@example.test`
 		}
 	});
-	assert(
-		manualContact.ok && manualContact.body?.[0]?.id,
-		`Permitted manual ClientContact creation failed (${manualContact.status})`
-	);
+	assertDenied(manualContact, 'raw ClientContact creation without a trusted action');
 	assertDenied(
 		await request('/rest/v1/client_contacts', {
 			method: 'POST',
@@ -293,16 +314,16 @@ async function main() {
 		'raw Client conversion-lineage update'
 	);
 
-	const manualTask = await request('/rest/v1/tasks', {
+	const manualTask = await request('/rest/v1/rpc/create_task', {
 		method: 'POST',
 		token: sales.token,
-		body: { lead_id: leadId, type: 'custom', title: `${testPrefix} manual task` }
+		body: { p_lead_id: leadId, p_type: 'custom', p_title: `${testPrefix} manual task` }
 	});
 	assert(
-		manualTask.ok && manualTask.body?.[0]?.id && manualTask.body[0].created_by === sales.id,
-		`Permitted manual Task creation did not derive created_by (${manualTask.status})`
+		manualTask.ok && manualTask.body?.task_id,
+		`Trusted Task creation did not return a Task (${manualTask.status})`
 	);
-	const manualTaskId = manualTask.body[0].id;
+	const manualTaskId = manualTask.body.task_id;
 	assertDenied(
 		await request('/rest/v1/tasks', {
 			method: 'POST',

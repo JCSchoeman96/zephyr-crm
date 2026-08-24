@@ -1,7 +1,7 @@
 # Zephyr CRM Architecture
 
 **Status:** Frozen implementation authority (Phase 0)
-**Version:** 1.2.1 (v1.3.1 reconciliation)
+**Version:** 1.2.2 (v1.3.2 hardening amendment)
 **Deployment model:** One isolated stack per client
 
 ## Product boundary
@@ -93,6 +93,33 @@ accept_quote
 process_reminders
 process_quote_expiry
 ```
+
+## Database-centric application layering
+
+```text
+Canonical Product Law
+        ↓
+PostgreSQL / trusted domain actions
+        ↓
+SvelteKit server orchestration
+        ↓
+Svelte components / browser
+```
+
+PostgreSQL remains authoritative for lifecycle transitions, relationship
+invariants, role checks, optimistic concurrency, exact money, idempotency,
+cross-resource transactions, append-only Activity, quote snapshots, provider
+uncertainty, conversion, Task integrity, and Client lifecycle. TypeScript owns
+request parsing, UI orchestration, projections, provider adapters, PDF
+rendering, email composition, and pure deterministic helpers. TypeScript
+domain classes must not mirror database rows or compete with SQL authority.
+
+Dashboard is the v1 reporting surface. Reports and Settings are not separate
+v1 capabilities, and `/system` is a private local/test Component Lab disabled
+by default. Quote documents render locally from frozen Quote snapshot branding.
+
+Release state has one machine authority; human readiness is a projection that
+must fail closed when it disagrees with the machine state.
 
 The browser may request these actions but never supplies the resulting authority. The server/database validates role, current state, lock version, required relationships, idempotency key, and all authoritative totals.
 

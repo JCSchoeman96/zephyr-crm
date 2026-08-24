@@ -40,6 +40,16 @@ Saving a draft captures the current company identity setting alongside the quote
 
 Line item controls and preview totals are intentionally useful before saving, but every save and ready transition is recalculated in PostgreSQL. A stale form submission returns a visible conflict message.
 
+## P14 document and email hardening
+
+Quote documents are generated locally from the frozen `quote_snapshot`, not
+mutable current settings. The renderer is deterministic, multi-page, readable
+for long descriptions/introduction/terms/items, preserves supported customer
+characters, records a private Storage path/hash, and never rewrites a sent
+artifact. Customer-facing Quote email includes the recipient-safe quote number,
+subject, client company, validity, sender identity, and the exact frozen PDF;
+missing sender configuration fails before provider submission.
+
 ## Local contract
 
 With the Zephyr local Supabase stack running:

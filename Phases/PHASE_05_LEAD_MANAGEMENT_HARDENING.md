@@ -1,7 +1,7 @@
 # Phase 5 — Lead Management Hardening
 
 **Project:** Small Business CRM  
-**Roadmap Version:** 1.3.1
+**Roadmap Version:** 1.3.2
 **Phase:** 5  
 **Milestone:** M2 — Production CRM Core  
 **Status:** Implementation Authority  

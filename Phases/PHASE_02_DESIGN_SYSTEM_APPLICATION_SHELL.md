@@ -1,7 +1,7 @@
 # Phase 2 — Design System & Application Shell
 
 **Project:** Small Business CRM  
-**Roadmap Version:** 1.3.1
+**Roadmap Version:** 1.3.2
 **Phase:** 2  
 **Milestone:** M0 — Foundation  
 **Status:** Implementation Authority  

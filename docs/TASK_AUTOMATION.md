@@ -28,3 +28,11 @@ Task creation, completion, rescheduling, cancellation, and reminder outcomes
 append material Activity evidence. Won and Lost Lead transitions cancel open
 Tasks with a lock-version increment; the Task activity trigger records each
 closure. Quote send creates one configured, automation-keyed follow-up Task.
+
+P14 hardening requires `create_task` to derive Quote-linked Lead/Client context
+from the trusted Quote relationship and reject mismatching caller-supplied
+parents. Non-Quote Tasks have exactly one direct Lead or Client parent. Direct
+authenticated Task INSERT/PATCH/DELETE cannot bypass parent integrity,
+assignment, lifecycle, terminal immutability, or optimistic locking. The work
+queue projection exposes human business labels and links for Lead, Client, and
+Quote context.

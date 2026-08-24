@@ -1,7 +1,7 @@
 {
-  "version": "v1.3.1",
+  "version": "v1.3.2",
   "generated_from": "Phases/PHASE_00...PHASE_14",
-  "entry_count": 229,
+  "entry_count": 243,
   "entries": [
     {
       "id": "P0-T01",
@@ -681,7 +681,7 @@
             ]
           },
           {
-            "source": "scripts/verify-v131-registry.mjs",
+            "source": "scripts/verify-authority-registry.mjs",
             "contains": [
               "packageManager !== 'bun@1.2.22'",
               "lockfile authority is not exactly bun.lock"
@@ -706,7 +706,7 @@
             ]
           },
           {
-            "source": "scripts/verify-v131-registry.mjs",
+            "source": "scripts/verify-authority-registry.mjs",
             "contains": [
               "exact-pinned"
             ]
@@ -729,7 +729,7 @@
         "command": "bun run authority:registry",
         "sources": [
           {
-            "source": "scripts/verify-v131-registry.mjs",
+            "source": "scripts/verify-authority-registry.mjs",
             "contains": [
               "['package-lock.json', 'pnpm-lock.yaml', 'yarn.lock', 'bun.lockb']",
               "lockfile authority is not exactly bun.lock"
@@ -805,7 +805,7 @@
             ]
           },
           {
-            "source": "scripts/verify-v131-registry.mjs",
+            "source": "scripts/verify-authority-registry.mjs",
             "contains": [
               "wrangler.jsonc",
               "Cloudflare Pages"
@@ -829,7 +829,7 @@
             ]
           },
           {
-            "source": "scripts/verify-v131-registry.mjs",
+            "source": "scripts/verify-authority-registry.mjs",
             "contains": [
               "\"compatibility_date\""
             ]
@@ -3084,7 +3084,7 @@
       "proof": {
         "command": "bun run quality",
         "source": "scripts/test-p14-release.mjs",
-        "assertion": "const evidence = validateEvidenceRegistry(registry);"
+        "assertion": "const evidence = validateEvidenceRegistry(registry, { root });"
       }
     },
     {
@@ -3095,7 +3095,7 @@
       "proof": {
         "command": "bun run test:p14:release",
         "source": "scripts/test-p14-release.mjs",
-        "assertion": "evidence.count === 229,"
+        "assertion": "evidence.count === registry.entries.length,"
       }
     },
     {
@@ -3171,8 +3171,162 @@
       "classification": "AUTOMATED",
       "proof": {
         "command": "bun run authority:registry",
-        "source": "scripts/verify-v131-registry.mjs",
+        "source": "scripts/verify-authority-registry.mjs",
         "assertion": "exact-pinned"
+      }
+    },
+    {
+      "id": "P14-T22",
+      "title": "Release truth parity",
+      "criterion": "Machine release state and human readiness projection agree for valid non-terminal and terminal fixtures; stale readiness fails closed.",
+      "classification": "AUTOMATED",
+      "proof": {
+        "command": "bun run release:state:parity",
+        "source": "scripts/test-pilot-readiness-parity.mjs",
+        "assertion": "assert.deepEqual(parseReadinessProjection(readiness(nonTerminal)), {"
+      }
+    },
+    {
+      "id": "P14-T23",
+      "title": "P14 gate semantic integrity",
+      "criterion": "P14 release proof is non-recursive, required browser jobs are protected prerequisites, and every P14 ID maps to real evidence.",
+      "classification": "AUTOMATED",
+      "proof": {
+        "command": "bun run test:p14:gate-semantics",
+        "source": "scripts/test-p14-gate-semantics.mjs",
+        "assertion": "assert(!releaseScript.includes(\"['run', 'quality']\"), 'P14 release proof must not invoke quality.');"
+      }
+    },
+    {
+      "id": "P14-T24",
+      "title": "Authenticated stateful browser harness",
+      "criterion": "A real authenticated CRM browser session persists and reloads business state against fresh local Supabase and a local provider fixture.",
+      "classification": "AUTOMATED",
+      "proof": {
+        "command": "bun run test:p14:browser-harness",
+        "source": "tests/e2e/domain/stateful-harness.e2e.ts",
+        "assertion": "await expect(page.getByRole('heading', { name: 'P14 Browser Harness' })).toBeVisible();"
+      }
+    },
+    {
+      "id": "P14-T25",
+      "title": "Canonical Won browser E2E",
+      "criterion": "Real Bricks intake → Lead → Quote → deterministic send → follow-up → Won → Client completes through product boundaries with frozen PDF and evidence.",
+      "classification": "AUTOMATED",
+      "proof": {
+        "command": "bun run test:p14:won-flow",
+        "source": "tests/e2e/domain/won-flow.e2e.ts",
+        "assertion": "expect(client?.status).toBe('active');"
+      }
+    },
+    {
+      "id": "P14-T26",
+      "title": "Canonical Lost/reopen browser E2E",
+      "criterion": "Lost requires reason and cleanup; Sales cannot reopen; Owner/Admin reopens with reason to QUALIFICATION and preserves history.",
+      "classification": "AUTOMATED",
+      "proof": {
+        "command": "bun run test:p14:lost-flow",
+        "source": "tests/e2e/domain/lost-flow.e2e.ts",
+        "assertion": "await expect(page.getByText('LOST', { exact: true })).toBeVisible();"
+      }
+    },
+    {
+      "id": "P14-T27",
+      "title": "Client lifecycle and maintenance integrity",
+      "criterion": "Client lifecycle, archive lineage guard, conversion-only creation, protected fields, concurrency, identity/type law, and Activity evidence pass.",
+      "classification": "AUTOMATED",
+      "proof": {
+        "command": "node scripts/test-p14-client-integrity.mjs",
+        "source": "scripts/test-p14-client-integrity.mjs",
+        "assertion": "assert(!directPatch.response.ok, 'Raw Client status PATCH bypassed trusted action');"
+      }
+    },
+    {
+      "id": "P14-T28",
+      "title": "ClientContact lifecycle and primary integrity",
+      "criterion": "Contact create/edit/status/primary actions are concurrent, role-safe, history-preserving, and cannot be bypassed or hard-deleted.",
+      "classification": "AUTOMATED",
+      "proof": {
+        "command": "node scripts/test-p14-contact-integrity.mjs",
+        "source": "scripts/test-p14-contact-integrity.mjs",
+        "assertion": "assert(!rawDelete.response.ok, 'Raw ClientContact delete bypassed retention law');"
+      }
+    },
+    {
+      "id": "P14-T29",
+      "title": "Task relationship and context integrity",
+      "criterion": "Lead/Client/Quote parent relationships are valid and derived at trusted boundaries; raw bypasses fail; UI shows useful context.",
+      "classification": "AUTOMATED",
+      "proof": {
+        "command": "node scripts/test-p14-task-integrity.mjs",
+        "source": "scripts/test-p14-task-integrity.mjs",
+        "assertion": "assert(!rawInsert.response.ok, 'Raw Task INSERT bypassed create_task');"
+      }
+    },
+    {
+      "id": "P14-T30",
+      "title": "Quote document production fitness",
+      "criterion": "Long deterministic multi-page PDFs preserve branding, supported characters, first/last items, exact totals, and immutable artifact hashes.",
+      "classification": "AUTOMATED",
+      "proof": {
+        "command": "bun run test:p14:document-fitness",
+        "source": "src/lib/domain/quotes/document.spec.ts",
+        "assertion": "expect(parsed.getPageCount()).toBeGreaterThan(1);"
+      }
+    },
+    {
+      "id": "P14-T31",
+      "title": "Quote email presentation and sender safety",
+      "criterion": "Escaped client-facing email contains required quote identity, sender config fails closed, and attachment bytes equal the frozen PDF.",
+      "classification": "AUTOMATED",
+      "proof": {
+        "command": "bun run test:p14:email-safety",
+        "source": "src/lib/domain/communications/sendpulse-adapter.spec.ts",
+        "assertion": ").rejects.toThrow(/sender email and name/i);"
+      }
+    },
+    {
+      "id": "P14-T32",
+      "title": "Navigation/internal route capability truth",
+      "criterion": "Reports/Settings dead capabilities are absent, visible internal links resolve, and Component Lab is 404 unless explicitly enabled.",
+      "classification": "AUTOMATED",
+      "proof": {
+        "command": "bun run test:p14:navigation",
+        "source": "scripts/test-p14-navigation.mjs",
+        "assertion": "assert.match(reports, /error\\(404/);"
+      }
+    },
+    {
+      "id": "P14-T33",
+      "title": "Role/responsive/accessibility product-flow regression",
+      "criterion": "Viewer, Sales, and Owner/Admin permissions plus 390/768/1280 responsive and core accessibility assertions pass.",
+      "classification": "AUTOMATED",
+      "proof": {
+        "command": "bun run test:p14:product-flow",
+        "source": "tests/e2e/domain/role-accessibility.e2e.ts",
+        "assertion": "await expect(page.getByText('Viewer access is read-only.').first()).toBeVisible();"
+      }
+    },
+    {
+      "id": "P14-T34",
+      "title": "Hardening authority/evidence reconciliation",
+      "criterion": "Every hardening requirement is implemented, explicitly deferred by authority, or tied to a genuine defined stop; no silent omission exists.",
+      "classification": "AUTOMATED",
+      "proof": {
+        "command": "node scripts/test-p14-hardening-reconciliation.mjs",
+        "source": "scripts/test-p14-hardening-reconciliation.mjs",
+        "assertion": "hardening.includes('ZH-018'),"
+      }
+    },
+    {
+      "id": "P14-T35",
+      "title": "Trusted-mutation boundary parity",
+      "criterion": "Fully migrated current-schema raw authenticated Data API attempts cannot bypass trusted-only Client, Contact, Task, Lead, Quote, Activity, or outbound boundaries.",
+      "classification": "AUTOMATED",
+      "proof": {
+        "command": "node scripts/test-p14-mutation-parity.mjs",
+        "source": "scripts/test-p14-mutation-parity.mjs",
+        "assertion": "leadAndOutboundLaw.includes('private.allow_outbound_attempt_mutation'),"
       }
     }
   ]

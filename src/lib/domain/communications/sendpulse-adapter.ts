@@ -35,24 +35,26 @@ export class SendPulseSubmissionUnknownError extends Error {
 
 export class SendPulseAdapter {
 	private readonly options: Required<
-		Pick<
-			SendPulseAdapterOptions,
-			'clientId' | 'clientSecret' | 'baseUrl' | 'senderEmail' | 'senderName'
-		>
-	> & { fetcher: typeof fetch };
+		Pick<SendPulseAdapterOptions, 'clientId' | 'clientSecret' | 'baseUrl'>
+	> & { senderEmail?: string; senderName?: string; fetcher: typeof fetch };
 
 	constructor(options: SendPulseAdapterOptions) {
 		this.options = {
 			clientId: options.clientId,
 			clientSecret: options.clientSecret,
 			baseUrl: options.baseUrl ?? 'https://api.sendpulse.com',
-			senderEmail: options.senderEmail ?? 'no-reply@example.invalid',
-			senderName: options.senderName ?? 'Zephyr CRM',
-			fetcher: options.fetcher ?? fetch
+			senderEmail: options.senderEmail?.trim() || undefined,
+			senderName: options.senderName?.trim() || undefined,
+			fetcher: options.fetcher ?? globalThis.fetch.bind(globalThis)
 		};
 	}
 
 	async sendEmail(input: SendPulseEmail): Promise<{ providerMessageId: string }> {
+		const senderEmail = input.fromEmail?.trim() || this.options.senderEmail;
+		const senderName = input.fromName?.trim() || this.options.senderName;
+		if (!senderEmail || !senderName) {
+			throw new Error('A configured SendPulse sender email and name are required.');
+		}
 		const tokenResponse = await this.options.fetcher(`${this.options.baseUrl}/oauth/access_token`, {
 			method: 'POST',
 			headers: { 'content-type': 'application/json' },
@@ -71,8 +73,8 @@ export class SendPulseAdapter {
 			html: input.html,
 			subject: input.subject,
 			from: {
-				email: input.fromEmail ?? this.options.senderEmail,
-				name: input.fromName ?? this.options.senderName
+				email: senderEmail,
+				name: senderName
 			},
 			to: input.to
 		};

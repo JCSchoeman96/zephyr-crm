@@ -9,6 +9,7 @@ import { bytesToBase64, ensureQuoteDocument } from '$lib/server/quote-documents'
 import { loadTrustedClientConfiguration } from '$lib/server/client-config';
 import { recordOperationalEvent } from '$lib/server/operational-events';
 import { createTrustedSupabaseClient } from '$lib/server/trusted-supabase';
+import { buildQuoteEmail } from '$lib/server/quote-email';
 
 type ServerSupabaseClient = SupabaseClient<Database>;
 type JsonRecord = Record<string, unknown>;
@@ -21,14 +22,6 @@ function record(value: unknown): JsonRecord {
 
 function stringValue(value: unknown): string {
 	return typeof value === 'string' ? value : String(value ?? '');
-}
-
-function escapeHtml(value: string): string {
-	return value
-		.replaceAll('&', '&amp;')
-		.replaceAll('<', '&lt;')
-		.replaceAll('>', '&gt;')
-		.replaceAll('"', '&quot;');
 }
 
 function shouldInjectQuoteFinalizationFailure(): boolean {
@@ -47,7 +40,7 @@ export async function sendQuote(
 ): Promise<JsonRecord> {
 	const currentQuote = await supabase
 		.from('quotes')
-		.select('status')
+		.select('status,quote_number,subject,valid_until,currency,total,quote_snapshot')
 		.eq('id', quoteId)
 		.maybeSingle();
 	if (currentQuote.error) throw new Error(currentQuote.error.message);
@@ -79,6 +72,19 @@ export async function sendQuote(
 	if (!clientId || !clientSecret) throw new Error('SendPulse integration is not configured.');
 
 	const recipient = record(prepared.recipient);
+	const snapshot = record(currentQuote.data.quote_snapshot);
+	const identity = record(snapshot.company_identity);
+	const email = buildQuoteEmail({
+		companyName: stringValue(identity.name || identity.company_name),
+		recipientName: stringValue(recipient.name),
+		recipientEmail: stringValue(recipient.email),
+		quoteNumber: stringValue(prepared.quote_number || currentQuote.data.quote_number),
+		subject: stringValue(prepared.subject || currentQuote.data.subject),
+		currency: stringValue(currentQuote.data.currency),
+		total: stringValue(prepared.total || currentQuote.data.total),
+		validUntil: stringValue(currentQuote.data.valid_until),
+		hasFrozenPdf: Boolean(document)
+	});
 	const adapter = new SendPulseAdapter({
 		clientId,
 		clientSecret,
@@ -100,8 +106,8 @@ export async function sendQuote(
 	try {
 		const result = await adapter.sendEmail({
 			to: [{ email: stringValue(recipient.email), name: stringValue(recipient.name) }],
-			subject: stringValue(prepared.subject),
-			html: `<p>${escapeHtml(stringValue(prepared.subject))}</p><p>A frozen PDF quote is attached.</p>`,
+			subject: email.subject,
+			html: email.html,
 			attachments: document
 				? [
 						{

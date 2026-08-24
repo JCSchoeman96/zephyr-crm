@@ -2,8 +2,11 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 
 const { validateEvidenceRegistry } = await import('./verify-test-evidence.mjs');
-const { validateP14ReadinessState, validateFinalReleaseState } =
-	await import('./check-release-state.mjs');
+const {
+	validateP14ReadinessState,
+	validateFinalProjectValidationState,
+	validateFinalReleaseState
+} = await import('./check-release-state.mjs');
 const { validateReleaseManifest } = await import('./verify-release-manifest.mjs');
 
 const p14Source = readFileSync('scripts/test-p14-release.mjs', 'utf8');
@@ -15,6 +18,8 @@ assert(
 
 const phase0Source = readFileSync('Phases/PHASE_00_ARCHITECTURE_PRODUCT_CONTRACT.md', 'utf8');
 const evidenceRegistry = JSON.parse(readFileSync('docs/release/TEST_EVIDENCE.json', 'utf8'));
+const evidenceVersion = evidenceRegistry.version;
+const evidenceCount = evidenceRegistry.entry_count;
 const phase0Evidence = new Map(
 	evidenceRegistry.entries
 		.filter((entry) => entry.id.startsWith('P0-'))
@@ -86,12 +91,16 @@ const expectedP1Sources = {
 	'P1-T08': ['scripts/check-ci-contract.mjs', '.github/workflows/ci.yml'],
 	'P1-T09': ['docs/TOOLCHAIN_PROOF.md', 'package.json', 'bun.lock'],
 	'P1-T10': ['package.json', 'wrangler.jsonc', 'docs/TOOLCHAIN_PROOF.md'],
-	'P1-T11': ['package.json', 'scripts/verify-v131-registry.mjs'],
-	'P1-T12': ['package.json', 'scripts/verify-v131-registry.mjs', 'docs/TOOLCHAIN_PROOF.md'],
-	'P1-T13': ['scripts/verify-v131-registry.mjs', 'bun.lock'],
+	'P1-T11': ['package.json', 'scripts/verify-authority-registry.mjs'],
+	'P1-T12': ['package.json', 'scripts/verify-authority-registry.mjs', 'docs/TOOLCHAIN_PROOF.md'],
+	'P1-T13': ['scripts/verify-authority-registry.mjs', 'bun.lock'],
 	'P1-T14': ['docs/TOOLCHAIN_PROOF.md', 'package.json', 'scripts/test-p1-compatibility.mjs'],
-	'P1-T15': ['scripts/test-p1-toolchain.mjs', 'wrangler.jsonc', 'scripts/verify-v131-registry.mjs'],
-	'P1-T16': ['wrangler.jsonc', 'scripts/verify-v131-registry.mjs'],
+	'P1-T15': [
+		'scripts/test-p1-toolchain.mjs',
+		'wrangler.jsonc',
+		'scripts/verify-authority-registry.mjs'
+	],
+	'P1-T16': ['wrangler.jsonc', 'scripts/verify-authority-registry.mjs'],
 	'P1-T17': ['package.json', 'DEPENDENCY_BASELINE_v1.0.0.md', 'docs/TOOLCHAIN_PROOF.md'],
 	'P1-T18': ['package.json', 'DEPENDENCY_BASELINE_v1.0.0.md'],
 	'P1-T19': ['scripts/test-p1-toolchain.mjs', 'package.json'],
@@ -336,7 +345,7 @@ assert.throws(
 	() =>
 		validateEvidenceRegistry(
 			{
-				version: 'v1.3.1',
+				version: evidenceVersion,
 				entries: [
 					{
 						id: 'P0-T01',
@@ -355,7 +364,7 @@ assert.throws(
 	() =>
 		validateEvidenceRegistry(
 			{
-				version: 'v1.3.1',
+				version: evidenceVersion,
 				entries: [
 					{
 						id: 'P0-T01',
@@ -378,7 +387,7 @@ assert.throws(
 	() =>
 		validateEvidenceRegistry(
 			{
-				version: 'v1.3.1',
+				version: evidenceVersion,
 				entries: [
 					{
 						id: 'P0-T01',
@@ -407,26 +416,31 @@ assert.throws(
 );
 
 assert.throws(
-	() => validateReleaseManifest({ version: 'v1.3.1', application_version: '1.0.0' }),
+	() => validateReleaseManifest({ version: evidenceVersion, application_version: '1.0.0' }),
 	/rc|application_version/i,
 	'Release manifest must require an application RC identity.'
 );
 
 assert.doesNotThrow(() =>
 	validateReleaseManifest({
-		version: 'v1.3.1',
+		version: evidenceVersion,
 		application_version: 'v1.0.0-rc.1',
-		authority_version: 'v1.3.1',
+		authority_version: evidenceVersion,
 		mandatory_test_registry: {
 			path: 'docs/release/TEST_EVIDENCE.json',
-			version: 'v1.3.1',
-			count: 229
+			version: evidenceVersion,
+			count: evidenceCount
 		},
 		expected_commands: ['bun run authority:registry', 'bun run authority:verify'],
 		git_sha: 'GENERATED_AT_VALIDATION',
 		release_evidence_path: '.agent/goal-loop/RELEASE_EVIDENCE.json',
 		lifecycle: {
-			release_status: 'PILOT_READY',
+			goal_status: 'IN_PROGRESS',
+			execution_stage: 'PHASE_LOOP',
+			current_phase: 'P14',
+			phase_status: 'VALIDATING',
+			local_build_status: 'FINAL_VALIDATION_PENDING',
+			release_status: 'NOT_READY',
 			pilot_status: 'NOT_STARTED',
 			production_status: 'NOT_LAUNCHED'
 		}
@@ -437,7 +451,7 @@ assert.throws(
 	() =>
 		validateEvidenceRegistry(
 			{
-				version: 'v1.3.1',
+				version: evidenceVersion,
 				entries: [
 					{
 						id: 'P0-T01',
@@ -498,9 +512,47 @@ assert.throws(
 const trackedP14Readiness = JSON.parse(
 	readFileSync('docs/release/P14_READINESS_STATE.json', 'utf8')
 );
+if (trackedP14Readiness.execution_stage === 'PHASE_LOOP') {
+	assert.doesNotThrow(
+		() => validateP14ReadinessState(trackedP14Readiness),
+		'Tracked P14 readiness state must be independently executable from a clean checkout.'
+	);
+} else if (trackedP14Readiness.execution_stage === 'FINAL_PROJECT_VALIDATION') {
+	assert.equal(
+		trackedP14Readiness.execution_stage,
+		'FINAL_PROJECT_VALIDATION',
+		'Tracked release state must be P14 readiness or final project validation.'
+	);
+	assert.doesNotThrow(
+		() => validateFinalProjectValidationState(trackedP14Readiness),
+		'Tracked final-validation state must be independently executable from a clean checkout.'
+	);
+} else {
+	assert.equal(
+		trackedP14Readiness.execution_stage,
+		'COMPLETE',
+		'Tracked release state must be P14 readiness, final validation, or terminal completion.'
+	);
+	assert.doesNotThrow(
+		() => validateFinalReleaseState(trackedP14Readiness),
+		'Tracked terminal release state must be independently executable from a clean checkout.'
+	);
+}
+
+const finalValidationState = {
+	...p14Readiness,
+	execution_stage: 'FINAL_PROJECT_VALIDATION',
+	phase_status: 'COMPLETE',
+	completed_phases: Array.from({ length: 15 }, (_, index) => `P${index}`)
+};
 assert.doesNotThrow(
-	() => validateP14ReadinessState(trackedP14Readiness),
-	'Tracked P14 readiness state must be independently executable from a clean checkout.'
+	() => validateFinalProjectValidationState(finalValidationState),
+	'Global final validation must remain non-terminal until every final gate passes.'
+);
+assert.throws(
+	() => validateFinalProjectValidationState({ ...finalValidationState, goal_status: 'COMPLETE' }),
+	/IN_PROGRESS/i,
+	'Final validation must reject terminal global state.'
 );
 
 const finalState = {

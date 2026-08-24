@@ -1,8 +1,9 @@
-# Zephyr CRM v1.3.1 toolchain proof
+# Zephyr CRM v1.3.2 toolchain proof
 
 Status: `PROVEN LOCALLY`  
 Proof date: 2026-08-24
-Authority: `DEPENDENCY_BASELINE_v1.0.0.md`
+Authority: `DEPENDENCY_BASELINE_v1.0.0.md` plus additive amendment
+`DEPENDENCY_BASELINE_v1.0.1.md`
 
 The complete candidate stack was exercised together before the direct versions
 below were frozen. The proof covered a frozen Bun install, SvelteKit/Vite build,
@@ -31,11 +32,19 @@ RLS/security checks, migrations, recovery, and the phase regression suites.
 | Playwright | `1.62.1` |
 | ESLint | `10.9.0` |
 | Prettier | `3.9.6` |
+| Deterministic PDF renderer | `pdf-lib 1.17.1` |
 
 Every direct dependency is exact-pinned in `package.json`; `bun.lock` is the
 only JavaScript lockfile. Vite owns the SvelteKit build; Bun only installs
 dependencies and invokes project scripts. SendPulse uses the project-owned REST
 adapter and no provider SDK.
+
+`pdf-lib@1.17.1` is the approved P14 additive dependency for deterministic
+multi-page Quote PDFs. The document module runs in the application Worker
+artifact, embeds the explicit standard fonts used by the contract, disables
+metadata/object-stream nondeterminism, and rejects unsupported glyphs instead
+of replacing customer text. The frozen quote snapshot and PDF bytes are passed
+unchanged into the project-owned SendPulse REST adapter.
 
 ## Candidate deviations
 

@@ -2,16 +2,20 @@ import { createHash } from 'node:crypto';
 import { existsSync } from 'node:fs';
 import { readdir, readFile, writeFile } from 'node:fs/promises';
 
+const authorityVersion = 'v1.3.2';
+
 const rootAuthorityFiles = [
 	'AGENTS.md',
-	'CRM_IMPLEMENTATION_ROADMAP_v1.3.1.md',
+	'CRM_IMPLEMENTATION_ROADMAP_v1.3.2.md',
 	'DEPENDENCY_BASELINE_v1.0.0.md',
+	'DEPENDENCY_BASELINE_v1.0.1.md',
 	'FILE_MANIFEST_v1.3.1.sha256',
 	'PATCH_REGISTER_v1.3.1.md',
 	'POST_BUILD_PILOT_PROGRAMME.md',
 	'RELEASE_NOTES_v1.3.1.md',
 	'VALIDATION_REPORT_v1.3.1.md',
-	'Small Business CRM — Complete Architecture, Domain & Implementation Blueprint v1.2.1.md'
+	'Small Business CRM — Complete Architecture, Domain & Implementation Blueprint v1.2.2.md',
+	'docs/hardening/ZEPHYR_CRM_P14_HARDENING_AND_IMPROVEMENT_AUTHORITY_v1.0.0.md'
 ];
 const normativeDocs = [
 	'docs/ARCHITECTURE.md',
@@ -56,16 +60,19 @@ const current = Object.fromEntries(
 if (process.argv.includes('--write')) {
 	await writeFile(
 		stateHashPath,
-		`${JSON.stringify({ version: 'v1.3.1', files: current }, null, 2)}\n`
+		`${JSON.stringify({ version: authorityVersion, files: current }, null, 2)}\n`
 	);
-	console.log(`Authority hashes intentionally regenerated for ${paths.length} v1.3.1 files.`);
+	console.log(
+		`Authority hashes intentionally regenerated for ${paths.length} ${authorityVersion} files.`
+	);
 	process.exit(0);
 }
 
 if (!existsSync(stateHashPath))
 	throw new Error(`Missing ${stateHashPath}; run the intentional hash regeneration step.`);
 const recorded = JSON.parse(await readFile(stateHashPath, 'utf8'));
-if (recorded.version !== 'v1.3.1') throw new Error('Authority hash registry is not v1.3.1.');
+if (recorded.version !== authorityVersion)
+	throw new Error(`Authority hash registry is not ${authorityVersion}.`);
 const expectedPaths = Object.keys(current);
 const recordedPaths = Object.keys(recorded.files ?? {}).sort();
 if (JSON.stringify(expectedPaths.slice().sort()) !== JSON.stringify(recordedPaths)) {
@@ -78,4 +85,6 @@ for (const path of expectedPaths) {
 		);
 	}
 }
-console.log(`Authority hash verification passed for ${expectedPaths.length} v1.3.1 files.`);
+console.log(
+	`Authority hash verification passed for ${expectedPaths.length} ${authorityVersion} files.`
+);

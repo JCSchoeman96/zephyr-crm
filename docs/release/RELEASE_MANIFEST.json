@@ -1,12 +1,12 @@
 {
-	"version": "v1.3.1",
+	"version": "v1.3.2",
 	"application_version": "v1.0.0-rc.1",
-	"authority_version": "v1.3.1",
+	"authority_version": "v1.3.2",
 	"git_sha": "GENERATED_AT_VALIDATION",
 	"mandatory_test_registry": {
 		"path": "docs/release/TEST_EVIDENCE.json",
-		"version": "v1.3.1",
-		"count": 229
+		"version": "v1.3.2",
+		"count": 243
 	},
 	"expected_commands": [
 		"bun install --frozen-lockfile",
@@ -15,6 +15,7 @@
 		"bun run authority:verify",
 		"bun run ci:contract",
 		"bun run release:evidence:verify",
+		"bun run release:state:parity",
 		"bun run release:manifest:verify",
 		"bun run test:release:contract",
 		"bun run format:check",
@@ -49,6 +50,10 @@
 	],
 	"release_evidence_path": ".agent/goal-loop/RELEASE_EVIDENCE.json",
 	"lifecycle": {
+		"goal_status": "COMPLETE",
+		"execution_stage": "COMPLETE",
+		"current_phase": "P14",
+		"phase_status": "COMPLETE",
 		"local_build_status": "LOCAL_BUILD_COMPLETE",
 		"release_status": "PILOT_READY",
 		"pilot_status": "NOT_STARTED",

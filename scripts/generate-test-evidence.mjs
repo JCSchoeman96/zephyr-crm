@@ -3,6 +3,9 @@ import { resolve } from 'node:path';
 
 const root = process.cwd();
 const coverage = readFileSync(resolve(root, 'docs/REQUIREMENTS_COVERAGE.md'), 'utf8');
+const authorityVersion = JSON.parse(
+	readFileSync(resolve(root, 'docs/AUTHORITY_HASHES.json'), 'utf8')
+).version;
 
 const phaseScripts = {
 	P0: null,
@@ -460,7 +463,7 @@ const p1Proofs = {
 			sources: [
 				{ source: 'package.json', contains: ['"packageManager": "bun@1.2.22"'] },
 				{
-					source: 'scripts/verify-v131-registry.mjs',
+					source: 'scripts/verify-authority-registry.mjs',
 					contains: [
 						"packageManager !== 'bun@1.2.22'",
 						'lockfile authority is not exactly bun.lock'
@@ -476,7 +479,7 @@ const p1Proofs = {
 			sources: [
 				{ source: 'package.json', contains: ['"dependencies": {', '"devDependencies": {'] },
 				{
-					source: 'scripts/verify-v131-registry.mjs',
+					source: 'scripts/verify-authority-registry.mjs',
 					contains: ['exact-pinned']
 				},
 				{
@@ -492,7 +495,7 @@ const p1Proofs = {
 			command: 'bun run authority:registry',
 			sources: [
 				{
-					source: 'scripts/verify-v131-registry.mjs',
+					source: 'scripts/verify-authority-registry.mjs',
 					contains: [
 						"['package-lock.json', 'pnpm-lock.yaml', 'yarn.lock', 'bun.lockb']",
 						'lockfile authority is not exactly bun.lock'
@@ -549,7 +552,7 @@ const p1Proofs = {
 					contains: ['"main": ".svelte-kit/cloudflare/_worker.js"', '"binding": "ASSETS"']
 				},
 				{
-					source: 'scripts/verify-v131-registry.mjs',
+					source: 'scripts/verify-authority-registry.mjs',
 					contains: ['wrangler.jsonc', 'Cloudflare Pages']
 				}
 			]
@@ -561,7 +564,7 @@ const p1Proofs = {
 			command: 'bun run authority:registry',
 			sources: [
 				{ source: 'wrangler.jsonc', contains: ['"compatibility_date": "2026-08-21"'] },
-				{ source: 'scripts/verify-v131-registry.mjs', contains: ['"compatibility_date"'] }
+				{ source: 'scripts/verify-authority-registry.mjs', contains: ['"compatibility_date"'] }
 			]
 		}
 	},
@@ -771,12 +774,12 @@ const proofOverrides = {
 	'P14-T13': {
 		command: 'bun run quality',
 		source: 'scripts/test-p14-release.mjs',
-		assertion: 'const evidence = validateEvidenceRegistry(registry);'
+		assertion: 'const evidence = validateEvidenceRegistry(registry, { root });'
 	},
 	'P14-T14': {
 		command: 'bun run test:p14:release',
 		source: 'scripts/test-p14-release.mjs',
-		assertion: 'evidence.count === 229,'
+		assertion: 'evidence.count === registry.entries.length,'
 	},
 	'P14-T15': {
 		command: 'bun run test:p14:release',
@@ -810,8 +813,81 @@ const proofOverrides = {
 	},
 	'P14-T21': {
 		command: 'bun run authority:registry',
-		source: 'scripts/verify-v131-registry.mjs',
+		source: 'scripts/verify-authority-registry.mjs',
 		assertion: 'exact-pinned'
+	},
+	'P14-T22': {
+		command: 'bun run release:state:parity',
+		source: 'scripts/test-pilot-readiness-parity.mjs',
+		assertion: 'assert.deepEqual(parseReadinessProjection(readiness(nonTerminal)), {'
+	},
+	'P14-T23': {
+		command: 'bun run test:p14:gate-semantics',
+		source: 'scripts/test-p14-gate-semantics.mjs',
+		assertion:
+			"assert(!releaseScript.includes(\"['run', 'quality']\"), 'P14 release proof must not invoke quality.');"
+	},
+	'P14-T24': {
+		command: 'bun run test:p14:browser-harness',
+		source: 'tests/e2e/domain/stateful-harness.e2e.ts',
+		assertion:
+			"await expect(page.getByRole('heading', { name: 'P14 Browser Harness' })).toBeVisible();"
+	},
+	'P14-T25': {
+		command: 'bun run test:p14:won-flow',
+		source: 'tests/e2e/domain/won-flow.e2e.ts',
+		assertion: "expect(client?.status).toBe('active');"
+	},
+	'P14-T26': {
+		command: 'bun run test:p14:lost-flow',
+		source: 'tests/e2e/domain/lost-flow.e2e.ts',
+		assertion: "await expect(page.getByText('LOST', { exact: true })).toBeVisible();"
+	},
+	'P14-T27': {
+		command: 'node scripts/test-p14-client-integrity.mjs',
+		source: 'scripts/test-p14-client-integrity.mjs',
+		assertion:
+			"assert(!directPatch.response.ok, 'Raw Client status PATCH bypassed trusted action');"
+	},
+	'P14-T28': {
+		command: 'node scripts/test-p14-contact-integrity.mjs',
+		source: 'scripts/test-p14-contact-integrity.mjs',
+		assertion: "assert(!rawDelete.response.ok, 'Raw ClientContact delete bypassed retention law');"
+	},
+	'P14-T29': {
+		command: 'node scripts/test-p14-task-integrity.mjs',
+		source: 'scripts/test-p14-task-integrity.mjs',
+		assertion: "assert(!rawInsert.response.ok, 'Raw Task INSERT bypassed create_task');"
+	},
+	'P14-T30': {
+		command: 'bun run test:p14:document-fitness',
+		source: 'src/lib/domain/quotes/document.spec.ts',
+		assertion: 'expect(parsed.getPageCount()).toBeGreaterThan(1);'
+	},
+	'P14-T31': {
+		command: 'bun run test:p14:email-safety',
+		source: 'src/lib/domain/communications/sendpulse-adapter.spec.ts',
+		assertion: ').rejects.toThrow(/sender email and name/i);'
+	},
+	'P14-T32': {
+		command: 'bun run test:p14:navigation',
+		source: 'scripts/test-p14-navigation.mjs',
+		assertion: 'assert.match(reports, /error\\(404/);'
+	},
+	'P14-T33': {
+		command: 'bun run test:p14:product-flow',
+		source: 'tests/e2e/domain/role-accessibility.e2e.ts',
+		assertion: "await expect(page.getByText('Viewer access is read-only.').first()).toBeVisible();"
+	},
+	'P14-T34': {
+		command: 'node scripts/test-p14-hardening-reconciliation.mjs',
+		source: 'scripts/test-p14-hardening-reconciliation.mjs',
+		assertion: "hardening.includes('ZH-018'),"
+	},
+	'P14-T35': {
+		command: 'node scripts/test-p14-mutation-parity.mjs',
+		source: 'scripts/test-p14-mutation-parity.mjs',
+		assertion: "leadAndOutboundLaw.includes('private.allow_outbound_attempt_mutation'),"
 	}
 };
 
@@ -1049,6 +1125,6 @@ const entries = parseRows().map(entryFor);
 mkdirSync(resolve(root, 'docs/release'), { recursive: true });
 writeFileSync(
 	resolve(root, 'docs/release/TEST_EVIDENCE.json'),
-	`${JSON.stringify({ version: 'v1.3.1', generated_from: 'Phases/PHASE_00...PHASE_14', entry_count: entries.length, entries }, null, 2)}\n`
+	`${JSON.stringify({ version: authorityVersion, generated_from: 'Phases/PHASE_00...PHASE_14', entry_count: entries.length, entries }, null, 2)}\n`
 );
 console.log(`Generated docs/release/TEST_EVIDENCE.json with ${entries.length} entries.`);

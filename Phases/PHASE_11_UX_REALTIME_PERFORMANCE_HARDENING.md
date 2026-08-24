@@ -1,7 +1,7 @@
 # Phase 11 — UX, Realtime & Performance Hardening
 
 **Project:** Small Business CRM  
-**Roadmap Version:** 1.3.1
+**Roadmap Version:** 1.3.2
 **Phase:** 11  
 **Milestone:** M3 — Production Hardening  
 **Status:** Implementation Authority  

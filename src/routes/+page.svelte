@@ -62,7 +62,6 @@
 	>
 		{#snippet actions()}
 			<RealtimeStatus scope="dashboard" tables={['leads', 'tasks', 'quotes']} />
-			<a class="header-link" href={resolve('/reports')}>Reports</a>
 		{/snippet}
 	</PageHeader>
 
@@ -303,10 +302,6 @@
 			</ul>
 		{/if}
 	</Card>
-
-	<p class="system-link">
-		<a href={resolve('/system')}>Component lab</a> · Active user: {data.auth.user?.email ?? '—'}
-	</p>
 </AppShell>
 
 <style>
@@ -344,9 +339,7 @@
 		color: var(--color-text-muted);
 		font-size: var(--font-size-xs);
 	}
-	.header-link,
-	.section-heading a,
-	.system-link a {
+	.section-heading a {
 		color: var(--color-brand-primary);
 		font-weight: var(--font-weight-semibold);
 	}
@@ -362,8 +355,7 @@
 	}
 	.section-heading h2,
 	.section-heading p,
-	.muted,
-	.system-link {
+	.muted {
 		margin: 0;
 	}
 	.section-heading h2 {
@@ -371,8 +363,7 @@
 	}
 	.section-heading p,
 	.muted,
-	.task-list span,
-	.system-link {
+	.task-list span {
 		color: var(--color-text-muted);
 		font-size: var(--font-size-sm);
 	}

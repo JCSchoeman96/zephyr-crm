@@ -210,23 +210,18 @@ async function addHistoryAndTask(lead, user) {
 		await signIn(user)
 	);
 	assert(note.activity_id, 'Trusted activity note action did not return an Activity');
-	const created = await rest(
-		'/rest/v1/tasks',
+	const created = await mustRpc(
+		'create_task',
 		{
-			method: 'POST',
-			headers: { 'content-type': 'application/json', Prefer: 'return=representation' },
-			body: JSON.stringify({
-				lead_id: lead.id,
-				type: 'follow_up',
-				title: 'P6 open conversion task',
-				status: 'open',
-				created_by: user.id
-			})
+			p_lead_id: lead.id,
+			p_type: 'follow_up',
+			p_title: 'P6 open conversion task'
 		},
-		user
+		anonKey,
+		await signIn(user)
 	);
-	assert(Array.isArray(created) && created[0]?.id, 'Could not create conversion task fixture');
-	return created[0].id;
+	assert(created.task_id, 'Could not create conversion task fixture');
+	return created.task_id;
 }
 
 async function createFailureTrigger() {
@@ -458,24 +453,18 @@ async function testAtomicRollback(sales) {
 }
 
 async function testPrimaryInvariant(company, sales) {
-	const extra = await rest(
-		'/rest/v1/client_contacts',
+	const extra = await mustRpc(
+		'create_client_contact',
 		{
-			method: 'POST',
-			headers: { 'content-type': 'application/json', Prefer: 'return=representation' },
-			body: JSON.stringify({
-				client_id: company.result.client_id,
-				first_name: 'Additional',
-				last_name: 'Contact',
-				is_primary: false
-			})
+			p_client_id: company.result.client_id,
+			p_first_name: 'Additional',
+			p_last_name: 'Contact',
+			p_is_primary: false
 		},
-		sales
+		anonKey,
+		await signIn(sales)
 	);
-	assert(
-		Array.isArray(extra) && extra[0]?.id,
-		'Could not create an additional non-primary contact'
-	);
+	assert(extra.contact_id, 'Could not create an additional non-primary contact');
 	const duplicate = await request(
 		'/rest/v1/client_contacts',
 		{
@@ -492,6 +481,12 @@ async function testPrimaryInvariant(company, sales) {
 		await signIn(sales)
 	);
 	assert(!duplicate.response.ok, 'A second primary contact was accepted');
+	await mustRpc(
+		'set_primary_client_contact',
+		{ p_contact_id: extra.contact_id, p_lock_version: extra.lock_version },
+		anonKey,
+		await signIn(sales)
+	);
 	const contacts = await rest(
 		`/rest/v1/client_contacts?client_id=eq.${company.result.client_id}&select=is_primary`,
 		{},

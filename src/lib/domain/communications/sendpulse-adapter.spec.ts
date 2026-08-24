@@ -8,6 +8,8 @@ describe('SendPulse adapter contract', () => {
 			clientId: 'test-client',
 			clientSecret: 'test-secret',
 			baseUrl: 'https://provider.test',
+			senderEmail: 'sales@example.test',
+			senderName: 'Example Sales',
 			fetcher: async (input, init) => {
 				requests.push({ url: String(input), body: String(init?.body ?? '') });
 				if (String(input).endsWith('/oauth/access_token')) {
@@ -37,6 +39,8 @@ describe('SendPulse adapter contract', () => {
 			clientId: 'test-client',
 			clientSecret: 'test-secret',
 			baseUrl: 'https://provider.test',
+			senderEmail: 'sales@example.test',
+			senderName: 'Example Sales',
 			fetcher: async (input) => {
 				if (String(input).endsWith('/oauth/access_token')) {
 					return new Response(JSON.stringify({ access_token: 'contract-token' }), { status: 200 });
@@ -52,5 +56,58 @@ describe('SendPulse adapter contract', () => {
 				html: '<p>Quote</p>'
 			})
 		).rejects.toBeInstanceOf(SendPulseSubmissionUnknownError);
+	});
+
+	it('refuses to submit without an explicit sender identity', async () => {
+		const adapter = new SendPulseAdapter({
+			clientId: 'test-client',
+			clientSecret: 'test-secret',
+			baseUrl: 'https://provider.test',
+			fetcher: async () => new Response('{}', { status: 200 })
+		});
+
+		await expect(
+			adapter.sendEmail({
+				to: [{ email: 'client@example.test' }],
+				subject: 'Quote',
+				html: '<p>Quote</p>'
+			})
+		).rejects.toThrow(/sender email and name/i);
+	});
+
+	it('binds the platform fetch implementation when no custom fetcher is provided', async () => {
+		const originalFetch = globalThis.fetch;
+		const requests: string[] = [];
+		globalThis.fetch = async (input) => {
+			requests.push(String(input));
+			if (String(input).endsWith('/oauth/access_token')) {
+				return new Response(JSON.stringify({ access_token: 'bound-token' }), { status: 200 });
+			}
+			return new Response(JSON.stringify({ result: true, id: 'bound-provider-message' }), {
+				status: 200
+			});
+		};
+		try {
+			const adapter = new SendPulseAdapter({
+				clientId: 'test-client',
+				clientSecret: 'test-secret',
+				baseUrl: 'https://provider.test',
+				senderEmail: 'sales@example.test',
+				senderName: 'Example Sales'
+			});
+			expect(
+				await adapter.sendEmail({
+					to: [{ email: 'client@example.test' }],
+					subject: 'Quote',
+					html: '<p>Quote</p>'
+				})
+			).toEqual({ providerMessageId: 'bound-provider-message' });
+			expect(requests).toEqual([
+				'https://provider.test/oauth/access_token',
+				'https://provider.test/smtp/emails'
+			]);
+		} finally {
+			globalThis.fetch = originalFetch;
+		}
 	});
 });
