@@ -41,6 +41,12 @@ Roles are exactly `owner`, `admin`, `sales`, and `viewer`. No public registratio
 
 The unique external submission identifier prevents integration retries from creating duplicate Leads. Email is not an idempotency or deduplication key. Two distinct submission identifiers may create two legitimate Leads with the same email.
 
+### Phone normalization
+
+For `Lead`, `Client`, and `ClientContact`, `phone` preserves the original display text and `phone_normalized` is a separate comparison/index value. Normalization occurs at the trusted server/database boundary on insert and whenever `phone` changes; the server derives `phone_normalized`, so a caller-provided normalized value is not authoritative.
+
+Only values that explicitly begin with `+` are normalized in v1. After trimming, spaces, parentheses, periods, and hyphens are removed; the remaining value must contain `+`, a non-zero first country-code digit, and 7–14 additional digits. A valid value is stored in `phone_normalized`; empty or invalid input produces `null` there. Ambiguous national-format input without an explicit `+` country code produces `null`, and the server never guesses an implicit country code or rewrites `phone`.
+
 ### LeadSource
 
 `LeadSource` is configurable attribution data with `id`, `code`, `label`, `active`, and `sort_order`. Examples include `website`, `manual`, `telephone`, `email`, `referral`, `facebook`, `instagram`, `google_ads`, `walk_in`, and `other`.

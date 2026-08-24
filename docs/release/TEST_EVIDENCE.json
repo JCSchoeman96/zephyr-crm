@@ -10,10 +10,37 @@
       "classification": "STATIC",
       "proof": {
         "command": "bun run authority:verify",
-        "source": "Phases/PHASE_00_ARCHITECTURE_PRODUCT_CONTRACT.md",
-        "contains": [
-          "P0-T01",
-          "Architecture completeness review"
+        "sources": [
+          {
+            "source": "docs/ARCHITECTURE.md",
+            "contains": [
+              "Each domain and its canonical resources are defined"
+            ]
+          },
+          {
+            "source": "docs/DOMAIN_MODEL.md",
+            "contains": [
+              "This document is the single definition of Zephyr CRM resources"
+            ]
+          },
+          {
+            "source": "docs/STATE_MACHINES.md",
+            "contains": [
+              "## Lead attention"
+            ]
+          },
+          {
+            "source": "docs/SECURITY_MODEL.md",
+            "contains": [
+              "## Protected-field/action mutation matrix"
+            ]
+          },
+          {
+            "source": "docs/ROADMAP.md",
+            "contains": [
+              "No phase may introduce a competing definition"
+            ]
+          }
         ]
       }
     },
@@ -24,10 +51,37 @@
       "classification": "STATIC",
       "proof": {
         "command": "bun run authority:verify",
-        "source": "Phases/PHASE_00_ARCHITECTURE_PRODUCT_CONTRACT.md",
-        "contains": [
-          "P0-T02",
-          "Cross-document consistency"
+        "sources": [
+          {
+            "source": "docs/ARCHITECTURE.md",
+            "contains": [
+              "## Product boundary"
+            ]
+          },
+          {
+            "source": "docs/DOMAIN_MODEL.md",
+            "contains": [
+              "## Resource map"
+            ]
+          },
+          {
+            "source": "docs/STATE_MACHINES.md",
+            "contains": [
+              "Canonical values are lowercase"
+            ]
+          },
+          {
+            "source": "docs/SECURITY_MODEL.md",
+            "contains": [
+              "## Authorization matrix"
+            ]
+          },
+          {
+            "source": "docs/ROADMAP.md",
+            "contains": [
+              "No phase may introduce a competing definition for Lead"
+            ]
+          }
         ]
       }
     },
@@ -38,10 +92,21 @@
       "classification": "STATIC",
       "proof": {
         "command": "bun run authority:verify",
-        "source": "Phases/PHASE_00_ARCHITECTURE_PRODUCT_CONTRACT.md",
-        "contains": [
-          "P0-T03",
-          "Deferred-scope check"
+        "sources": [
+          {
+            "source": "docs/ARCHITECTURE.md",
+            "contains": [
+              "## Deferred scope",
+              "future product decisions, not hidden current requirements."
+            ]
+          },
+          {
+            "source": "docs/ROADMAP.md",
+            "contains": [
+              "## Deferred v1 scope",
+              "outside P0–P14"
+            ]
+          }
         ]
       }
     },
@@ -49,14 +114,20 @@
       "id": "P0-T04",
       "title": "No implementation leakage",
       "criterion": "No production source code, migration, dependency, route, or integration implementation was added in Phase 0.",
-      "classification": "STATIC",
+      "classification": "HISTORICAL",
       "proof": {
-        "command": "bun run authority:verify",
-        "source": "Phases/PHASE_00_ARCHITECTURE_PRODUCT_CONTRACT.md",
-        "contains": [
-          "P0-T04",
-          "No implementation leakage"
-        ]
+        "command": "git diff --name-status 021d6fc^ 021d6fc",
+        "kind": "git-boundary",
+        "boundary_commit": "021d6fc7c29071da9f235a7d1275f688452c25de",
+        "implementation_start_commit": "21f2e18ea2c6e3a3f44c8b3100c764b2a4e09f62",
+        "boundary_files": [
+          "docs/ARCHITECTURE.md",
+          "docs/DOMAIN_MODEL.md",
+          "docs/ROADMAP.md",
+          "docs/SECURITY_MODEL.md",
+          "docs/STATE_MACHINES.md"
+        ],
+        "limitation": "Historical Git provenance is reviewed manually; this evidence does not claim that authority verification proves no implementation leakage."
       }
     },
     {
@@ -66,10 +137,15 @@
       "classification": "STATIC",
       "proof": {
         "command": "bun run authority:verify",
-        "source": "Phases/PHASE_00_ARCHITECTURE_PRODUCT_CONTRACT.md",
-        "contains": [
-          "P0-T05",
-          "Roadmap dependency check"
+        "sources": [
+          {
+            "source": "docs/ROADMAP.md",
+            "contains": [
+              "Dependencies are strict and sequential.",
+              "| P0 |",
+              "| P1 |"
+            ]
+          }
         ]
       }
     },
@@ -80,10 +156,16 @@
       "classification": "STATIC",
       "proof": {
         "command": "bun run authority:verify",
-        "source": "Phases/PHASE_00_ARCHITECTURE_PRODUCT_CONTRACT.md",
-        "contains": [
-          "P0-T06",
-          "Attention separation"
+        "sources": [
+          {
+            "source": "docs/STATE_MACHINES.md",
+            "contains": [
+              "waiting_on_client",
+              "pause_reason",
+              "type = follow_up",
+              "overdue"
+            ]
+          }
         ]
       }
     },
@@ -94,10 +176,15 @@
       "classification": "STATIC",
       "proof": {
         "command": "bun run authority:verify",
-        "source": "Phases/PHASE_00_ARCHITECTURE_PRODUCT_CONTRACT.md",
-        "contains": [
-          "P0-T07",
-          "Money contract completeness"
+        "sources": [
+          {
+            "source": "docs/MONEY_CONTRACT.md",
+            "contains": [
+              "PostgreSQL `numeric` values and decimal",
+              "ROUND_HALF_UP",
+              "server-owned"
+            ]
+          }
         ]
       }
     },
@@ -108,10 +195,15 @@
       "classification": "STATIC",
       "proof": {
         "command": "bun run authority:verify",
-        "source": "Phases/PHASE_00_ARCHITECTURE_PRODUCT_CONTRACT.md",
-        "contains": [
-          "P0-T08",
-          "Mutation/audit contract"
+        "sources": [
+          {
+            "source": "docs/SECURITY_MODEL.md",
+            "contains": [
+              "## Protected-field/action mutation matrix",
+              "Activity remains append-only evidence",
+              "ordinary UPDATE/DELETE"
+            ]
+          }
         ]
       }
     },
@@ -122,10 +214,27 @@
       "classification": "STATIC",
       "proof": {
         "command": "bun run authority:verify",
-        "source": "Phases/PHASE_00_ARCHITECTURE_PRODUCT_CONTRACT.md",
-        "contains": [
-          "P0-T09",
-          "Quote/history contract"
+        "sources": [
+          {
+            "source": "docs/DOMAIN_MODEL.md",
+            "contains": [
+              "complete seller/recipient/commercial snapshots",
+              "Commercial settings are copied into the Quote snapshot"
+            ]
+          },
+          {
+            "source": "docs/STATE_MACHINES.md",
+            "contains": [
+              "old Quote remains unchanged and historically readable"
+            ]
+          },
+          {
+            "source": "docs/SECURITY_MODEL.md",
+            "contains": [
+              "acceptance fields",
+              "document path/hash/provenance"
+            ]
+          }
         ]
       }
     },
@@ -136,10 +245,16 @@
       "classification": "STATIC",
       "proof": {
         "command": "bun run authority:verify",
-        "source": "Phases/PHASE_00_ARCHITECTURE_PRODUCT_CONTRACT.md",
-        "contains": [
-          "P0-T10",
-          "Integration uncertainty contract"
+        "sources": [
+          {
+            "source": "docs/STATE_MACHINES.md",
+            "contains": [
+              "## Outbound Message lifecycle",
+              "submission_unknown",
+              "Each logical message keeps append-only attempt evidence",
+              "No automatic resend is allowed"
+            ]
+          }
         ]
       }
     },
@@ -150,10 +265,22 @@
       "classification": "STATIC",
       "proof": {
         "command": "bun run authority:verify",
-        "source": "Phases/PHASE_00_ARCHITECTURE_PRODUCT_CONTRACT.md",
-        "contains": [
-          "P0-T11",
-          "Privacy/recovery contract"
+        "sources": [
+          {
+            "source": "docs/PRIVACY_OPERATIONS.md",
+            "contains": [
+              "data-subject access",
+              "POPIA/legal notification procedure"
+            ]
+          },
+          {
+            "source": "docs/RECOVERY_CONTRACT.md",
+            "contains": [
+              "A PostgreSQL dump alone is not recovery proof.",
+              "Auth identity reconstruction inputs",
+              "secret restoration procedures"
+            ]
+          }
         ]
       }
     },
@@ -164,10 +291,39 @@
       "classification": "STATIC",
       "proof": {
         "command": "bun run authority:verify",
-        "source": "Phases/PHASE_00_ARCHITECTURE_PRODUCT_CONTRACT.md",
-        "contains": [
-          "P0-T12",
-          "Metrics/time/identity/toolchain contract"
+        "sources": [
+          {
+            "source": "docs/METRICS_CONTRACT.md",
+            "contains": [
+              "inclusive UTC calendar dates",
+              "configured IANA timezone",
+              "Won / (Won + Lost) * 100"
+            ]
+          },
+          {
+            "source": "docs/DOMAIN_MODEL.md",
+            "contains": [
+              "### ClientContact",
+              "`ClientContact` belongs to one Client",
+              "### Phone normalization",
+              "`phone` preserves the original display text",
+              "`phone_normalized` is a separate comparison/index value",
+              "Normalization occurs at the trusted server/database boundary",
+              "Only values that explicitly begin with `+`",
+              "Ambiguous national-format input without an explicit `+` country code produces `null`",
+              "never guesses an implicit country code"
+            ]
+          },
+          {
+            "source": "DEPENDENCY_BASELINE_v1.0.0.md",
+            "contains": [
+              "## 2. Runtime and Build Responsibility",
+              "Bun",
+              "package-script runner",
+              "every direct dependency is exact-pinned",
+              "`bun.lock` is committed"
+            ]
+          }
         ]
       }
     },
@@ -178,10 +334,16 @@
       "classification": "STATIC",
       "proof": {
         "command": "bun run authority:verify",
-        "source": "Phases/PHASE_00_ARCHITECTURE_PRODUCT_CONTRACT.md",
-        "contains": [
-          "P0-T13",
-          "Dependency baseline authority"
+        "sources": [
+          {
+            "source": "DEPENDENCY_BASELINE_v1.0.0.md",
+            "contains": [
+              "## 2. Runtime and Build Responsibility",
+              "Bun",
+              "SvelteKit",
+              "SendPulse"
+            ]
+          }
         ]
       }
     },
@@ -192,10 +354,16 @@
       "classification": "STATIC",
       "proof": {
         "command": "bun run authority:verify",
-        "source": "Phases/PHASE_00_ARCHITECTURE_PRODUCT_CONTRACT.md",
-        "contains": [
-          "P0-T14",
-          "Dependency-governance completeness"
+        "sources": [
+          {
+            "source": "DEPENDENCY_BASELINE_v1.0.0.md",
+            "contains": [
+              "## 6. Exact-Pin Law",
+              "## 7. ShadCN Source-Ownership Law",
+              "## 11. State, Forms, Dates and Realtime",
+              "An autonomous agent must not introduce a new production dependency"
+            ]
+          }
         ]
       }
     },
@@ -206,10 +374,16 @@
       "classification": "STATIC",
       "proof": {
         "command": "bun run authority:verify",
-        "source": "Phases/PHASE_00_ARCHITECTURE_PRODUCT_CONTRACT.md",
-        "contains": [
-          "P0-T15",
-          "Trusted database function security contract"
+        "sources": [
+          {
+            "source": "docs/SECURITY_MODEL.md",
+            "contains": [
+              "SECURITY INVOKER",
+              "SECURITY DEFINER",
+              "search_path",
+              "restricted `EXECUTE` grants"
+            ]
+          }
         ]
       }
     },
@@ -220,10 +394,15 @@
       "classification": "STATIC",
       "proof": {
         "command": "bun run authority:verify",
-        "source": "Phases/PHASE_00_ARCHITECTURE_PRODUCT_CONTRACT.md",
-        "contains": [
-          "P0-T16",
-          "Authorization/MFA assurance contract"
+        "sources": [
+          {
+            "source": "docs/SECURITY_MODEL.md",
+            "contains": [
+              "invitation-only",
+              "raw_user_meta_data",
+              "current session must satisfy AAL2"
+            ]
+          }
         ]
       }
     },
@@ -234,10 +413,27 @@
       "classification": "STATIC",
       "proof": {
         "command": "bun run authority:verify",
-        "source": "Phases/PHASE_00_ARCHITECTURE_PRODUCT_CONTRACT.md",
-        "contains": [
-          "P0-T17",
-          "Authority-hash coverage contract"
+        "sources": [
+          {
+            "source": "AGENTS.md",
+            "contains": [
+              "authority_sha256",
+              "EXECUTION STOP — Unexpected Authority Drift"
+            ]
+          },
+          {
+            "source": "scripts/verify-authority-hashes.mjs",
+            "contains": [
+              "Authority drift detected in",
+              "recordedPaths"
+            ]
+          },
+          {
+            "source": "docs/AUTHORITY_HASHES.json",
+            "contains": [
+              "\"docs/STATE_MACHINES.md\""
+            ]
+          }
         ]
       }
     },

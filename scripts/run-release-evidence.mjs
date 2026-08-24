@@ -53,17 +53,32 @@ validateReleaseManifest(manifest, { root });
 const external = registry.entries
 	.filter((entry) => entry.classification === 'EXTERNAL')
 	.map((entry) => ({ id: entry.id, status: 'EXTERNAL', gate: entry.proof.gate }));
+const historical = registry.entries
+	.filter((entry) => entry.classification === 'HISTORICAL')
+	.map((entry) => ({
+		id: entry.id,
+		status: 'HISTORICAL',
+		boundary_commit: entry.proof.boundary_commit,
+		implementation_start_commit: entry.proof.implementation_start_commit,
+		limitation: entry.proof.limitation
+	}));
 const commands = [
 	...new Set(
 		registry.entries
-			.filter((entry) => entry.classification !== 'EXTERNAL')
+			.filter((entry) => !['EXTERNAL', 'HISTORICAL'].includes(entry.classification))
 			.map((entry) => entry.proof.command)
 	)
 ];
 if (args.has('--plan')) {
 	console.log(
 		JSON.stringify(
-			{ registry_version: registry.version, command_count: commands.length, commands, external },
+			{
+				registry_version: registry.version,
+				command_count: commands.length,
+				commands,
+				external,
+				historical
+			},
 			null,
 			2
 		)
@@ -80,6 +95,7 @@ const evidence = {
 	...metadata(),
 	commands: results,
 	external,
+	historical,
 	status: results.every((result) => result.status === 'PASS') ? 'PASS' : 'FAIL'
 };
 mkdirSync(resolve(root, dirname(outputPath)), { recursive: true });
