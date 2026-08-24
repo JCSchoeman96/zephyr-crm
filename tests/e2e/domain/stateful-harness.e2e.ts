@@ -15,6 +15,9 @@ test.describe('stateful local browser harness', () => {
 			await expect
 				.poll(async () => (await readLead(lead.id, user))?.pipeline_stage)
 				.toBe('QUALIFICATION');
+			await page.reload({ waitUntil: 'networkidle' });
+			await expect(page.getByText('QUALIFICATION', { exact: true })).toBeVisible();
+			await expect(page.getByRole('button', { name: 'Move to proposal' })).toBeVisible();
 		} finally {
 			await cleanupLead(lead.id, user.id);
 		}

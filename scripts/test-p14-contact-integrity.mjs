@@ -127,6 +127,37 @@ async function main() {
 		undefined,
 		await signIn(sales)
 	);
+	const concurrentSwitches = await Promise.allSettled([
+		mustRpc(
+			'set_primary_client_contact',
+			{ p_contact_id: third.contact_id, p_lock_version: third.lock_version },
+			undefined,
+			await signIn(sales)
+		),
+		mustRpc(
+			'set_primary_client_contact',
+			{ p_contact_id: third.contact_id, p_lock_version: third.lock_version },
+			undefined,
+			await signIn(sales)
+		)
+	]);
+	assert(
+		concurrentSwitches.filter((result) => result.status === 'fulfilled').length === 1 &&
+			concurrentSwitches.filter((result) => result.status === 'rejected').length === 1,
+		'Concurrent primary switches did not resolve through one Client-first lock boundary'
+	);
+	const secondaryAfterConcurrency = (await contacts(clientId, sales)).find(
+		(row) => row.id === secondary.contact_id
+	);
+	await mustRpc(
+		'set_primary_client_contact',
+		{
+			p_contact_id: secondary.contact_id,
+			p_lock_version: secondaryAfterConcurrency.lock_version
+		},
+		undefined,
+		await signIn(sales)
+	);
 	const primaryAfterSwitch = (await contacts(clientId, sales)).find((row) => row.is_primary);
 	const blockedInactivation = await rpc(
 		'set_client_contact_status',

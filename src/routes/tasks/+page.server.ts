@@ -67,12 +67,45 @@ export const load: PageServerLoad = async (event) => {
 		staffResponse.error
 	)
 		throw new Error('Could not load Tasks');
+	const taskRows = tasksResponse.data ?? [];
+	const taskLeadIds = [
+		...new Set(taskRows.flatMap((task) => (task.lead_id ? [task.lead_id] : [])))
+	];
+	const taskClientIds = [
+		...new Set(taskRows.flatMap((task) => (task.client_id ? [task.client_id] : [])))
+	];
+	const taskQuoteIds = [
+		...new Set(taskRows.flatMap((task) => (task.quote_id ? [task.quote_id] : [])))
+	];
+	const emptyId = '00000000-0000-0000-0000-000000000000';
+	const [taskLeadsResponse, taskClientsResponse, taskQuotesResponse] = await Promise.all([
+		supabase
+			.from('leads')
+			.select('id,lead_number,first_name,last_name,pipeline_stage')
+			.in('id', taskLeadIds.length ? taskLeadIds : [emptyId]),
+		supabase
+			.from('clients')
+			.select('id,client_number,display_name,status')
+			.in('id', taskClientIds.length ? taskClientIds : [emptyId]),
+		supabase
+			.from('quotes')
+			.select('id,quote_number,subject,lead_id,client_id,status')
+			.in('id', taskQuoteIds.length ? taskQuoteIds : [emptyId])
+	]);
+	if (taskLeadsResponse.error || taskClientsResponse.error || taskQuotesResponse.error) {
+		throw new Error('Could not load Task context');
+	}
+	const mergeById = <T extends { id: string }>(primary: T[], historical: T[]) => {
+		const rows = new Map(primary.map((row) => [row.id, row]));
+		for (const row of historical) rows.set(row.id, row);
+		return [...rows.values()];
+	};
 	return {
 		profile,
-		tasks: tasksResponse.data ?? [],
-		leads: leadsResponse.data ?? [],
-		clients: clientsResponse.data ?? [],
-		quotes: quotesResponse.data ?? [],
+		tasks: taskRows,
+		leads: mergeById(leadsResponse.data ?? [], taskLeadsResponse.data ?? []),
+		clients: mergeById(clientsResponse.data ?? [], taskClientsResponse.data ?? []),
+		quotes: mergeById(quotesResponse.data ?? [], taskQuotesResponse.data ?? []),
 		staff: staffResponse.data ?? [],
 		filters: { status, overdue }
 	};

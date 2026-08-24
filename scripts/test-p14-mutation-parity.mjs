@@ -1,4 +1,17 @@
+import { execFileSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
+
+const root = process.cwd();
+
+function run(command, args) {
+	const output = execFileSync(command, args, {
+		cwd: root,
+		encoding: 'utf8',
+		stdio: ['ignore', 'pipe', 'pipe'],
+		maxBuffer: 32 * 1024 * 1024
+	});
+	process.stdout.write(output);
+}
 
 function read(path) {
 	return readFileSync(path, 'utf8');
@@ -77,5 +90,18 @@ assert(
 		!taskRoute.includes(".from('tasks').update"),
 	'Task UI mutation actions do not preserve the trusted RPC boundary.'
 );
+
+// P14-T35 is executable evidence against the fully migrated local schema. The
+// static checks above protect the intended boundary; these focused contracts
+// exercise alternate authenticated Data API paths and trusted actions.
+for (const script of [
+	['run', 'db:security'],
+	['run', 'test:p7:quotes'],
+	['run', 'test:p14:client-integrity'],
+	['run', 'test:p14:contact-integrity'],
+	['run', 'test:p14:task-integrity']
+]) {
+	run('bun', script);
+}
 
 console.log('P14-T35 trusted-mutation boundary parity passed');

@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto';
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 
 function read(path) {
 	return readFileSync(path, 'utf8');
@@ -16,6 +16,7 @@ const phase14 = read('Phases/PHASE_14_LOCAL_RELEASE_CANDIDATE_PILOT_READINESS.md
 const coverage = read('docs/REQUIREMENTS_COVERAGE.md');
 const readiness = read('docs/PILOT_READINESS.md');
 const postV1Backlog = read('docs/POST_V1_BACKLOG.md');
+const disposition = read('docs/release/P14_HARDENING_DISPOSITION.md');
 const hashes = JSON.parse(read('docs/AUTHORITY_HASHES.json'));
 const evidence = JSON.parse(read('docs/release/TEST_EVIDENCE.json'));
 const manifest = JSON.parse(read('docs/release/RELEASE_MANIFEST.json'));
@@ -30,6 +31,20 @@ const requiredHardeningIds = Array.from(
 const requiredP14Ids = Array.from({ length: 14 }, (_, index) => `P14-T${index + 22}`);
 const hardeningHash = createHash('sha256').update(hardening).digest('hex');
 
+const dispositionRows = [
+	...disposition.matchAll(/^\| (ZH-\d{3}) \| (FIXED|NON-BLOCKER) \| ([^|]+) \|$/gm)
+].map(([, id, status, evidence]) => {
+	const text = evidence.trim();
+	return {
+		id,
+		status,
+		evidence: text,
+		paths: [...text.matchAll(/`([^`]+)`/g)].map(([, path]) => path),
+		testIds: [...text.matchAll(/\bP14-T\d+\b/g)].map(([id]) => id)
+	};
+});
+const evidenceIds = new Set(evidence.entries.map((entry) => entry.id));
+
 assert(
 	hardening.includes('ZH-018'),
 	'Hardening authority is missing the final trusted-mutation requirement.'
@@ -41,6 +56,22 @@ assert(
 assert(
 	requiredP14Ids.every((id) => phase14.includes(id) && coverage.includes(id)),
 	'P14 hardening test IDs are not fully covered.'
+);
+assert(
+	dispositionRows.length === requiredHardeningIds.length &&
+		new Set(dispositionRows.map((row) => row.id)).size === requiredHardeningIds.length &&
+		requiredHardeningIds.every((id) => {
+			const row = dispositionRows.find((candidate) => candidate.id === id);
+			return (
+				row &&
+				row.evidence.length > 0 &&
+				row.paths.length > 0 &&
+				row.paths.every((path) => existsSync(path)) &&
+				row.testIds.length > 0 &&
+				row.testIds.every((testId) => evidenceIds.has(testId))
+			);
+		}),
+	'Every frozen hardening item must have one explicit disposition with real file and registry evidence.'
 );
 assert(
 	hardeningHash === 'e34e32711db412658cab9d89bcd02ad8851d53c67693431745eb00ee35d18f2b',

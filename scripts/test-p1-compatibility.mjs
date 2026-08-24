@@ -14,7 +14,7 @@ const compatibilitySteps = [
 	['lint', ['lint']],
 	['Svelte and TypeScript check', ['check']],
 	['baseline Vitest', ['test:unit', '--', '--run']],
-	['Playwright smoke', ['test:e2e']],
+	['Playwright smoke', ['test:e2e:smoke']],
 	['production Worker build', ['build']],
 	['public-bundle secret scan', ['security:bundle']],
 	['database lint', ['db:test']],

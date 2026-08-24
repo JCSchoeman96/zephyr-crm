@@ -17,9 +17,20 @@ type LeadRecord = {
 	lost_reason_id?: string | null;
 	lost_notes?: string | null;
 };
-type ClientRecord = { id: string; status?: string; source_lead_id?: string };
-type QuoteRecord = { status?: string };
-type LostReason = { id: string; label?: string };
+type ClientRecord = {
+	id: string;
+	lock_version?: number;
+	status?: string;
+	source_lead_id?: string;
+	display_name?: string;
+};
+type QuoteRecord = {
+	id?: string;
+	status?: string;
+	total?: string | number;
+	document_path?: string | null;
+};
+type LostReason = { id: string; code?: string; label?: string };
 
 function localSupabaseEnvironment(): Record<string, string> {
 	try {
@@ -47,6 +58,7 @@ const anonKey =
 	process.env.PUBLIC_SUPABASE_PUBLISHABLE_KEY ?? local.ANON_KEY ?? local.PUBLISHABLE_KEY ?? '';
 export const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY ?? local.SERVICE_ROLE_KEY ?? '';
 const runId = `${Date.now()}-${randomUUID().slice(0, 8)}`;
+let staffSequence = 0;
 
 export type StaffUser = { id: string; email: string; password: string; accessToken: string };
 
@@ -123,8 +135,9 @@ export async function createStaff(
 	label: string = role
 ): Promise<StaffUser> {
 	assertConfigured();
-	const email = `p14-browser-${runId}-${label}@example.test`;
-	const password = `P14-${runId}-${role}-BrowserPassword9!`;
+	const sequence = ++staffSequence;
+	const email = `p14-browser-${runId}-${sequence}-${label}@example.test`;
+	const password = `P14-${runId}-${sequence}-${role}-BrowserPassword9!`;
 	const user = await serviceRequest<AdminUserResponse>('/auth/v1/admin/users', {
 		method: 'POST',
 		headers: { 'content-type': 'application/json' },
@@ -355,13 +368,42 @@ export async function readQuotesForLead(leadId: string, user: StaffUser): Promis
 	);
 }
 
+export async function readClientContacts(
+	clientId: string,
+	user: StaffUser
+): Promise<Array<{ id: string; is_primary: boolean; status: string }>> {
+	return authenticatedRequest(
+		`/rest/v1/client_contacts?client_id=eq.${clientId}&select=id,is_primary,status&order=created_at.asc`,
+		user
+	);
+}
+
 export async function lostReasonId(user: StaffUser): Promise<string> {
 	const rows = await authenticatedRequest<LostReason[]>(
-		'/rest/v1/lost_reasons?active=eq.true&select=id,label&order=sort_order.asc&limit=1',
+		'/rest/v1/lost_reasons?active=eq.true&select=id,label,code&order=sort_order.asc&limit=1',
 		user
 	);
 	if (!rows?.[0]?.id) throw new Error('No active local lost reason is available.');
 	return rows[0].id;
+}
+
+export async function lostReasonByCode(code: string, user: StaffUser): Promise<string> {
+	const rows = await authenticatedRequest<LostReason[]>(
+		`/rest/v1/lost_reasons?active=eq.true&code=eq.${encodeURIComponent(code)}&select=id,code`,
+		user
+	);
+	if (!rows?.[0]?.id) throw new Error(`No active local lost reason exists for ${code}.`);
+	return rows[0].id;
+}
+
+export async function readLeadActivities(
+	leadId: string,
+	user: StaffUser
+): Promise<Array<{ event_type: string; summary?: string }>> {
+	return authenticatedRequest(
+		`/rest/v1/activities?lead_id=eq.${leadId}&select=event_type,summary&order=occurred_at.asc`,
+		user
+	);
 }
 
 export async function cleanupLead(id: string, userId: string): Promise<void> {

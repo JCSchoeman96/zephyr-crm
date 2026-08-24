@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { execFileSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 
 const sidebar = readFileSync('src/lib/components/shell/Sidebar.svelte', 'utf8');
@@ -22,4 +23,20 @@ assert(
 assert.match(reports, /error\(404/);
 assert.match(componentLabGate, /ZEPHYR_COMPONENT_LAB_ENABLED/);
 assert.match(componentLabGate, /error\(404/);
+
+function runNavigationBrowser(environment = {}) {
+	const output = execFileSync(
+		'bun',
+		['x', 'playwright', 'test', 'tests/e2e/domain/navigation.e2e.ts'],
+		{
+			encoding: 'utf8',
+			stdio: ['ignore', 'pipe', 'pipe'],
+			env: { ...process.env, ...environment }
+		}
+	);
+	process.stdout.write(output);
+}
+
+runNavigationBrowser();
+runNavigationBrowser({ ZEPHYR_COMPONENT_LAB_ENABLED: '0' });
 console.log('P14-T32 navigation and capability truth passed');

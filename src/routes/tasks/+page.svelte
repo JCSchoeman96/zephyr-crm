@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { resolve } from '$app/paths';
 	import type { ActionData, PageData } from './$types';
 	import AppShell from '$lib/components/shell/AppShell.svelte';
 	import Badge from '$lib/components/ui/Badge.svelte';
@@ -82,7 +83,12 @@
 			<h2>Create Task</h2>
 			<p class="muted">Use a concrete next action; automated rules remain server-configured.</p>
 			<form method="POST" action="?/create" class="create-form">
-				<Select id="task-context-type" label="Context type" bind:value={contextType}>
+				<Select
+					id="task-context-type"
+					name="context_type"
+					label="Context type"
+					bind:value={contextType}
+				>
 					<option value="lead">Lead</option><option value="client">Client</option><option
 						value="quote">Quote</option
 					>
@@ -144,7 +150,22 @@
 					><tbody>
 						{#each data.tasks as task (task.id)}
 							<tr>
-								<td><strong>{task.title}</strong><span>{contextLabel(task)}</span></td>
+								<td>
+									<strong>{task.title}</strong>
+									{#if task.quote_id}
+										<a class="task-context" href={resolve(`/quotes/${task.quote_id}`)}
+											>{contextLabel(task)}</a
+										>
+									{:else if task.client_id}
+										<a class="task-context" href={resolve(`/clients/${task.client_id}`)}
+											>{contextLabel(task)}</a
+										>
+									{:else if task.lead_id}
+										<a class="task-context" href={resolve(`/leads/${task.lead_id}`)}
+											>{contextLabel(task)}</a
+										>
+									{:else}<span>{contextLabel(task)}</span>{/if}
+								</td>
 								<td>{task.type}</td><td>{dateTime(task.due_at)}</td><td
 									><Badge tone={tone(task)}>{task.is_overdue ? 'overdue' : task.status}</Badge></td
 								>
@@ -258,6 +279,12 @@
 	}
 	.tasks-table td span {
 		margin-top: var(--space-xs);
+		font-size: var(--font-size-xs);
+	}
+	.task-context {
+		display: block;
+		margin-top: var(--space-xs);
+		color: var(--color-brand-primary);
 		font-size: var(--font-size-xs);
 	}
 	.task-actions {

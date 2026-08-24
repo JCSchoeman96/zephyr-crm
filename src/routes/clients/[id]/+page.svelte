@@ -50,7 +50,7 @@
 		</p>
 	{/if}
 
-	<ClientMaintenance client={data.client} profile={data.profile} />
+	<ClientMaintenance client={data.client} profile={data.profile} {form} />
 	<nav class="detail-nav" aria-label="Client detail sections">
 		<a href={resolve(`/clients/${data.client.id}#overview`)}>Overview</a>
 		<a href={resolve(`/clients/${data.client.id}#contacts`)}>Contacts</a>

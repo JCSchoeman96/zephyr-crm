@@ -149,7 +149,7 @@ for (const token of [
 	"['db:start']",
 	"['db:reset']",
 	"['test:p1:toolchain']",
-	"['test:e2e']",
+	"['test:e2e:smoke']",
 	"['build']",
 	"['security:bundle']",
 	"['db:test']",

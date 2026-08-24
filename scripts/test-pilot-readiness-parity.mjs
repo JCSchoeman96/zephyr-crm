@@ -33,6 +33,9 @@ const final = {
 const readiness = (state) =>
 	'\nCurrent lifecycle values:\n\n' +
 	'```text\n' +
+	`execution_stage = ${state.execution_stage}\n` +
+	`current_phase = ${state.current_phase}\n` +
+	`phase_status = ${state.phase_status}\n` +
 	`goal_status = ${state.goal_status}\n` +
 	`local_build_status = ${state.local_build_status}\n` +
 	`release_status = ${state.release_status}\n` +
@@ -45,6 +48,9 @@ const stateMarkdown = (state) =>
 		.join('\n');
 
 assert.deepEqual(parseReadinessProjection(readiness(nonTerminal)), {
+	execution_stage: 'PHASE_LOOP',
+	current_phase: 'P14',
+	phase_status: 'VALIDATING',
 	goal_status: 'IN_PROGRESS',
 	local_build_status: 'FINAL_VALIDATION_PENDING',
 	release_status: 'NOT_READY',
@@ -88,5 +94,15 @@ assert.throws(
 			'goal_status = IN_PROGRESS'
 		),
 	/human loop state is missing execution_stage/
+);
+assert.throws(
+	() =>
+		validateReleaseTruth(
+			nonTerminal,
+			nonTerminal,
+			readiness({ ...nonTerminal, phase_status: 'COMPLETE' }),
+			stateMarkdown(nonTerminal)
+		),
+	/human readiness projection phase_status=COMPLETE/
 );
 console.log('P14-T22 release truth parity passed');

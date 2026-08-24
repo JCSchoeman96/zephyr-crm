@@ -28,7 +28,7 @@ const phaseScripts = {
 const phaseCommands = {
 	P0: 'bun run authority:verify',
 	P1: 'bun run check',
-	P2: 'bun run test:e2e -- tests/e2e/design-system.e2e.ts',
+	P2: 'bun run test:e2e:smoke',
 	P3: 'bun run db:security',
 	P4: 'bun run test:p4:domain',
 	P5: 'bun run test:p5:leads',
@@ -526,7 +526,7 @@ const p1Proofs = {
 						'const compatibilitySteps = [',
 						"['db:start']",
 						"['db:reset']",
-						"['test:e2e']",
+						"['test:e2e:smoke']",
 						"['db:test']",
 						"['db:security']",
 						'finally',
@@ -881,8 +881,8 @@ const proofOverrides = {
 	},
 	'P14-T34': {
 		command: 'node scripts/test-p14-hardening-reconciliation.mjs',
-		source: 'scripts/test-p14-hardening-reconciliation.mjs',
-		assertion: "hardening.includes('ZH-018'),"
+		source: 'docs/release/P14_HARDENING_DISPOSITION.md',
+		assertion: '| ZH-018 | FIXED |'
 	},
 	'P14-T35': {
 		command: 'node scripts/test-p14-mutation-parity.mjs',

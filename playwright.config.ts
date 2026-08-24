@@ -27,7 +27,7 @@ const localAnonKey =
 	process.env.PUBLIC_SUPABASE_PUBLISHABLE_KEY ?? local.ANON_KEY ?? local.PUBLISHABLE_KEY;
 const localServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY ?? local.SERVICE_ROLE_KEY;
 const appEnvironment: Record<string, string> = {
-	ZEPHYR_COMPONENT_LAB_ENABLED: '1',
+	ZEPHYR_COMPONENT_LAB_ENABLED: process.env.ZEPHYR_COMPONENT_LAB_ENABLED ?? '1',
 	BRICKS_WEBHOOK_SECRET: 'p14-browser-bricks-secret',
 	BRICKS_FORM_ID: 'contact-form',
 	SENDPULSE_CLIENT_ID: 'p14-browser-client',
@@ -45,14 +45,6 @@ if (localApiUrl) {
 if (localAnonKey) appEnvironment.PUBLIC_SUPABASE_PUBLISHABLE_KEY = localAnonKey;
 if (localServiceRoleKey) appEnvironment.SUPABASE_SERVICE_ROLE_KEY = localServiceRoleKey;
 
-function shellQuote(value: string): string {
-	return `'${value.replaceAll("'", "'\\''")}'`;
-}
-
-const previewVariables = Object.entries(appEnvironment)
-	.map(([key, value]) => `--var ${key}:${shellQuote(value)}`)
-	.join(' ');
-
 export default defineConfig({
 	webServer: [
 		{
@@ -61,7 +53,7 @@ export default defineConfig({
 			reuseExistingServer: false
 		},
 		{
-			command: `bun run build && wrangler dev --local --port 4173 ${previewVariables}`,
+			command: 'node scripts/test-p14-preview.mjs',
 			port: 4173,
 			env: appEnvironment,
 			reuseExistingServer: false

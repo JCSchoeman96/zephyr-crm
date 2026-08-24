@@ -773,7 +773,7 @@
               "const compatibilitySteps = [",
               "['db:start']",
               "['db:reset']",
-              "['test:e2e']",
+              "['test:e2e:smoke']",
               "['db:test']",
               "['db:security']",
               "finally",
@@ -965,7 +965,7 @@
       "criterion": "Every base component renders without runtime errors in default, disabled, error, and loading states where applicable.",
       "classification": "AUTOMATED",
       "proof": {
-        "command": "bun run test:e2e -- tests/e2e/design-system.e2e.ts",
+        "command": "bun run test:e2e:smoke",
         "source": "tests/e2e/design-system.e2e.ts",
         "assertion": "test('renders primitive states and labelled controls', async ({ page }) => {"
       }
@@ -976,7 +976,7 @@
       "criterion": "Primary shell/navigation and interactive primitives can be reached and operated by keyboard.",
       "classification": "AUTOMATED",
       "proof": {
-        "command": "bun run test:e2e -- tests/e2e/design-system.e2e.ts",
+        "command": "bun run test:e2e:smoke",
         "source": "tests/e2e/design-system.e2e.ts",
         "assertion": "test('renders primitive states and labelled controls', async ({ page }) => {"
       }
@@ -987,7 +987,7 @@
       "criterion": "Form controls have programmatic labels; obvious accessibility violations are absent.",
       "classification": "AUTOMATED",
       "proof": {
-        "command": "bun run test:e2e -- tests/e2e/design-system.e2e.ts",
+        "command": "bun run test:e2e:smoke",
         "source": "tests/e2e/design-system.e2e.ts",
         "assertion": "test('renders primitive states and labelled controls', async ({ page }) => {"
       }
@@ -998,7 +998,7 @@
       "criterion": "Shell is usable at mobile, tablet, and desktop widths without horizontal overflow from layout chrome.",
       "classification": "STATIC",
       "proof": {
-        "command": "bun run test:e2e -- tests/e2e/design-system.e2e.ts",
+        "command": "bun run test:e2e:smoke",
         "source": "Phases/PHASE_02_DESIGN_SYSTEM_APPLICATION_SHELL.md",
         "contains": [
           "P2-T04",
@@ -1012,7 +1012,7 @@
       "criterion": "Core primitives do not duplicate client brand values where semantic tokens exist.",
       "classification": "STATIC",
       "proof": {
-        "command": "bun run test:e2e -- tests/e2e/design-system.e2e.ts",
+        "command": "bun run test:e2e:smoke",
         "source": "Phases/PHASE_02_DESIGN_SYSTEM_APPLICATION_SHELL.md",
         "contains": [
           "P2-T05",
@@ -1026,7 +1026,7 @@
       "criterion": "Changing the configured brand tokens visibly updates the shell/primitives without editing component source.",
       "classification": "STATIC",
       "proof": {
-        "command": "bun run test:e2e -- tests/e2e/design-system.e2e.ts",
+        "command": "bun run test:e2e:smoke",
         "source": "Phases/PHASE_02_DESIGN_SYSTEM_APPLICATION_SHELL.md",
         "contains": [
           "P2-T06",
@@ -1040,7 +1040,7 @@
       "criterion": "All Phase 1 quality commands still pass.",
       "classification": "AUTOMATED",
       "proof": {
-        "command": "bun run test:e2e -- tests/e2e/design-system.e2e.ts",
+        "command": "bun run test:e2e:smoke",
         "source": "tests/e2e/design-system.e2e.ts",
         "assertion": "test('renders primitive states and labelled controls', async ({ page }) => {"
       }
@@ -1051,7 +1051,7 @@
       "criterion": "`components.json` uses the approved configuration; generated components are committed project source and no customised component is destructively regenerated without reviewed migration.",
       "classification": "STATIC",
       "proof": {
-        "command": "bun run test:e2e -- tests/e2e/design-system.e2e.ts",
+        "command": "bun run test:e2e:smoke",
         "source": "Phases/PHASE_02_DESIGN_SYSTEM_APPLICATION_SHELL.md",
         "contains": [
           "P2-T08",
@@ -1065,7 +1065,7 @@
       "criterion": "Tailwind 4 is integrated through `@tailwindcss/vite`; no parallel legacy Tailwind/PostCSS styling authority is introduced.",
       "classification": "STATIC",
       "proof": {
-        "command": "bun run test:e2e -- tests/e2e/design-system.e2e.ts",
+        "command": "bun run test:e2e:smoke",
         "source": "Phases/PHASE_02_DESIGN_SYSTEM_APPLICATION_SHELL.md",
         "contains": [
           "P2-T09",
@@ -1079,7 +1079,7 @@
       "criterion": "General application icons use `@lucide/svelte`; no second icon library is introduced without architecture amendment.",
       "classification": "STATIC",
       "proof": {
-        "command": "bun run test:e2e -- tests/e2e/design-system.e2e.ts",
+        "command": "bun run test:e2e:smoke",
         "source": "Phases/PHASE_02_DESIGN_SYSTEM_APPLICATION_SHELL.md",
         "contains": [
           "P2-T10",
@@ -1093,7 +1093,7 @@
       "criterion": "No second UI kit, large form framework, global state framework or duplicate validation system has been added.",
       "classification": "STATIC",
       "proof": {
-        "command": "bun run test:e2e -- tests/e2e/design-system.e2e.ts",
+        "command": "bun run test:e2e:smoke",
         "source": "Phases/PHASE_02_DESIGN_SYSTEM_APPLICATION_SHELL.md",
         "contains": [
           "P2-T11",
@@ -3314,8 +3314,8 @@
       "classification": "AUTOMATED",
       "proof": {
         "command": "node scripts/test-p14-hardening-reconciliation.mjs",
-        "source": "scripts/test-p14-hardening-reconciliation.mjs",
-        "assertion": "hardening.includes('ZH-018'),"
+        "source": "docs/release/P14_HARDENING_DISPOSITION.md",
+        "assertion": "| ZH-018 | FIXED |"
       }
     },
     {

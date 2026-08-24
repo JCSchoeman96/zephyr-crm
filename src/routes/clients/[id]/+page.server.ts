@@ -31,8 +31,53 @@ function uuid(form: FormData, name: string): string {
 	return value;
 }
 
-function failure(cause: unknown, fallback: string) {
-	return fail(422, { message: cause instanceof Error ? cause.message : fallback });
+function formValues(form: FormData): Record<string, string> {
+	const names = [
+		'lock_version',
+		'type',
+		'display_name',
+		'company_name',
+		'email',
+		'phone',
+		'tax_number',
+		'registration_number',
+		'billing_address_line_1',
+		'billing_address_line_2',
+		'billing_city',
+		'billing_region',
+		'billing_postal_code',
+		'billing_country',
+		'status',
+		'reason',
+		'contact_id',
+		'contact_lock_version',
+		'first_name',
+		'last_name',
+		'job_title'
+	];
+	return Object.fromEntries(
+		names.filter((name) => form.has(name)).map((name) => [name, String(form.get(name) ?? '')])
+	);
+}
+
+function actionMessage(cause: unknown, fallback: string): string {
+	const message =
+		cause instanceof Error
+			? cause.message
+			: typeof cause === 'object' &&
+				  cause !== null &&
+				  'message' in cause &&
+				  typeof cause.message === 'string'
+				? cause.message
+				: '';
+	if (/stale|lock_version|changed during/i.test(message)) {
+		return 'This Client changed elsewhere. Reload the page before saving again.';
+	}
+	return message || fallback;
+}
+
+function failure(cause: unknown, fallback: string, values?: Record<string, string>) {
+	return fail(422, { message: actionMessage(cause, fallback), values });
 }
 
 function canMutate(role: string): boolean {
@@ -104,8 +149,9 @@ export const actions: Actions = {
 	update: async (event) => {
 		const { supabase, profile } = await requireActiveStaff(event);
 		if (!canMutate(profile.role)) return fail(403, { message: 'Viewer access is read-only.' });
+		const form = await event.request.formData();
+		const values = formValues(form);
 		try {
-			const form = await event.request.formData();
 			const displayName = required(form, 'display_name');
 			if (!displayName) throw new Error('Client display name is required');
 			const response = await supabase.rpc('update_client_details', {
@@ -125,17 +171,18 @@ export const actions: Actions = {
 				p_billing_postal_code: optional(form, 'billing_postal_code'),
 				p_billing_country: optional(form, 'billing_country')
 			});
-			if (response.error) return fail(422, { message: response.error.message });
+			if (response.error) return failure(response.error, 'Could not update Client', values);
 		} catch (actionError) {
-			return failure(actionError, 'Could not update Client');
+			return failure(actionError, 'Could not update Client', values);
 		}
 		throw redirect(303, `/clients/${event.params.id}`);
 	},
 	status: async (event) => {
 		const { supabase, profile } = await requireActiveStaff(event);
 		if (!canMutate(profile.role)) return fail(403, { message: 'Viewer access is read-only.' });
+		const form = await event.request.formData();
+		const values = formValues(form);
 		try {
-			const form = await event.request.formData();
 			const status = required(form, 'status');
 			if (!['active', 'inactive', 'archived'].includes(status))
 				throw new Error('Client status is invalid');
@@ -145,9 +192,9 @@ export const actions: Actions = {
 				p_status: status,
 				p_reason: optional(form, 'reason')
 			});
-			if (response.error) return fail(422, { message: response.error.message });
+			if (response.error) return failure(response.error, 'Could not change Client status', values);
 		} catch (actionError) {
-			return failure(actionError, 'Could not change Client status');
+			return failure(actionError, 'Could not change Client status', values);
 		}
 		throw redirect(303, `/clients/${event.params.id}`);
 	},

@@ -18,8 +18,8 @@ const requiredCommands = [
 	'bun run test:db-types',
 	'bun run tokens:check',
 	'bun run test:e2e:install',
-	'bun run test:e2e',
-	'bun run test:e2e -- tests/e2e/domain',
+	'bun run test:e2e:smoke',
+	'bun run test:e2e:domain',
 	'bun run build',
 	'bun run auth:csrf',
 	'bun run security:bundle',
@@ -64,6 +64,19 @@ export function validateCiWorkflow(workflow) {
 	}
 	if (!workflow.includes('if: always()') || !workflow.includes('bun run db:stop')) {
 		fail('Supabase cleanup must run with if: always()');
+	}
+	const browserBuild =
+		workflow.split('  browser-build:')[1]?.split('  browser-domain-e2e:')[0] ?? '';
+	const browserDomain =
+		workflow.split('  browser-domain-e2e:')[1]?.split('  p14-release:')[0] ?? '';
+	if (!browserBuild.includes('run: bun run test:e2e:smoke')) {
+		fail('browser-build must run only the non-stateful Playwright smoke suite');
+	}
+	if (!browserDomain.includes('run: bun run test:e2e:domain')) {
+		fail('browser-domain-e2e must run the stateful domain Playwright suite');
+	}
+	if (/run: bun run test:e2e(?:\s|$)/m.test(browserBuild)) {
+		fail('browser-build must not invoke the full stateful test:e2e suite');
 	}
 	const jobTimeouts = workflow.match(/^\s+timeout-minutes:\s+\d+\s*$/gm) ?? [];
 	if (jobTimeouts.length < 5)

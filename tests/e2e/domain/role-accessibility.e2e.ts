@@ -1,11 +1,13 @@
 import { expect, test, type BrowserContext } from '@playwright/test';
 import {
+	authenticatedRpc,
 	cleanupLead,
 	cleanupUser,
 	createConvertedClientFixture,
 	createStaff,
 	ingestLead,
 	lostReasonId,
+	readClientForLead,
 	signIn,
 	signInWithAal2
 } from './helpers';
@@ -50,6 +52,46 @@ test.describe('P14 role and accessibility regression', () => {
 			await expect(
 				page.getByLabel('Change status').locator('option[value="archived"]')
 			).toHaveCount(0);
+			const originalDisplayName = await page.getByLabel('Display name').inputValue();
+			const initialClient = await readClientForLead(fixture.lead.id, fixture.owner);
+			if (!initialClient?.lock_version) throw new Error('Client lock_version is unavailable.');
+			await authenticatedRpc(
+				'set_client_status',
+				{
+					p_client_id: fixture.client.id,
+					p_status: 'inactive',
+					p_lock_version: initialClient.lock_version
+				},
+				fixture.owner
+			);
+			await page.getByLabel('Display name').fill('P14 stale detail attempt');
+			await page.getByRole('button', { name: 'Save Client details' }).click();
+			await expect(page.getByRole('alert')).toContainText(/changed elsewhere.*reload/i);
+			await expect(page.getByLabel('Display name')).toHaveValue('P14 stale detail attempt');
+
+			const currentClient = await readClientForLead(fixture.lead.id, fixture.owner);
+			if (!currentClient?.lock_version)
+				throw new Error('Current Client lock_version is unavailable.');
+			await authenticatedRpc(
+				'set_client_status',
+				{
+					p_client_id: fixture.client.id,
+					p_status: 'active',
+					p_lock_version: currentClient.lock_version
+				},
+				fixture.owner
+			);
+			await page.getByLabel('Change status').selectOption('inactive');
+			await page
+				.getByLabel('Reason (required for archive/restore)')
+				.fill('P14 stale status attempt');
+			await page.getByRole('button', { name: 'Save status' }).click();
+			await expect(page.getByRole('alert')).toContainText(/changed elsewhere.*reload/i);
+			await expect(page.getByLabel('Display name')).toHaveValue(originalDisplayName);
+			await expect(page.getByLabel('Change status')).toHaveValue('inactive');
+			await expect(page.getByLabel('Reason (required for archive/restore)')).toHaveValue(
+				'P14 stale status attempt'
+			);
 
 			await page.goto(`/leads/${lostLead.id}`, { waitUntil: 'networkidle' });
 			await page.getByText('Mark lead lost', { exact: true }).click();

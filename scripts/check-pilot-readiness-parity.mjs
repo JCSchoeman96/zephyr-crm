@@ -90,7 +90,7 @@ export function parseReadinessProjection(readinessText) {
 		fail('human readiness projection is empty');
 	}
 	const projection = {};
-	for (const field of lifecycleFields) {
+	for (const field of stateFields) {
 		const match = readinessText.match(new RegExp(`^${field}\\s*=\\s*([^\\s\\r\\n]+)\\s*$`, 'm'));
 		if (!match) fail(`human readiness projection is missing ${field}`);
 		projection[field] = match[1];
@@ -115,7 +115,7 @@ export function validateReleaseTruth(machineState, committedState, readinessText
 	const committed = projectionFromState(committedState);
 	assertProjectionEqual(authoritative, committed, 'committed release projection');
 	const human = parseReadinessProjection(readinessText);
-	assertProjectionEqual(authoritative, human, 'human readiness projection', lifecycleFields);
+	assertProjectionEqual(authoritative, human, 'human readiness projection');
 	if (stateText !== undefined) {
 		const humanState = parseStateMarkdownProjection(stateText);
 		assertProjectionEqual(authoritative, humanState, 'human loop state');
