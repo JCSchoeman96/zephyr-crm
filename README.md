@@ -15,6 +15,11 @@ release target is `LOCAL_BUILD_COMPLETE` / `PILOT_READY`; `pilot_status` remains
 
 Bun is the only JavaScript package manager and `bun.lock` is the only JavaScript lockfile.
 
+Bun is also the pinned runtime for Zephyr-owned scripts, tests, release evidence,
+fixtures, and maintenance commands. Vite owns application bundling, Wrangler
+runs the local Worker, Cloudflare workerd runs the deployed Worker, and Supabase
+provides PostgreSQL, Auth, and Storage.
+
 ## Install and run
 
 ```sh

@@ -3236,7 +3236,7 @@
       "criterion": "Client lifecycle, archive lineage guard, conversion-only creation, protected fields, concurrency, identity/type law, and Activity evidence pass.",
       "classification": "AUTOMATED",
       "proof": {
-        "command": "node scripts/test-p14-client-integrity.mjs",
+        "command": "bun scripts/test-p14-client-integrity.mjs",
         "source": "scripts/test-p14-client-integrity.mjs",
         "assertion": "assert(!directPatch.response.ok, 'Raw Client status PATCH bypassed trusted action');"
       }
@@ -3247,7 +3247,7 @@
       "criterion": "Contact create/edit/status/primary actions are concurrent, role-safe, history-preserving, and cannot be bypassed or hard-deleted.",
       "classification": "AUTOMATED",
       "proof": {
-        "command": "node scripts/test-p14-contact-integrity.mjs",
+        "command": "bun scripts/test-p14-contact-integrity.mjs",
         "source": "scripts/test-p14-contact-integrity.mjs",
         "assertion": "assert(!rawDelete.response.ok, 'Raw ClientContact delete bypassed retention law');"
       }
@@ -3258,7 +3258,7 @@
       "criterion": "Lead/Client/Quote parent relationships are valid and derived at trusted boundaries; raw bypasses fail; UI shows useful context.",
       "classification": "AUTOMATED",
       "proof": {
-        "command": "node scripts/test-p14-task-integrity.mjs",
+        "command": "bun scripts/test-p14-task-integrity.mjs",
         "source": "scripts/test-p14-task-integrity.mjs",
         "assertion": "assert(!rawInsert.response.ok, 'Raw Task INSERT bypassed create_task');"
       }
@@ -3313,7 +3313,7 @@
       "criterion": "Every hardening requirement is implemented, explicitly deferred by authority, or tied to a genuine defined stop; no silent omission exists.",
       "classification": "AUTOMATED",
       "proof": {
-        "command": "node scripts/test-p14-hardening-reconciliation.mjs",
+        "command": "bun scripts/test-p14-hardening-reconciliation.mjs",
         "source": "docs/release/P14_HARDENING_DISPOSITION.md",
         "assertion": "| ZH-018 | FIXED |"
       }
@@ -3324,7 +3324,7 @@
       "criterion": "Fully migrated current-schema raw authenticated Data API attempts cannot bypass trusted-only Client, Contact, Task, Lead, Quote, Activity, or outbound boundaries.",
       "classification": "AUTOMATED",
       "proof": {
-        "command": "node scripts/test-p14-mutation-parity.mjs",
+        "command": "bun scripts/test-p14-mutation-parity.mjs",
         "source": "scripts/test-p14-mutation-parity.mjs",
         "assertion": "leadAndOutboundLaw.includes('private.allow_outbound_attempt_mutation'),"
       }

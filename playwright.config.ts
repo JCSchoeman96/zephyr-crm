@@ -48,12 +48,12 @@ if (localServiceRoleKey) appEnvironment.SUPABASE_SERVICE_ROLE_KEY = localService
 export default defineConfig({
 	webServer: [
 		{
-			command: 'node scripts/test-p14-sendpulse-fixture.mjs',
+			command: 'bun scripts/test-p14-sendpulse-fixture.mjs',
 			port: 4180,
 			reuseExistingServer: false
 		},
 		{
-			command: 'node scripts/test-p14-preview.mjs',
+			command: 'bun scripts/test-p14-preview.mjs',
 			port: 4173,
 			env: appEnvironment,
 			reuseExistingServer: false

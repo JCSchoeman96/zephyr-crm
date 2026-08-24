@@ -39,7 +39,7 @@ This phase owns productisation, configuration, local provisioning proof, deploym
 - Define the shared-code versioning/update strategy for deployed client instances.
 - Define exactly which steps remain external/manual for a future real deployment and pilot.
 
-- Provision/build using the pinned Phase 1 Node/package-manager/Supabase CLI/Wrangler toolchain contract; client onboarding must not depend on floating tool versions.
+- Provision/build using the pinned Phase 1 Bun/package-manager/Supabase CLI/Wrangler toolchain contract; client onboarding must not depend on floating tool versions.
 - Include configured IANA timezone, supported currency, quote/money settings, privacy/recovery ownership, Owner/Admin MFA prerequisite, and provider-integration ownership in the client configuration/deployment template.
 
 # MUST NOT Happen

@@ -1,11 +1,32 @@
 {
 	"$schema": "./node_modules/wrangler/config-schema.json",
-	"name": "zephyr-crm-1",
+	"name": "zephyr-crm",
 	"compatibility_date": "2026-08-21",
 	"compatibility_flags": ["nodejs_als"],
 	"main": ".svelte-kit/cloudflare/_worker.js",
 	"assets": {
 		"directory": ".svelte-kit/cloudflare",
 		"binding": "ASSETS"
+	},
+	"vars": {
+		"PUBLIC_SUPABASE_URL": "https://ccetqjnptbktttlajzba.supabase.co",
+		"PUBLIC_SUPABASE_PUBLISHABLE_KEY": "sb_publishable_rKenWxVc6Lu6_4SYS1u4Vg_S2otptI9",
+		"PUBLIC_SITE_URL": "https://zephyr-crm.admin-danoptics.workers.dev",
+		"SUPABASE_URL": "https://ccetqjnptbktttlajzba.supabase.co",
+		"BRICKS_FORM_ID": "contact-form",
+		"SENDPULSE_API_BASE_URL": "",
+		"SENDPULSE_SENDER_EMAIL": "",
+		"SENDPULSE_SENDER_NAME": "",
+		"ZEPHYR_COMPONENT_LAB_ENABLED": "0"
+	},
+	"secrets": {
+		"required": [
+			"SUPABASE_SERVICE_ROLE_KEY",
+			"AUTOMATION_CRON_SECRET",
+			"BRICKS_WEBHOOK_SECRET",
+			"SENDPULSE_CLIENT_ID",
+			"SENDPULSE_CLIENT_SECRET",
+			"SENDPULSE_WEBHOOK_SECRET"
+		]
 	}
 }

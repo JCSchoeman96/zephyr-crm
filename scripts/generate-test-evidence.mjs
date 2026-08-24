@@ -844,18 +844,18 @@ const proofOverrides = {
 		assertion: "await expect(page.getByText('LOST', { exact: true })).toBeVisible();"
 	},
 	'P14-T27': {
-		command: 'node scripts/test-p14-client-integrity.mjs',
+		command: 'bun scripts/test-p14-client-integrity.mjs',
 		source: 'scripts/test-p14-client-integrity.mjs',
 		assertion:
 			"assert(!directPatch.response.ok, 'Raw Client status PATCH bypassed trusted action');"
 	},
 	'P14-T28': {
-		command: 'node scripts/test-p14-contact-integrity.mjs',
+		command: 'bun scripts/test-p14-contact-integrity.mjs',
 		source: 'scripts/test-p14-contact-integrity.mjs',
 		assertion: "assert(!rawDelete.response.ok, 'Raw ClientContact delete bypassed retention law');"
 	},
 	'P14-T29': {
-		command: 'node scripts/test-p14-task-integrity.mjs',
+		command: 'bun scripts/test-p14-task-integrity.mjs',
 		source: 'scripts/test-p14-task-integrity.mjs',
 		assertion: "assert(!rawInsert.response.ok, 'Raw Task INSERT bypassed create_task');"
 	},
@@ -880,12 +880,12 @@ const proofOverrides = {
 		assertion: "await expect(page.getByText('Viewer access is read-only.').first()).toBeVisible();"
 	},
 	'P14-T34': {
-		command: 'node scripts/test-p14-hardening-reconciliation.mjs',
+		command: 'bun scripts/test-p14-hardening-reconciliation.mjs',
 		source: 'docs/release/P14_HARDENING_DISPOSITION.md',
 		assertion: '| ZH-018 | FIXED |'
 	},
 	'P14-T35': {
-		command: 'node scripts/test-p14-mutation-parity.mjs',
+		command: 'bun scripts/test-p14-mutation-parity.mjs',
 		source: 'scripts/test-p14-mutation-parity.mjs',
 		assertion: "leadAndOutboundLaw.includes('private.allow_outbound_attempt_mutation'),"
 	}
