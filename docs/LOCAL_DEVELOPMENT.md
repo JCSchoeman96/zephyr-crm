@@ -31,6 +31,10 @@ bun run test:p6:clients
 bun run db:stop
 ```
 
+The Phase 1 lifecycle proof is `bun run test:p1:lifecycle`. It starts the
+isolated local Supabase stack, resets it, checks local status, and always
+attempts `bun run db:stop` during cleanup.
+
 Playwright Chromium is installed once with `bun run test:e2e:install`; browser tests run with `bun run test:e2e`.
 
 `bun run db:security` exercises the local anonymous, viewer, sales, admin, owner, and suspended-user RLS boundaries, durable constraints, and optimistic locking. `bun run auth:integration` creates a disposable local Auth user, verifies the invitation-only server login action returns a session cookie, and removes that user afterward. Both commands require the isolated local Supabase stack to be running.
@@ -43,7 +47,24 @@ Playwright Chromium is installed once with `bun run test:e2e:install`; browser t
 
 ## Environment boundary
 
-Only `PUBLIC_SUPABASE_URL`, `PUBLIC_SUPABASE_PUBLISHABLE_KEY`, and `PUBLIC_SITE_URL` are browser-safe. `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `SENDPULSE_CLIENT_ID`, `SENDPULSE_CLIENT_SECRET`, `SENDPULSE_API_BASE_URL`, `SENDPULSE_SENDER_EMAIL`, `SENDPULSE_SENDER_NAME`, `BRICKS_FORM_ID`, and `BRICKS_WEBHOOK_SECRET` are trusted-only runtime variables. Real values are supplied through ignored local files or the hosting/Edge Function secret store and are never committed.
+Browser-safe environment is limited to PUBLIC_SUPABASE_URL,
+PUBLIC_SUPABASE_PUBLISHABLE_KEY, PUBLIC_SITE_URL, and the optional
+PUBLIC_CLIENT_CONFIG_JSON. The JSON value must contain only the validated
+public projection: version, brand, locale, and customer-facing Quote
+presentation defaults. It must not contain roles, state, prices/totals,
+credentials, trusted environment values/names, secret references, or private
+operational configuration; server/database code remains authoritative for
+roles, lifecycle, and money.
+
+The trusted-only runtime contract is SUPABASE_URL,
+SUPABASE_SERVICE_ROLE_KEY, SENDPULSE_CLIENT_ID, SENDPULSE_CLIENT_SECRET,
+SENDPULSE_API_BASE_URL, SENDPULSE_SENDER_EMAIL, SENDPULSE_SENDER_NAME,
+SENDPULSE_WEBHOOK_SECRET, SENDPULSE_SENDER_DOMAIN, SENDPULSE_DKIM_SELECTOR,
+SENDPULSE_SPF_RECORD, SENDPULSE_DKIM_RECORD, SENDPULSE_DMARC_RECORD,
+SENDPULSE_DOMAIN_AUTHENTICATED, AUTOMATION_CRON_SECRET, BRICKS_FORM_ID, and
+BRICKS_WEBHOOK_SECRET. Real values are supplied through ignored local files or
+the hosting/Edge Function secret store and are never committed or projected to
+the browser.
 
 ## Local reset contract
 

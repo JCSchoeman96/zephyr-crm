@@ -10,7 +10,7 @@
 		Activity,
 		Users,
 		UserRound
-	} from 'lucide-svelte';
+	} from '@lucide/svelte';
 	import { publicClientConfiguration } from '$lib/config/public-client-config';
 
 	type NavIcon = typeof LayoutDashboard;

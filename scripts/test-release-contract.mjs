@@ -20,6 +20,11 @@ const phase0Evidence = new Map(
 		.filter((entry) => entry.id.startsWith('P0-'))
 		.map((entry) => [entry.id, entry])
 );
+const phase1Evidence = new Map(
+	evidenceRegistry.entries
+		.filter((entry) => entry.id.startsWith('P1-'))
+		.map((entry) => [entry.id, entry])
+);
 
 function evidenceSources(entry) {
 	if (Array.isArray(entry?.proof?.sources)) return entry.proof.sources;
@@ -42,6 +47,89 @@ function assertStaticEvidence(id, expectedSources) {
 		}
 	}
 }
+
+const expectedP1Commands = {
+	'P1-T01': 'bun install --frozen-lockfile',
+	'P1-T02': 'bun run check',
+	'P1-T03': 'bun run test:unit -- --run',
+	'P1-T04': 'bun run build',
+	'P1-T05': 'bun run test:p1:lifecycle',
+	'P1-T06': 'bun run security:bundle',
+	'P1-T07': 'bun run diff:check',
+	'P1-T08': 'bun run ci:contract',
+	'P1-T09': 'bun install --frozen-lockfile',
+	'P1-T10': 'bun run build',
+	'P1-T11': 'bun run authority:registry',
+	'P1-T12': 'bun run authority:registry',
+	'P1-T13': 'bun run authority:registry',
+	'P1-T14': 'bun run quality',
+	'P1-T15': 'bun run build',
+	'P1-T16': 'bun run authority:registry',
+	'P1-T17': 'bun run build',
+	'P1-T18': 'bun run authority:registry',
+	'P1-T19': 'bun run test:p1:toolchain',
+	'P1-T20': 'bun install --frozen-lockfile && bun run quality'
+};
+const expectedP1Sources = {
+	'P1-T01': ['docs/TOOLCHAIN_PROOF.md', 'package.json', 'bun.lock'],
+	'P1-T02': ['package.json'],
+	'P1-T03': ['package.json'],
+	'P1-T04': ['package.json'],
+	'P1-T05': ['scripts/test-p1-lifecycle.mjs'],
+	'P1-T06': [
+		'scripts/check-public-bundle.mjs',
+		'src/lib/config/env.ts',
+		'src/lib/config/client-config.ts',
+		'docs/SECURITY_MODEL.md'
+	],
+	'P1-T07': ['.gitignore', 'package.json'],
+	'P1-T08': ['scripts/check-ci-contract.mjs', '.github/workflows/ci.yml'],
+	'P1-T09': ['docs/TOOLCHAIN_PROOF.md', 'package.json', 'bun.lock'],
+	'P1-T10': ['package.json', 'wrangler.jsonc', 'docs/TOOLCHAIN_PROOF.md'],
+	'P1-T11': ['package.json', 'scripts/verify-v131-registry.mjs'],
+	'P1-T12': ['package.json', 'scripts/verify-v131-registry.mjs', 'docs/TOOLCHAIN_PROOF.md'],
+	'P1-T13': ['scripts/verify-v131-registry.mjs', 'bun.lock'],
+	'P1-T14': ['docs/TOOLCHAIN_PROOF.md', 'package.json'],
+	'P1-T15': ['scripts/test-p1-toolchain.mjs', 'wrangler.jsonc', 'scripts/verify-v131-registry.mjs'],
+	'P1-T16': ['wrangler.jsonc', 'scripts/verify-v131-registry.mjs'],
+	'P1-T17': ['package.json', 'DEPENDENCY_BASELINE_v1.0.0.md', 'docs/TOOLCHAIN_PROOF.md'],
+	'P1-T18': ['package.json', 'DEPENDENCY_BASELINE_v1.0.0.md'],
+	'P1-T19': ['scripts/test-p1-toolchain.mjs', 'package.json'],
+	'P1-T20': ['docs/TOOLCHAIN_PROOF.md', 'package.json']
+};
+
+for (const [id, command] of Object.entries(expectedP1Commands)) {
+	const entry = phase1Evidence.get(id);
+	assert(entry, `${id} is missing from the generated evidence registry.`);
+	assert(entry.proof?.command === command, `${id} must use ${command}.`);
+	const actualSources = evidenceSources(entry).map((candidate) => candidate.source);
+	for (const source of expectedP1Sources[id]) {
+		assert(actualSources.includes(source), `${id} must reference ${source}.`);
+	}
+	assert(
+		!actualSources.some((source) => source === 'Phases/PHASE_01_PROJECT_SCAFFOLD_QUALITY_GATES.md'),
+		`${id} must not use Phase 1 authority/title presence as its sole proof.`
+	);
+}
+
+assert(
+	phase1Evidence
+		.get('P1-T06')
+		.proof.sources.some((source) => source.source === 'scripts/check-public-bundle.mjs'),
+	'P1-T06 must use the complete bundle scanner proof.'
+);
+assert(
+	phase1Evidence
+		.get('P1-T14')
+		.proof.sources.some((source) => source.source === 'docs/TOOLCHAIN_PROOF.md'),
+	'P1-T14 must use the complete compatibility-proof documentation.'
+);
+assert(
+	phase1Evidence
+		.get('P1-T20')
+		.proof.sources.some((source) => source.source === 'docs/TOOLCHAIN_PROOF.md'),
+	'P1-T20 must use frozen reinstall proof rather than the phase title.'
+);
 
 assertStaticEvidence('P0-T01', [
 	['docs/ARCHITECTURE.md', ['Each domain and its canonical resources are defined']],

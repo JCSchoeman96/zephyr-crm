@@ -28,16 +28,36 @@ describe('client configuration contract', () => {
 		).toThrow(ClientConfigurationError);
 	});
 
-	it('returns only the browser-safe configuration subset', () => {
+	it('returns only the explicitly browser-safe configuration subset', () => {
 		const configuration = parsePublicClientConfiguration({
 			brand: { ...defaultClientConfiguration.brand, companyName: 'Browser Client' },
 			locale: { ...defaultClientConfiguration.locale, currency: 'GBP' },
 			quotes: { ...defaultClientConfiguration.quotes, taxRate: 20 }
 		});
 
+		expect(Object.keys(configuration).sort()).toEqual(['brand', 'locale', 'quotes', 'version']);
+		expect(Object.keys(configuration.quotes).sort()).toEqual([
+			'bankDetails',
+			'defaultValidityDays',
+			'prefix',
+			'taxLabel',
+			'taxRate',
+			'terms'
+		]);
 		expect(configuration.brand.companyName).toBe('Browser Client');
 		expect(configuration.locale.currency).toBe('GBP');
 		expect(configuration.quotes.taxRate).toBe(20);
+		expect('sales' in configuration).toBe(false);
+		expect('email' in configuration).toBe(false);
 		expect('integrations' in configuration).toBe(false);
+		expect(JSON.stringify(configuration)).not.toMatch(
+			/SUPABASE|SENDPULSE|BRICKS|WEBHOOK|SECRET|ROLE|STATUS|total|price/i
+		);
+	});
+
+	it('rejects trusted configuration sections from public JSON', () => {
+		expect(() => parsePublicClientConfiguration(defaultClientConfiguration)).toThrow(
+			/PUBLIC_CLIENT_CONFIG_JSON/
+		);
 	});
 });

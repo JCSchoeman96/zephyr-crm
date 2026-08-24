@@ -119,20 +119,49 @@ Each action checks the current authenticated user, Profile status, role, AAL2 re
 
 ## Secret boundary
 
-Browser-readable configuration is limited to:
+Browser-readable environment/configuration is limited to:
 
 ```text
 PUBLIC_SUPABASE_URL
 PUBLIC_SUPABASE_PUBLISHABLE_KEY
 PUBLIC_SITE_URL
+PUBLIC_CLIENT_CONFIG_JSON
 ```
 
-Trusted runtime secrets are never sent to browser code, built artifacts, public environment variables, database rows readable through Data API, or logs:
+PUBLIC_CLIENT_CONFIG_JSON is optional and must contain only the validated
+non-secret projection returned by parsePublicClientConfiguration: version,
+brand, locale, and customer-facing Quote presentation defaults (prefix,
+taxLabel, taxRate, defaultValidityDays, terms, and bankDetails). It is
+presentation/configuration input only. It is not authority for roles, Profile
+status, lifecycle state, prices/totals, server-calculated money, trusted
+actions, or secrets; those remain server/database-owned. The public JSON must
+not contain credentials, service-role values, API/webhook secrets, trusted
+environment values or names, private operational configuration, or secret
+environment-key references. The parser rejects fields outside this explicit
+public shape, and the browser fixture passes the parsed projection rather than
+the complete trusted configuration.
+
+The complete trusted runtime environment contract is never sent to browser
+code, built artifacts, public environment variables, database rows readable
+through Data API, or logs:
 
 ```text
+SUPABASE_URL
 SUPABASE_SERVICE_ROLE_KEY
 SENDPULSE_CLIENT_ID
 SENDPULSE_CLIENT_SECRET
+SENDPULSE_API_BASE_URL
+SENDPULSE_SENDER_EMAIL
+SENDPULSE_SENDER_NAME
+SENDPULSE_WEBHOOK_SECRET
+SENDPULSE_SENDER_DOMAIN
+SENDPULSE_DKIM_SELECTOR
+SENDPULSE_SPF_RECORD
+SENDPULSE_DKIM_RECORD
+SENDPULSE_DMARC_RECORD
+SENDPULSE_DOMAIN_AUTHENTICATED
+AUTOMATION_CRON_SECRET
+BRICKS_FORM_ID
 BRICKS_WEBHOOK_SECRET
 database passwords
 session/signing secrets

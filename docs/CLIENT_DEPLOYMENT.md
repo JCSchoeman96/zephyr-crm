@@ -17,8 +17,13 @@ PostgreSQL remains the source of truth within each isolated stack.
 `config/client.example.json` is a complete non-secret template. Copy it to an
 operator-owned ignored file, validate it, and supply the resulting JSON through
 `CLIENT_CONFIG_JSON` for trusted server/provisioning use. The browser receives only
-the approved `PUBLIC_CLIENT_CONFIG_JSON` projection containing brand, locale, and
-quote presentation defaults. Secret values are never placed in either JSON file.
+the approved `PUBLIC_CLIENT_CONFIG_JSON` projection containing version, brand,
+locale, and customer-facing quote presentation defaults. Generate that value
+through the public configuration parser; do not pass the complete trusted
+configuration to a PUBLIC_* variable. The projection is not authority for
+roles, lifecycle state, prices/totals, or secrets, and it contains no trusted
+environment names/values, secret references, credentials, or private operational
+configuration. Secret values are never placed in either JSON file.
 
 The typed contract covers:
 

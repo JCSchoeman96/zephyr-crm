@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { resolve } from '$app/paths';
-	import { Menu, UserCircle } from 'lucide-svelte';
+	import { Menu, UserCircle } from '@lucide/svelte';
 	import IconButton from '$lib/components/ui/IconButton.svelte';
 
 	let {

@@ -5,7 +5,7 @@ import { join } from 'node:path';
 import { chromium } from '@playwright/test';
 
 const root = process.cwd();
-const { defaultClientConfiguration, parseClientConfiguration } =
+const { defaultClientConfiguration, parseClientConfiguration, parsePublicClientConfiguration } =
 	await import('../src/lib/config/client-config.ts');
 const exampleFile = 'config/client.example.json';
 const tempDirectory = mkdtempSync(join(tmpdir(), 'zephyr-p13-'));
@@ -89,15 +89,21 @@ async function waitFor(url) {
 }
 
 async function testBrandInBrowser(local) {
-	const browserConfiguration = {
-		...defaultClientConfiguration,
+	const browserConfiguration = parsePublicClientConfiguration({
+		version: defaultClientConfiguration.version,
 		brand: {
 			...defaultClientConfiguration.brand,
 			companyName: 'P13 Browser Client',
 			colors: { primary: '#5b21b6', primaryStrong: '#4c1d95', accent: '#0f766e' }
-		}
-	};
-	parseClientConfiguration(browserConfiguration);
+		},
+		locale: defaultClientConfiguration.locale,
+		quotes: defaultClientConfiguration.quotes
+	});
+	const serializedBrowserConfiguration = JSON.stringify(browserConfiguration);
+	assert(
+		!/SUPABASE|SENDPULSE|BRICKS|WEBHOOK|SECRET|ROLE|STATUS/i.test(serializedBrowserConfiguration),
+		'Public client configuration contains a trusted name or secret reference.'
+	);
 	const appUrl = 'http://127.0.0.1:4182';
 	appProcess = spawn('bun', ['run', 'dev', '--', '--host', '127.0.0.1', '--port', '4182'], {
 		cwd: root,

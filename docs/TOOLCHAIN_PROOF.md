@@ -1,7 +1,7 @@
 # Zephyr CRM v1.3.1 toolchain proof
 
 Status: `PROVEN LOCALLY`  
-Proof date: 2026-08-22  
+Proof date: 2026-08-24
 Authority: `DEPENDENCY_BASELINE_v1.0.0.md`
 
 The complete candidate stack was exercised together before the direct versions
@@ -22,7 +22,7 @@ RLS/security checks, migrations, recovery, and the phase regression suites.
 | Wrangler | `4.125.0` |
 | Tailwind CSS / Vite plugin | `4.3.3` |
 | shadcn-svelte | `1.5.0` (`new-york`) |
-| Lucide | `lucide-svelte 1.0.1` |
+| Lucide | `@lucide/svelte 1.33.0` |
 | Supabase JS / CLI | `2.112.3` / `2.115.0` |
 | Zod | `4.0.0` |
 | TypeScript | `6.0.3`, strict mode |
@@ -59,16 +59,22 @@ superseded static-hosting output mode or a second bundler.
 
 ```sh
 bun install --frozen-lockfile
+bun run test:p1:toolchain
+bun run test:p1:lifecycle
 bun run format:check
 bun run lint
 bun run check
 bun run test:unit -- --run
 bun run test:e2e
 bun run build
+bun run security:bundle
 bun run db:reset
 bun run db:test
 bun run db:security
 ```
+
+Frozen reinstall gate: `bun install --frozen-lockfile && bun run quality`
+must complete without lockfile mutation before the Phase 1 proof is accepted.
 
 The local release gate additionally runs the phase suites, security/public-bundle
 checks, recovery rehearsal, authority registry/hash/coverage checks, and

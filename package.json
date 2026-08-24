@@ -24,6 +24,7 @@
 		"db:stop": "bunx supabase stop",
 		"db:types": "bunx supabase gen types typescript --local --schema public",
 		"db:types:check": "node scripts/check-generated-db-types.mjs",
+		"test:p1:lifecycle": "node scripts/test-p1-lifecycle.mjs",
 		"test:db-types": "bun scripts/test-generated-db-types.mjs",
 		"db:test": "bunx supabase db lint --local --fail-on error",
 		"db:security": "node scripts/test-database-security.mjs",
@@ -44,6 +45,7 @@
 		"test:p12:hardening": "node scripts/test-p12-hardening.mjs",
 		"client:validate": "bun scripts/validate-client-config.mjs",
 		"client:provision": "bun scripts/provision-client.mjs",
+		"test:p1:toolchain": "node scripts/test-p1-toolchain.mjs",
 		"test:p13:template": "bun scripts/test-p13-template.mjs",
 		"test:p14:release": "bun scripts/test-p14-release.mjs",
 		"release:state": "node scripts/check-release-state.mjs",
@@ -64,7 +66,7 @@
 		"test:v131:security": "node scripts/test-v131-security.mjs",
 		"test:v131:communications": "node scripts/test-v131-communications.mjs",
 		"test:v131:recovery": "node scripts/test-v131-recovery.mjs",
-		"quality": "bun run authority:registry && bun run authority:coverage && bun run authority:verify && bun run ci:contract && bun run release:evidence:verify && bun run release:manifest:verify && bun run test:release:contract && bun run format:check && bun run lint && bun run check && bun run tokens:check && bun run test && bun run test:db-types && bun run build && bun run auth:csrf && bun run security:bundle && bun run db:test && bun run db:types:check && bun run db:security && bun run test:v131:security && bun run test:v131:communications && bun run test:v131:recovery && bun run auth:integration && bun run auth:readiness && bun run test:p4:domain && bun run test:p4:tracer && bun run test:p5:leads && bun run test:p6:clients && bun run test:p7:quotes && bun run test:p8:documents && bun run test:p9:automation && bun run test:p10:analytics && bun run test:p11:hardening && bun run test:p12:hardening && bun run test:p13:template && bun run diff:check"
+		"quality": "bun run authority:registry && bun run authority:coverage && bun run authority:verify && bun run ci:contract && bun run test:p1:toolchain && bun run release:evidence:verify && bun run release:manifest:verify && bun run test:release:contract && bun run format:check && bun run lint && bun run check && bun run tokens:check && bun run test && bun run test:db-types && bun run build && bun run auth:csrf && bun run security:bundle && bun run db:test && bun run db:types:check && bun run db:security && bun run test:v131:security && bun run test:v131:communications && bun run test:v131:recovery && bun run auth:integration && bun run auth:readiness && bun run test:p4:domain && bun run test:p4:tracer && bun run test:p5:leads && bun run test:p6:clients && bun run test:p7:quotes && bun run test:p8:documents && bun run test:p9:automation && bun run test:p10:analytics && bun run test:p11:hardening && bun run test:p12:hardening && bun run test:p13:template && bun run diff:check"
 	},
 	"devDependencies": {
 		"@eslint/js": "10.0.1",
@@ -93,9 +95,9 @@
 		"wrangler": "4.125.0"
 	},
 	"dependencies": {
+		"@lucide/svelte": "1.33.0",
 		"@supabase/ssr": "0.12.4",
 		"@supabase/supabase-js": "2.112.3",
-		"lucide-svelte": "1.0.1",
 		"zod": "4.0.0"
 	}
 }

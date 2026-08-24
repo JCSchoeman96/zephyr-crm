@@ -59,6 +59,14 @@ export type PublicClientConfiguration = Pick<
 	'version' | 'brand' | 'locale' | 'quotes'
 >;
 
+const publicProjectionKeys = {
+	root: ['version', 'brand', 'locale', 'quotes'],
+	brand: ['companyName', 'logoPath', 'colors'],
+	brandColors: ['primary', 'primaryStrong', 'accent'],
+	locale: ['language', 'timezone', 'currency', 'dateFormat'],
+	quotes: ['prefix', 'taxLabel', 'taxRate', 'defaultValidityDays', 'terms', 'bankDetails']
+} as const;
+
 export class ClientConfigurationError extends Error {
 	readonly issues: string[];
 
@@ -122,6 +130,21 @@ export const defaultClientConfiguration: ClientConfiguration = {
 	}
 };
 
+function toPublicClientConfiguration(
+	configuration: ClientConfiguration
+): PublicClientConfiguration {
+	return {
+		version: configuration.version,
+		brand: configuration.brand,
+		locale: configuration.locale,
+		quotes: configuration.quotes
+	};
+}
+
+export const defaultPublicClientConfiguration = toPublicClientConfiguration(
+	defaultClientConfiguration
+);
+
 type ConfigurationRecord = Record<string, unknown>;
 
 function isRecord(value: unknown): value is ConfigurationRecord {
@@ -135,6 +158,40 @@ function parseInput(value: unknown): unknown {
 	} catch {
 		throw new ClientConfigurationError('configuration must be valid JSON');
 	}
+}
+
+function assertAllowedKeys(
+	value: unknown,
+	path: string,
+	allowed: readonly string[],
+	issues: string[]
+): void {
+	if (!isRecord(value)) return;
+	for (const key of Object.keys(value)) {
+		if (!allowed.includes(key)) {
+			issues.push(`${path}.${key} is not allowed in PUBLIC_CLIENT_CONFIG_JSON`);
+		}
+	}
+}
+
+function assertPublicProjectionInput(value: unknown): void {
+	const input = parseInput(value);
+	if (!isRecord(input)) {
+		throw new ClientConfigurationError('public projection must be a JSON object');
+	}
+
+	const issues: string[] = [];
+	assertAllowedKeys(input, 'public', publicProjectionKeys.root, issues);
+	assertAllowedKeys(input.brand, 'public.brand', publicProjectionKeys.brand, issues);
+	assertAllowedKeys(
+		isRecord(input.brand) ? input.brand.colors : undefined,
+		'public.brand.colors',
+		publicProjectionKeys.brandColors,
+		issues
+	);
+	assertAllowedKeys(input.locale, 'public.locale', publicProjectionKeys.locale, issues);
+	assertAllowedKeys(input.quotes, 'public.quotes', publicProjectionKeys.quotes, issues);
+	if (issues.length > 0) throw new ClientConfigurationError(issues);
 }
 
 function cloneRecord(value: ConfigurationRecord): ConfigurationRecord {
@@ -560,12 +617,10 @@ export function parseClientConfiguration(
 	return parseConfiguration(value, false, options.trustedEnvironmentKeys);
 }
 
-export function parsePublicClientConfiguration(value: unknown = {}): PublicClientConfiguration {
+export function parsePublicClientConfiguration(
+	value: unknown = defaultPublicClientConfiguration
+): PublicClientConfiguration {
+	assertPublicProjectionInput(value);
 	const configuration = parseConfiguration(value, true);
-	return {
-		version: configuration.version,
-		brand: configuration.brand,
-		locale: configuration.locale,
-		quotes: configuration.quotes
-	};
+	return toPublicClientConfiguration(configuration);
 }

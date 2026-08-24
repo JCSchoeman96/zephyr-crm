@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { Check, Database, Sparkles } from 'lucide-svelte';
+	import { Check, Database, Sparkles } from '@lucide/svelte';
 	import AppShell from '$lib/components/shell/AppShell.svelte';
 	import Badge from '$lib/components/ui/Badge.svelte';
 	import Button from '$lib/components/ui/Button.svelte';
