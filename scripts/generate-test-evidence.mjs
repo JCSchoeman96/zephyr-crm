@@ -505,25 +505,31 @@ const p1Proofs = {
 	'P1-T14': {
 		classification: 'STATIC',
 		proof: {
-			command: 'bun run quality',
+			command: 'bun run test:p1:compatibility',
 			sources: [
 				{
 					source: 'docs/TOOLCHAIN_PROOF.md',
 					contains: [
-						'bun install --frozen-lockfile',
-						'bun run test:p1:toolchain',
-						'bun run test:p1:lifecycle',
-						'bun run format:check',
-						'bun run lint',
-						'bun run check',
-						'bun run test:unit -- --run',
-						'bun run test:e2e',
-						'bun run build',
-						'bun run security:bundle',
-						'bun run db:test'
+						'One-time machine prerequisite',
+						'bun run test:p1:compatibility',
+						'owns the sequential Phase 1 proof',
+						'fails if `bun.lock` changes during the run'
 					]
 				},
-				{ source: 'package.json', contains: ['"quality": "bun run authority:registry'] }
+				{ source: 'package.json', contains: ['"test:p1:compatibility":'] },
+				{
+					source: 'scripts/test-p1-compatibility.mjs',
+					contains: [
+						'const compatibilitySteps = [',
+						"['db:start']",
+						"['db:reset']",
+						"['test:e2e']",
+						"['db:test']",
+						"['db:security']",
+						'finally',
+						'lockfileHash()'
+					]
+				}
 			]
 		}
 	},
@@ -620,13 +626,26 @@ const p1Proofs = {
 	'P1-T20': {
 		classification: 'STATIC',
 		proof: {
-			command: 'bun install --frozen-lockfile && bun run quality',
+			command: 'bun install --frozen-lockfile && bun run test:p1:compatibility',
 			sources: [
 				{
 					source: 'docs/TOOLCHAIN_PROOF.md',
-					contains: ['Frozen reinstall gate:', 'bun install --frozen-lockfile && bun run quality']
+					contains: [
+						'Frozen reinstall gate:',
+						'bun install --frozen-lockfile && bun run test:p1:compatibility',
+						'without lockfile mutation'
+					]
 				},
-				{ source: 'package.json', contains: ['"quality": "bun run authority:registry'] }
+				{ source: 'package.json', contains: ['"test:p1:compatibility":'] },
+				{
+					source: 'scripts/test-p1-compatibility.mjs',
+					contains: [
+						"const lockfile = resolve(root, 'bun.lock');",
+						'lockfileHash()',
+						'bun.lock unexpectedly'
+					]
+				},
+				{ source: 'bun.lock', contains: ['"lockfileVersion": 1'] }
 			]
 		}
 	}

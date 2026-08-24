@@ -25,6 +25,7 @@
 		"db:types": "bunx supabase gen types typescript --local --schema public",
 		"db:types:check": "node scripts/check-generated-db-types.mjs",
 		"test:p1:lifecycle": "node scripts/test-p1-lifecycle.mjs",
+		"test:p1:compatibility": "node scripts/test-p1-compatibility.mjs",
 		"test:db-types": "bun scripts/test-generated-db-types.mjs",
 		"db:test": "bunx supabase db lint --local --fail-on error",
 		"db:security": "node scripts/test-database-security.mjs",

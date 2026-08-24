@@ -58,22 +58,24 @@ superseded static-hosting output mode or a second bundler.
 ## Reproduction gate
 
 ```sh
+# One-time machine prerequisite for the actual browser smoke test:
+bun run test:e2e:install
+
+# Self-contained Phase 1 compatibility gate:
 bun install --frozen-lockfile
-bun run test:p1:toolchain
-bun run test:p1:lifecycle
-bun run format:check
-bun run lint
-bun run check
-bun run test:unit -- --run
-bun run test:e2e
-bun run build
-bun run security:bundle
-bun run db:reset
-bun run db:test
-bun run db:security
+bun run test:p1:compatibility
 ```
 
-Frozen reinstall gate: `bun install --frozen-lockfile && bun run quality`
+`bun run test:p1:compatibility` owns the sequential Phase 1 proof: it starts
+local Supabase, resets it from canonical migrations/seed, runs the toolchain,
+format, lint, Svelte/TypeScript, Vitest, Playwright, Workers build,
+public-bundle, database-lint, and database-security gates, and always stops
+Supabase in cleanup. It captures command output so local credentials are not
+printed and fails if `bun.lock` changes during the run. The one-time browser
+installation is a machine prerequisite; the actual `bun run test:e2e` smoke
+test remains inside the compatibility gate.
+
+Frozen reinstall gate: `bun install --frozen-lockfile && bun run test:p1:compatibility`
 must complete without lockfile mutation before the Phase 1 proof is accepted.
 
 The local release gate additionally runs the phase suites, security/public-bundle

@@ -62,13 +62,13 @@ const expectedP1Commands = {
 	'P1-T11': 'bun run authority:registry',
 	'P1-T12': 'bun run authority:registry',
 	'P1-T13': 'bun run authority:registry',
-	'P1-T14': 'bun run quality',
+	'P1-T14': 'bun run test:p1:compatibility',
 	'P1-T15': 'bun run build',
 	'P1-T16': 'bun run authority:registry',
 	'P1-T17': 'bun run build',
 	'P1-T18': 'bun run authority:registry',
 	'P1-T19': 'bun run test:p1:toolchain',
-	'P1-T20': 'bun install --frozen-lockfile && bun run quality'
+	'P1-T20': 'bun install --frozen-lockfile && bun run test:p1:compatibility'
 };
 const expectedP1Sources = {
 	'P1-T01': ['docs/TOOLCHAIN_PROOF.md', 'package.json', 'bun.lock'],
@@ -89,13 +89,18 @@ const expectedP1Sources = {
 	'P1-T11': ['package.json', 'scripts/verify-v131-registry.mjs'],
 	'P1-T12': ['package.json', 'scripts/verify-v131-registry.mjs', 'docs/TOOLCHAIN_PROOF.md'],
 	'P1-T13': ['scripts/verify-v131-registry.mjs', 'bun.lock'],
-	'P1-T14': ['docs/TOOLCHAIN_PROOF.md', 'package.json'],
+	'P1-T14': ['docs/TOOLCHAIN_PROOF.md', 'package.json', 'scripts/test-p1-compatibility.mjs'],
 	'P1-T15': ['scripts/test-p1-toolchain.mjs', 'wrangler.jsonc', 'scripts/verify-v131-registry.mjs'],
 	'P1-T16': ['wrangler.jsonc', 'scripts/verify-v131-registry.mjs'],
 	'P1-T17': ['package.json', 'DEPENDENCY_BASELINE_v1.0.0.md', 'docs/TOOLCHAIN_PROOF.md'],
 	'P1-T18': ['package.json', 'DEPENDENCY_BASELINE_v1.0.0.md'],
 	'P1-T19': ['scripts/test-p1-toolchain.mjs', 'package.json'],
-	'P1-T20': ['docs/TOOLCHAIN_PROOF.md', 'package.json']
+	'P1-T20': [
+		'docs/TOOLCHAIN_PROOF.md',
+		'package.json',
+		'scripts/test-p1-compatibility.mjs',
+		'bun.lock'
+	]
 };
 
 for (const [id, command] of Object.entries(expectedP1Commands)) {
@@ -129,6 +134,36 @@ assert(
 		.get('P1-T20')
 		.proof.sources.some((source) => source.source === 'docs/TOOLCHAIN_PROOF.md'),
 	'P1-T20 must use frozen reinstall proof rather than the phase title.'
+);
+const p1CompatibilitySource = readFileSync('scripts/test-p1-compatibility.mjs', 'utf8');
+for (const token of [
+	"['db:start']",
+	"['db:reset']",
+	"['test:p1:toolchain']",
+	"['test:e2e']",
+	"['build']",
+	"['security:bundle']",
+	"['db:test']",
+	"['db:security']",
+	'finally',
+	'lockfileHash()'
+]) {
+	assert(
+		p1CompatibilitySource.includes(token),
+		`P1 compatibility orchestration must contain ${token}.`
+	);
+}
+assert(
+	phase1Evidence
+		.get('P1-T14')
+		.proof.sources.some((source) => source.source === 'scripts/test-p1-compatibility.mjs'),
+	'P1-T14 must reference the self-contained compatibility orchestration.'
+);
+assert(
+	phase1Evidence
+		.get('P1-T20')
+		.proof.sources.some((source) => source.source === 'scripts/test-p1-compatibility.mjs'),
+	'P1-T20 must reference the self-contained compatibility orchestration.'
 );
 
 assertStaticEvidence('P0-T01', [
