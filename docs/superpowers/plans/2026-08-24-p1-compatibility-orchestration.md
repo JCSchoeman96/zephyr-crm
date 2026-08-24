@@ -130,18 +130,18 @@ Expected: 229 entries, unchanged mandatory IDs, and both P1 entries referencing 
 - Modify: `docs/AUTHORITY_HASHES.json` only if the authority hash tool reports an intentional changed normative document.
 - Modify: `.agent/goal-loop/STATE.json`, `.agent/goal-loop/STATE.md`, `.agent/goal-loop/handoffs/P1.md` (ignored local state).
 
-- [ ] **Step 1: Confirm frozen installation does not mutate the lockfile.**
+- [x] **Step 1: Confirm frozen installation does not mutate the lockfile.**
 
 Record the `bun.lock` hash, run `bun install --frozen-lockfile`, run `bun run test:p1:compatibility`, and compare the hash again. The hashes must match.
 
-- [ ] **Step 2: Run the requested validation ladder.**
+- [x] **Step 2: Run the requested validation ladder.**
 
 Run the authority, CI-contract, evidence, P14, quality, and `git diff --check` commands from the user request. Start Supabase explicitly before `bun run quality` if required by the existing quality script, and stop it afterward without exposing credentials.
 
-- [ ] **Step 3: Inspect scope and IDs.**
+- [x] **Step 3: Inspect scope and IDs.**
 
 Confirm no CRM domain/migration paths changed, no Lucide/public-config correction was altered, `bun.lock` has only the pre-existing committed content, and the old/new mandatory ID sets are identical at 229 entries.
 
-- [ ] **Step 4: Commit, push, and verify PR #3.**
+- [x] **Step 4: Commit, push, and verify PR #3.**
 
 Stage only the orchestration, package, documentation, evidence-generator, release-contract, generated evidence, plan, and ignored-state handoff paths. Commit the focused correction, push the existing branch, and verify `static`, `database-domain-security`, `browser-build`, and `release-contract` pass at the new exact SHA for PR #3.
