@@ -7,6 +7,7 @@
 	"scripts": {
 		"dev": "vite dev",
 		"build": "bun run gen && wrangler types --include-env=false --check && vite build",
+		"deploy": "wrangler deploy",
 		"preview": "wrangler dev --local --port 4173",
 		"prepare": "svelte-kit sync || echo ''",
 		"check": "bun run gen && wrangler types --include-env=false --check && svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
