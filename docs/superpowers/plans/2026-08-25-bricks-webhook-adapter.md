@@ -442,9 +442,22 @@ changes to user-owned untracked files are included.
 ### Task 5: Deploy and verify the disabled integration
 
 **Files:**
-- No source changes; use the existing committed `wrangler.jsonc` and deploy script.
+- Modify: `wrangler.jsonc:16` to keep the production Bricks form identifier at
+  `aaa03e`.
+- No secret changes in source; use the existing deploy script.
 
-- [ ] **Step 1: Deploy the verified Worker with retained variables**
+- [ ] **Step 1: Reconcile the non-secret production form identifier**
+
+Confirm `wrangler.jsonc` contains:
+
+```jsonc
+"BRICKS_FORM_ID": "aaa03e"
+```
+
+This prevents a deploy from reintroducing the old `contact-form` identifier
+while `--keep-vars` preserves dashboard-managed environment values.
+
+- [ ] **Step 2: Deploy the verified Worker with retained variables**
 
 ```bash
 bun run deploy
@@ -453,20 +466,20 @@ bun run deploy
 Expected: Wrangler reports a new deployed Worker version without replacing
 dashboard-managed variables.
 
-- [ ] **Step 2: Verify the route with a redacted diagnostic request**
+- [ ] **Step 3: Verify the route with a redacted diagnostic request**
 
 Send a request using the configured secret without printing the secret. Confirm
 the route responds and the deployed version is the new one. Do not use a real
 lead or reuse the static test UUID.
 
-- [ ] **Step 3: Reconfigure Bricks after deployment**
+- [ ] **Step 4: Reconfigure Bricks after deployment**
 
 Keep the endpoint URL without a trailing slash and keep JSON format. Rotate the
 previously exposed webhook secret, update the Authorization header in Bricks,
 then clear the custom Data JSON so Bricks sends all form fields. Do not include
 the photo field in a production test.
 
-- [ ] **Step 4: Run one real form test**
+- [ ] **Step 5: Run one real form test**
 
 Re-enable only the Bricks webhook, leave the page UUID script disabled until
 the Worker route is confirmed, and submit one test with a fresh UUID supplied
@@ -474,7 +487,7 @@ by the existing hidden field. Confirm Bricks reports no webhook failure, the
 Worker returns HTTP 201, and a new lead appears in Zephyr. Re-enable the page
 script after that test and repeat once to verify the browser-generated UUID.
 
-- [ ] **Step 5: Record the result without exposing secrets or PII**
+- [ ] **Step 6: Record the result without exposing secrets or PII**
 
 Capture only HTTP status, route, Worker version, and the CRM lead ID in the
 handoff. Never record the Authorization value, service-role key, or full lead

@@ -13,7 +13,7 @@
 		"PUBLIC_SUPABASE_PUBLISHABLE_KEY": "sb_publishable_rKenWxVc6Lu6_4SYS1u4Vg_S2otptI9",
 		"PUBLIC_SITE_URL": "https://zephyr-crm.admin-danoptics.workers.dev",
 		"SUPABASE_URL": "https://ccetqjnptbktttlajzba.supabase.co",
-		"BRICKS_FORM_ID": "contact-form",
+		"BRICKS_FORM_ID": "aaa03e",
 		"SENDPULSE_API_BASE_URL": "",
 		"SENDPULSE_SENDER_EMAIL": "",
 		"SENDPULSE_SENDER_NAME": "",
