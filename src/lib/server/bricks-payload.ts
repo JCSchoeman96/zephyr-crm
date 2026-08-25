@@ -129,9 +129,7 @@ export function normalizeBricksPayload(
 		'submission_id',
 		'form-field-bkkmsp'
 	);
-	const message = rawMode
-		? qualificationMessage(rawPayload)
-		: firstValue(rawPayload, 'message');
+	const message = rawMode ? qualificationMessage(rawPayload) : firstValue(rawPayload, 'message');
 	const payload = {
 		first_name: firstValue(rawPayload, 'first_name', 'name', 'form-field-dan_name'),
 		last_name: firstValue(rawPayload, 'last_name', 'form-field-dan_surname'),
