@@ -4,31 +4,12 @@ import { createTrustedSupabaseClient } from '$lib/server/trusted-supabase';
 import { loadTrustedClientConfiguration } from '$lib/server/client-config';
 import { verifyBearerSecret } from '$lib/security/secrets';
 import { recordOperationalEvent } from '$lib/server/operational-events';
+import { collectFormEncodedPayload, normalizeBricksPayload } from './bricks-payload';
 import { z } from 'zod';
 
 const MAX_BODY_BYTES = 64 * 1024;
 const MAX_FORM_ID_LENGTH = 120;
 const MAX_EXTERNAL_ID_LENGTH = 128;
-const ALLOWED_REQUEST_FIELDS = new Set([
-	'form_id',
-	'external_submission_id',
-	'submission_id',
-	'first_name',
-	'last_name',
-	'name',
-	'email',
-	'phone',
-	'company',
-	'message',
-	'landing_page',
-	'referrer',
-	'utm_source',
-	'utm_medium',
-	'utm_campaign',
-	'utm_content',
-	'utm_term',
-	'source'
-]);
 
 const normalizedIntakeSchema = z.object({
 	first_name: z.string().trim().min(1).max(120),
@@ -70,39 +51,6 @@ function trustedServiceClient() {
 	}
 }
 
-function textField(payload: Record<string, unknown>, key: string): string {
-	const value = payload[key];
-	return typeof value === 'string' ? value.trim() : '';
-}
-
-function phoneField(payload: Record<string, unknown>): string {
-	const value = payload.phone;
-	return typeof value === 'string' ? value : '';
-}
-
-function normalizePayload(payload: Record<string, unknown>): Record<string, string> {
-	const normalized = Object.fromEntries(
-		[
-			'first_name',
-			'last_name',
-			'email',
-			'company',
-			'message',
-			'landing_page',
-			'referrer',
-			'utm_source',
-			'utm_medium',
-			'utm_campaign',
-			'utm_content',
-			'utm_term',
-			'source'
-		].map((key) => [key, textField(payload, key)])
-	);
-	normalized.phone = phoneField(payload);
-	if (!normalized.first_name) normalized.first_name = textField(payload, 'name');
-	return normalized;
-}
-
 async function parseRequest(
 	event: RequestEvent
 ): Promise<{ formId: string; externalId: string; payload: Record<string, string> }> {
@@ -111,6 +59,9 @@ async function parseRequest(
 	if (!(await verifyBearerSecret(event.request.headers.get('authorization'), secret))) {
 		throw new BricksIntakeError('Invalid intake authorization', 401);
 	}
+	const expectedFormId = env.CLIENT_CONFIG_JSON?.trim()
+		? trusted.configuration.integrations.bricks.formId
+		: env.BRICKS_FORM_ID?.trim() || trusted.configuration.integrations.bricks.formId;
 
 	const body = await event.request.arrayBuffer();
 	if (body.byteLength === 0 || body.byteLength > MAX_BODY_BYTES) {
@@ -126,9 +77,7 @@ async function parseRequest(
 				throw new Error('object expected');
 			rawPayload = parsed as Record<string, unknown>;
 		} else if (mediaType === 'application/x-www-form-urlencoded') {
-			rawPayload = Object.fromEntries(
-				new URLSearchParams(new TextDecoder().decode(body)).entries()
-			);
+			rawPayload = collectFormEncodedPayload(new URLSearchParams(new TextDecoder().decode(body)));
 		} else {
 			throw new BricksIntakeError('Unsupported intake content type', 415);
 		}
@@ -136,27 +85,30 @@ async function parseRequest(
 		if (error instanceof BricksIntakeError) throw error;
 		throw new BricksIntakeError('Malformed intake payload', 400);
 	}
-	if (typeof rawPayload.message === 'string' && rawPayload.message.length > 10_000) {
-		throw new BricksIntakeError('Intake message is too long', 422);
-	}
-
-	const formId =
-		textField(rawPayload, 'form_id') || event.request.headers.get('x-bricks-form-id')?.trim() || '';
-	const externalIdRaw =
-		textField(rawPayload, 'external_submission_id') || textField(rawPayload, 'submission_id');
-	const payloadCandidate = normalizePayload(rawPayload);
+	const normalized = normalizeBricksPayload(
+		rawPayload,
+		expectedFormId,
+		event.request.headers.get('x-bricks-form-id')?.trim() ?? ''
+	);
+	const formId = normalized.formId;
+	const externalIdRaw = normalized.externalId;
 	const context = {
 		formId: formId.length <= MAX_FORM_ID_LENGTH ? formId : '',
 		externalId: externalIdRaw.length <= MAX_EXTERNAL_ID_LENGTH ? externalIdRaw : '',
-		payload: payloadCandidate
+		payload: normalized.payload
 	};
-	const unknownFields = Object.keys(rawPayload).filter((key) => !ALLOWED_REQUEST_FIELDS.has(key));
+	const unknownFields = normalized.unknownFields;
 	if (unknownFields.length > 0) {
 		throw new BricksIntakeError(`Unknown intake field: ${unknownFields[0]}`, 422, context);
 	}
-	if (!formId || !externalIdRaw) {
+	if (normalized.payload.message.length > 10_000) {
+		throw new BricksIntakeError('Intake message is too long', 422, context);
+	}
+	if (!formId || !externalIdRaw || !normalized.payload.first_name || !normalized.payload.email) {
 		throw new BricksIntakeError(
-			'form_id, external_submission_id, first_name, and email are required',
+			normalized.rawMode
+				? 'external_submission_id, first_name, and email are required'
+				: 'form_id, external_submission_id, first_name, and email are required',
 			422,
 			context
 		);
@@ -173,14 +125,11 @@ async function parseRequest(
 	}
 	const externalId = externalIdRaw.toLowerCase();
 	context.externalId = externalId;
-	const parsedPayload = normalizedIntakeSchema.safeParse(payloadCandidate);
+	const parsedPayload = normalizedIntakeSchema.safeParse(normalized.payload);
 	if (!parsedPayload.success) {
 		throw new BricksIntakeError('Intake payload schema is invalid', 422, context);
 	}
 	const payload = parsedPayload.data;
-	const expectedFormId = env.CLIENT_CONFIG_JSON?.trim()
-		? trusted.configuration.integrations.bricks.formId
-		: env.BRICKS_FORM_ID?.trim() || trusted.configuration.integrations.bricks.formId;
 	if (formId !== expectedFormId) throw new BricksIntakeError('Unknown Bricks form', 422, context);
 	return { formId, externalId, payload };
 }
