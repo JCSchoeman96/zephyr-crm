@@ -1,7 +1,7 @@
 # Phase 12 — Security, Backup & Operational Hardening
 
 **Project:** Small Business CRM  
-**Roadmap Version:** 1.3.1
+**Roadmap Version:** 1.3.2
 **Phase:** 12  
 **Milestone:** M3 — Production Hardening  
 **Status:** Implementation Authority  

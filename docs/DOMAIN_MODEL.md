@@ -1,7 +1,7 @@
 # Zephyr CRM Domain Model
 
 **Status:** Frozen implementation authority (Phase 0)
-**Version:** 1.2.1 (v1.3.1 reconciliation)
+**Version:** 1.2.2 (v1.3.2 hardening amendment)
 
 This document is the single definition of Zephyr CRM resources, relationships, invariants, ownership, and authoritative actions. Lifecycle state names and transitions are defined only in `docs/STATE_MACHINES.md`.
 
@@ -74,6 +74,35 @@ Client `type` is `individual` or `company`; Client `status` is `active`, `inacti
 `Quote` is a commercial proposal linked to a Lead and optionally a Client. It has `id`, `base_quote_number`, `revision_number`, `lead_id`, optional `client_id`, `status`, `currency`, `subject`, `introduction`, `terms`, `tax_label`, exact decimal `tax_rate`, exact decimal `subtotal`, `tax_amount`, and `total`, `valid_until`, lifecycle timestamps, optional `supersedes_quote_id`, optional private `document_path`, `document_hash`, `document_template_version`, `document_generator_version`, complete seller/recipient/commercial snapshots, `created_by`, `lock_version`, `created_at`, and `updated_at`.
 
 Commercial settings are copied into the Quote snapshot when it becomes ready/finalized. Later setting changes cannot change a sent Quote.
+
+## P14 Client lifecycle and maintenance law
+
+Client creation is conversion-only through `convert_lead`; there is no generic
+Client create or merge path. Client status transitions are:
+
+```text
+active ↔ inactive
+active/inactive ──Owner/Admin + reason + no active lineage work──→ archived
+archived ──Owner/Admin + restore reason──→ inactive
+```
+
+`archived → active` is not a direct transition, Sales cannot archive, and an
+archived Client is read-only. Archive guards inspect open Tasks and
+non-terminal Quotes linked directly to the Client and through
+`source_lead_id`. Client identity/billing maintenance uses optimistic
+`lock_version`; protected source and lifecycle facts are trusted-action-only.
+
+ClientContact has `active`/`inactive` status and optimistic `lock_version`.
+Inactive contacts cannot be primary, at most one active contact is primary,
+and normal UI/API paths never hard-delete contact history. Primary switches,
+contact status changes, and edits append Activity through their trusted action.
+
+## Task relationship authority
+
+Task creation accepts either one direct Lead/Client parent or a Quote. For a
+Quote-linked Task, PostgreSQL derives the Lead and converted Client context
+from that Quote/Lead lineage and rejects mismatching caller hints. The browser
+receives human labels and links through `task_work_queue`, not UUID fragments.
 
 ### QuoteItem
 

@@ -8,6 +8,7 @@ const requiredCommands = [
 	'bun run authority:verify',
 	'bun run ci:contract',
 	'bun run release:evidence:verify',
+	'bun run release:state:parity',
 	'bun run release:manifest:verify',
 	'bun run test:release:contract',
 	'bun run format:check',
@@ -17,10 +18,12 @@ const requiredCommands = [
 	'bun run test:db-types',
 	'bun run tokens:check',
 	'bun run test:e2e:install',
-	'bun run test:e2e',
+	'bun run test:e2e:smoke',
+	'bun run test:e2e:domain',
 	'bun run build',
 	'bun run auth:csrf',
 	'bun run security:bundle',
+	'bun run test:p14:gate-semantics',
 	'bun run db:start',
 	'bun run db:reset',
 	'bun run db:test',
@@ -62,9 +65,30 @@ export function validateCiWorkflow(workflow) {
 	if (!workflow.includes('if: always()') || !workflow.includes('bun run db:stop')) {
 		fail('Supabase cleanup must run with if: always()');
 	}
+	const browserBuild =
+		workflow.split('  browser-build:')[1]?.split('  browser-domain-e2e:')[0] ?? '';
+	const browserDomain =
+		workflow.split('  browser-domain-e2e:')[1]?.split('  p14-release:')[0] ?? '';
+	if (!browserBuild.includes('run: bun run test:e2e:smoke')) {
+		fail('browser-build must run only the non-stateful Playwright smoke suite');
+	}
+	if (!browserDomain.includes('run: bun run test:e2e:domain')) {
+		fail('browser-domain-e2e must run the stateful domain Playwright suite');
+	}
+	if (/run: bun run test:e2e(?:\s|$)/m.test(browserBuild)) {
+		fail('browser-build must not invoke the full stateful test:e2e suite');
+	}
 	const jobTimeouts = workflow.match(/^\s+timeout-minutes:\s+\d+\s*$/gm) ?? [];
-	if (jobTimeouts.length < 3)
-		fail('static, database, and browser/release jobs need explicit timeouts');
+	if (jobTimeouts.length < 5)
+		fail(
+			'static, database, browser smoke, browser domain, and release jobs need explicit timeouts'
+		);
+	for (const job of ['browser-domain-e2e:', 'p14-release:', 'release-contract:']) {
+		if (!workflow.includes(job)) fail(`required protected job is missing: ${job}`);
+	}
+	if (!/release-contract:[\s\S]*needs: \[[^\]]*browser-domain-e2e/.test(workflow)) {
+		fail('release-contract must depend on browser-domain-e2e');
+	}
 	const unpinnedActions = [...workflow.matchAll(/^\s+- uses:\s+([^\s]+)$/gm)]
 		.map((match) => match[1])
 		.filter((reference) => !/@[0-9a-f]{40}$/.test(reference));

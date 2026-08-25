@@ -1,7 +1,7 @@
 # Phase 14 — Local Release Candidate & Pilot Readiness
 
 **Project:** Small Business CRM  
-**Roadmap Version:** 1.3.1
+**Roadmap Version:** 1.3.2
 **Phase:** 14  
 **Milestone:** M4 — Productisation  
 **Status:** Implementation Authority  
@@ -177,3 +177,30 @@ Once all required outcomes in this document are implemented, every P14 mandatory
 5. Return control to `AGENTS.md`, which MUST transition to `FINAL_PROJECT_VALIDATION`.
 
 Do **not** set `goal_status=COMPLETE`, `LOCAL_BUILD_COMPLETE`, or `PILOT_READY` inside the Phase 14 close. Those terminal fields are written only after the global final completion gate passes. This is successful phase completion, not a blocker.
+
+# P14 Hardening Extension — v1.3.2
+
+The frozen `docs/hardening/ZEPHYR_CRM_P14_HARDENING_AND_IMPROVEMENT_AUTHORITY_v1.0.0.md`
+adds the following append-only mandatory tests. P14-T01 through P14-T21 retain
+their existing semantics and remain mandatory regression gates.
+
+| ID | Mandatory test | Type | Exact pass criterion |
+|---|---|---|---|
+| `P14-T22` | Release truth parity | Static/release | Machine release state and human readiness projection agree for valid non-terminal and terminal fixtures; stale readiness fails closed. |
+| `P14-T23` | P14 gate semantic integrity | Static/CI | P14 release proof is non-recursive, required browser jobs are protected prerequisites, and every P14 ID maps to real evidence. |
+| `P14-T24` | Authenticated stateful browser harness | Browser/integration | A real authenticated CRM browser session persists and reloads business state against fresh local Supabase and a local provider fixture. |
+| `P14-T25` | Canonical Won browser E2E | Browser/integration | Real Bricks intake → Lead → Quote → deterministic send → follow-up → Won → Client completes through product boundaries with frozen PDF and evidence. |
+| `P14-T26` | Canonical Lost/reopen browser E2E | Browser/integration | Lost requires reason and cleanup; Sales cannot reopen; Owner/Admin reopens with reason to QUALIFICATION and preserves history. |
+| `P14-T27` | Client lifecycle and maintenance integrity | DB/browser | Client lifecycle, archive lineage guard, conversion-only creation, protected fields, concurrency, identity/type law, and Activity evidence pass. |
+| `P14-T28` | ClientContact lifecycle and primary integrity | DB/browser | Contact create/edit/status/primary actions are concurrent, role-safe, history-preserving, and cannot be bypassed or hard-deleted. |
+| `P14-T29` | Task relationship and context integrity | DB/browser | Lead/Client/Quote parent relationships are valid and derived at trusted boundaries; raw bypasses fail; UI shows useful context. |
+| `P14-T30` | Quote document production fitness | Unit/integration | Long deterministic multi-page PDFs preserve branding, supported characters, first/last items, exact totals, and immutable artifact hashes. |
+| `P14-T31` | Quote email presentation and sender safety | Unit/integration | Escaped client-facing email contains required quote identity, sender config fails closed, and attachment bytes equal the frozen PDF. |
+| `P14-T32` | Navigation/internal route capability truth | Browser/static | Reports/Settings dead capabilities are absent, visible internal links resolve, and Component Lab is 404 unless explicitly enabled. |
+| `P14-T33` | Role/responsive/accessibility product-flow regression | Browser | Viewer, Sales, and Owner/Admin permissions plus 390/768/1280 responsive and core accessibility assertions pass. |
+| `P14-T34` | Hardening authority/evidence reconciliation | Static/release | Every hardening requirement is implemented, explicitly deferred by authority, or tied to a genuine defined stop; no silent omission exists. |
+| `P14-T35` | Trusted-mutation boundary parity | DB/security | Fully migrated current-schema raw authenticated Data API attempts cannot bypass trusted-only Client, Contact, Task, Lead, Quote, Activity, or outbound boundaries. |
+
+The extension does not create a Phase 15, does not remove any previous test,
+and does not authorize remote deployment, live provider credentials, or a real
+pilot.

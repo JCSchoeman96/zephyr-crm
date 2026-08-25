@@ -1,14 +1,17 @@
 <script lang="ts">
 	import { resolve } from '$app/paths';
-	import type { PageData } from './$types';
+	import type { ActionData, PageData } from './$types';
+	import ClientContacts from '$lib/components/clients/ClientContacts.svelte';
+	import ClientMaintenance from '$lib/components/clients/ClientMaintenance.svelte';
 	import AppShell from '$lib/components/shell/AppShell.svelte';
 	import Badge from '$lib/components/ui/Badge.svelte';
 	import Card from '$lib/components/ui/Card.svelte';
 	import EmptyState from '$lib/components/ui/EmptyState.svelte';
+	import ErrorState from '$lib/components/ui/ErrorState.svelte';
 	import PageHeader from '$lib/components/ui/PageHeader.svelte';
 	import SectionHeader from '$lib/components/ui/SectionHeader.svelte';
 
-	let { data }: { data: PageData } = $props();
+	let { data, form }: { data: PageData; form: ActionData } = $props();
 
 	function statusTone(status: string) {
 		if (status === 'active') return 'success';
@@ -40,6 +43,14 @@
 			<Badge tone={statusTone(data.client.status)}>{data.client.status}</Badge>
 		{/snippet}
 	</PageHeader>
+	{#if form?.message}<ErrorState title="Client action failed" message={form.message} />{/if}
+	{#if data.profile.role === 'viewer'}
+		<p class="read-only-note">
+			Viewer access is read-only. Client maintenance is available to active staff.
+		</p>
+	{/if}
+
+	<ClientMaintenance client={data.client} profile={data.profile} {form} />
 	<nav class="detail-nav" aria-label="Client detail sections">
 		<a href={resolve(`/clients/${data.client.id}#overview`)}>Overview</a>
 		<a href={resolve(`/clients/${data.client.id}#contacts`)}>Contacts</a>
@@ -111,41 +122,11 @@
 	</div>
 
 	<div id="contacts" class="anchor-section">
-		<Card>
-			<SectionHeader
-				title="Contacts"
-				description="A Client may have multiple contacts; at most one is primary."
-			/>
-			{#if data.contacts.length === 0}
-				<EmptyState title="No contacts" message="No contact records are attached to this Client." />
-			{:else}
-				<div class="contacts-table-wrap">
-					<table class="contacts-table">
-						<caption class="sr-only">Client contacts</caption>
-						<thead>
-							<tr
-								><th scope="col">Name</th><th scope="col">Contact</th><th scope="col">Role</th><th
-									scope="col">Status</th
-								></tr
-							>
-						</thead>
-						<tbody>
-							{#each data.contacts as contact (contact.id)}
-								<tr>
-									<td>{contact.first_name} {contact.last_name}</td>
-									<td>{contact.email ?? contact.phone ?? 'No contact detail'}</td>
-									<td>{contact.job_title ?? '—'}</td>
-									<td
-										>{#if contact.is_primary}<Badge tone="primary">Primary</Badge
-											>{:else}Additional{/if}</td
-									>
-								</tr>
-							{/each}
-						</tbody>
-					</table>
-				</div>
-			{/if}
-		</Card>
+		<ClientContacts
+			clientStatus={data.client.status}
+			contacts={data.contacts}
+			profileRole={data.profile.role}
+		/>
 	</div>
 
 	<div id="activity" class="anchor-section">
@@ -261,33 +242,6 @@
 	.source-block a:hover {
 		text-decoration: underline;
 	}
-	.contacts-table-wrap {
-		overflow-x: auto;
-	}
-	.contacts-table {
-		width: 100%;
-		border-collapse: collapse;
-	}
-	.contacts-table th,
-	.contacts-table td {
-		padding: var(--space-md);
-		border-bottom: 1px solid var(--color-border-subtle);
-		text-align: left;
-		font-size: var(--font-size-sm);
-	}
-	.contacts-table th {
-		color: var(--color-text-muted);
-		font-size: var(--font-size-xs);
-		letter-spacing: 0.04em;
-		text-transform: uppercase;
-	}
-	.contacts-table td {
-		color: var(--color-text-muted);
-	}
-	.contacts-table td:first-child {
-		color: var(--color-text);
-		font-weight: var(--font-weight-semibold);
-	}
 	.activity-list {
 		display: grid;
 		gap: var(--space-md);
@@ -314,16 +268,9 @@
 		color: var(--color-text-muted);
 		font-size: var(--font-size-xs);
 	}
-	.sr-only {
-		position: absolute;
-		width: 1px;
-		height: 1px;
-		padding: 0;
-		margin: -1px;
-		overflow: hidden;
-		clip: rect(0, 0, 0, 0);
-		white-space: nowrap;
-		border: 0;
+	.read-only-note {
+		color: var(--color-text-muted);
+		font-size: var(--font-size-sm);
 	}
 	@media (max-width: 760px) {
 		.detail-grid,

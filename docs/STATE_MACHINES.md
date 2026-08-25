@@ -1,7 +1,7 @@
 # Zephyr CRM State Machines
 
 **Status:** Frozen implementation authority (Phase 0)
-**Version:** 1.2.1 (v1.3.1 reconciliation)
+**Version:** 1.2.2 (v1.3.2 hardening amendment)
 
 These are the only canonical lifecycle states and legal transitions. Pipeline state, attention state, and Task state remain separate.
 
@@ -181,3 +181,36 @@ Activity has no editable lifecycle. It is append-only evidence. Material transit
 - Optimistic `lock_version` checks reject stale updates.
 - Idempotency records guard external retries and scheduled processors.
 - All state transition attempts that alter business meaning produce an Activity record, including administrative reopen/correction.
+
+## Client lifecycle
+
+Client creation is not a standalone lifecycle action; it is the conversion
+result of an eligible Decision Lead. Once converted, legal transitions are:
+
+```text
+active ─────→ inactive
+  │             │
+  │             └────→ active
+  │
+  └────→ archived
+
+inactive ─────→ archived
+
+archived ──Owner/Admin + restore reason──→ inactive
+```
+
+Sales may not archive. Archive requires a non-empty reason, Owner/Admin
+authority, the expected `lock_version`, and no open Task or non-terminal Quote
+through the Client or its source Lead lineage. Archived Clients are read-only
+under ordinary operations; direct restore to `active` is illegal.
+
+## ClientContact lifecycle
+
+```text
+active ↔ inactive
+```
+
+New contacts start active. An inactive contact cannot be primary. A primary
+switch clears the previous primary atomically; inactivating the current primary
+requires an active replacement when another active contact exists. Contact
+history is retained and ordinary hard delete is prohibited.

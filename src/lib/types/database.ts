@@ -199,8 +199,10 @@ export type Database = {
 					is_primary: boolean;
 					job_title: string | null;
 					last_name: string;
+					lock_version: number;
 					phone: string | null;
 					phone_normalized: string | null;
+					status: string;
 					updated_at: string;
 				};
 				Insert: {
@@ -212,8 +214,10 @@ export type Database = {
 					is_primary?: boolean;
 					job_title?: string | null;
 					last_name?: string;
+					lock_version?: number;
 					phone?: string | null;
 					phone_normalized?: string | null;
+					status?: string;
 					updated_at?: string;
 				};
 				Update: {
@@ -225,8 +229,10 @@ export type Database = {
 					is_primary?: boolean;
 					job_title?: string | null;
 					last_name?: string;
+					lock_version?: number;
 					phone?: string | null;
 					phone_normalized?: string | null;
+					status?: string;
 					updated_at?: string;
 				};
 				Relationships: [
@@ -255,6 +261,7 @@ export type Database = {
 					display_name: string;
 					email: string | null;
 					id: string;
+					lock_version: number;
 					phone: string | null;
 					phone_normalized: string | null;
 					registration_number: string | null;
@@ -279,6 +286,7 @@ export type Database = {
 					display_name: string;
 					email?: string | null;
 					id?: string;
+					lock_version?: number;
 					phone?: string | null;
 					phone_normalized?: string | null;
 					registration_number?: string | null;
@@ -303,6 +311,7 @@ export type Database = {
 					display_name?: string;
 					email?: string | null;
 					id?: string;
+					lock_version?: number;
 					phone?: string | null;
 					phone_normalized?: string | null;
 					registration_number?: string | null;
@@ -1551,6 +1560,18 @@ export type Database = {
 				Args: { p_lead_id: string; p_lock_version: number };
 				Returns: Json;
 			};
+			create_client_contact: {
+				Args: {
+					p_client_id: string;
+					p_email?: string;
+					p_first_name: string;
+					p_is_primary?: boolean;
+					p_job_title?: string;
+					p_last_name?: string;
+					p_phone?: string;
+				};
+				Returns: Json;
+			};
 			create_minimal_quote: {
 				Args: {
 					p_item_name: string;
@@ -1741,6 +1762,24 @@ export type Database = {
 				};
 				Returns: Json;
 			};
+			set_client_contact_status: {
+				Args: {
+					p_contact_id: string;
+					p_lock_version: number;
+					p_reason?: string;
+					p_status: string;
+				};
+				Returns: Json;
+			};
+			set_client_status: {
+				Args: {
+					p_client_id: string;
+					p_lock_version: number;
+					p_reason?: string;
+					p_status: string;
+				};
+				Returns: Json;
+			};
 			set_lead_attention: {
 				Args: {
 					p_attention_state: string;
@@ -1749,6 +1788,10 @@ export type Database = {
 					p_reason?: string;
 					p_resume_at?: string;
 				};
+				Returns: Json;
+			};
+			set_primary_client_contact: {
+				Args: { p_contact_id: string; p_lock_version: number };
 				Returns: Json;
 			};
 			set_profile_access: {
@@ -1783,6 +1826,38 @@ export type Database = {
 					p_lock_version: number;
 					p_quote_id: string;
 					p_to_status: string;
+				};
+				Returns: Json;
+			};
+			update_client_contact: {
+				Args: {
+					p_contact_id: string;
+					p_email?: string;
+					p_first_name: string;
+					p_job_title?: string;
+					p_last_name?: string;
+					p_lock_version: number;
+					p_phone?: string;
+				};
+				Returns: Json;
+			};
+			update_client_details: {
+				Args: {
+					p_billing_address_line_1?: string;
+					p_billing_address_line_2?: string;
+					p_billing_city?: string;
+					p_billing_country?: string;
+					p_billing_postal_code?: string;
+					p_billing_region?: string;
+					p_client_id: string;
+					p_company_name?: string;
+					p_display_name: string;
+					p_email?: string;
+					p_lock_version: number;
+					p_phone?: string;
+					p_registration_number?: string;
+					p_tax_number?: string;
+					p_type: string;
 				};
 				Returns: Json;
 			};

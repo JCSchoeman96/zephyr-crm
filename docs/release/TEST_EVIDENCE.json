@@ -1,7 +1,7 @@
 {
-  "version": "v1.3.1",
+  "version": "v1.3.2",
   "generated_from": "Phases/PHASE_00...PHASE_14",
-  "entry_count": 229,
+  "entry_count": 243,
   "entries": [
     {
       "id": "P0-T01",
@@ -443,11 +443,27 @@
       "criterion": "A fresh checkout installs with the documented package manager and no manual patching.",
       "classification": "STATIC",
       "proof": {
-        "command": "bun run check",
-        "source": "Phases/PHASE_01_PROJECT_SCAFFOLD_QUALITY_GATES.md",
-        "contains": [
-          "P1-T01",
-          "Clean install"
+        "command": "bun install --frozen-lockfile",
+        "sources": [
+          {
+            "source": "docs/TOOLCHAIN_PROOF.md",
+            "contains": [
+              "bun install --frozen-lockfile",
+              "only JavaScript lockfile"
+            ]
+          },
+          {
+            "source": "package.json",
+            "contains": [
+              "\"packageManager\": \"bun@1.2.22\""
+            ]
+          },
+          {
+            "source": "bun.lock",
+            "contains": [
+              "\"lockfileVersion\": 1"
+            ]
+          }
         ]
       }
     },
@@ -459,7 +475,7 @@
       "proof": {
         "command": "bun run check",
         "source": "package.json",
-        "assertion": "\"check\":"
+        "assertion": "\"check\": \"bun run gen && wrangler types --include-env=false --check && svelte-kit sync && svelte-check --tsconfig ./tsconfig.json\","
       }
     },
     {
@@ -470,7 +486,7 @@
       "proof": {
         "command": "bun run test:unit -- --run",
         "source": "package.json",
-        "assertion": "\"test:unit\":"
+        "assertion": "\"test:unit\": \"vitest\","
       }
     },
     {
@@ -481,7 +497,7 @@
       "proof": {
         "command": "bun run build",
         "source": "package.json",
-        "assertion": "\"build\":"
+        "assertion": "\"build\": \"bun run gen && wrangler types --include-env=false --check && vite build\","
       }
     },
     {
@@ -490,9 +506,9 @@
       "criterion": "Local Supabase starts, resets, and stops using documented commands.",
       "classification": "AUTOMATED",
       "proof": {
-        "command": "bun run db:reset",
-        "source": "package.json",
-        "assertion": "\"db:reset\":"
+        "command": "bun run test:p1:lifecycle",
+        "source": "scripts/test-p1-lifecycle.mjs",
+        "assertion": "assert(status.includes('API_URL='), 'Local Supabase status did not expose API_URL after reset.');"
       }
     },
     {
@@ -501,11 +517,37 @@
       "criterion": "Build artifacts contain no trusted secret names or values; only approved public variables are browser-readable.",
       "classification": "STATIC",
       "proof": {
-        "command": "bun run check",
-        "source": "Phases/PHASE_01_PROJECT_SCAFFOLD_QUALITY_GATES.md",
-        "contains": [
-          "P1-T06",
-          "Secret boundary"
+        "command": "bun run security:bundle",
+        "sources": [
+          {
+            "source": "scripts/check-public-bundle.mjs",
+            "contains": [
+              "const forbiddenNames = [...trustedEnvironmentKeys, ...privateConfigurationKeys];",
+              "const forbiddenValues = forbiddenValueKeys"
+            ]
+          },
+          {
+            "source": "src/lib/config/env.ts",
+            "contains": [
+              "SENDPULSE_WEBHOOK_SECRET",
+              "SENDPULSE_SENDER_DOMAIN",
+              "SENDPULSE_DKIM_RECORD",
+              "AUTOMATION_CRON_SECRET"
+            ]
+          },
+          {
+            "source": "src/lib/config/client-config.ts",
+            "contains": [
+              "assertPublicProjectionInput",
+              "PUBLIC_CLIENT_CONFIG_JSON"
+            ]
+          },
+          {
+            "source": "docs/SECURITY_MODEL.md",
+            "contains": [
+              "The parser rejects fields outside this explicit"
+            ]
+          }
         ]
       }
     },
@@ -515,11 +557,22 @@
       "criterion": "`git diff --check` passes and generated/local-secret files are ignored.",
       "classification": "STATIC",
       "proof": {
-        "command": "bun run check",
-        "source": "Phases/PHASE_01_PROJECT_SCAFFOLD_QUALITY_GATES.md",
-        "contains": [
-          "P1-T07",
-          "Git hygiene"
+        "command": "bun run diff:check",
+        "sources": [
+          {
+            "source": ".gitignore",
+            "contains": [
+              ".env.*",
+              "!.env.example",
+              ".dev.vars"
+            ]
+          },
+          {
+            "source": "package.json",
+            "contains": [
+              "\"diff:check\": \"git diff --check\""
+            ]
+          }
         ]
       }
     },
@@ -529,11 +582,23 @@
       "criterion": "CI configuration invokes the same canonical local quality commands; local/static validation proves parity. Remote CI execution is supplemental and not required by the local-only loop.",
       "classification": "STATIC",
       "proof": {
-        "command": "bun run check",
-        "source": "Phases/PHASE_01_PROJECT_SCAFFOLD_QUALITY_GATES.md",
-        "contains": [
-          "P1-T08",
-          "CI configuration parity"
+        "command": "bun run ci:contract",
+        "sources": [
+          {
+            "source": "scripts/check-ci-contract.mjs",
+            "contains": [
+              "const requiredCommands = [",
+              "if (!workflow.includes",
+              "if: always()"
+            ]
+          },
+          {
+            "source": ".github/workflows/ci.yml",
+            "contains": [
+              "run: bun install --frozen-lockfile",
+              "run: bun run db:stop"
+            ]
+          }
         ]
       }
     },
@@ -543,11 +608,28 @@
       "criterion": "Documented exact runtime/package-manager/Supabase CLI/Wrangler versions plus the canonical lockfile reproduce a clean install/build without floating `latest`.",
       "classification": "STATIC",
       "proof": {
-        "command": "bun run check",
-        "source": "Phases/PHASE_01_PROJECT_SCAFFOLD_QUALITY_GATES.md",
-        "contains": [
-          "P1-T09",
-          "Toolchain reproducibility"
+        "command": "bun install --frozen-lockfile",
+        "sources": [
+          {
+            "source": "docs/TOOLCHAIN_PROOF.md",
+            "contains": [
+              "Bun package manager/runner",
+              "@lucide/svelte 1.33.0",
+              "Supabase JS / CLI"
+            ]
+          },
+          {
+            "source": "package.json",
+            "contains": [
+              "\"packageManager\": \"bun@1.2.22\""
+            ]
+          },
+          {
+            "source": "bun.lock",
+            "contains": [
+              "\"@lucide/svelte\": \"1.33.0\""
+            ]
+          }
         ]
       }
     },
@@ -555,11 +637,33 @@
       "id": "P1-T10",
       "title": "Workers artifact contract",
       "criterion": "SvelteKit Cloudflare adapter/Wrangler configuration produces the documented Workers-with-Static-Assets artifact locally.",
-      "classification": "AUTOMATED",
+      "classification": "STATIC",
       "proof": {
         "command": "bun run build",
-        "source": "package.json",
-        "assertion": "\"build\":"
+        "sources": [
+          {
+            "source": "package.json",
+            "contains": [
+              "wrangler types --include-env=false --check",
+              "vite build"
+            ]
+          },
+          {
+            "source": "wrangler.jsonc",
+            "contains": [
+              "\"main\": \".svelte-kit/cloudflare/_worker.js\"",
+              "\"directory\": \".svelte-kit/cloudflare\"",
+              "\"binding\": \"ASSETS\""
+            ]
+          },
+          {
+            "source": "docs/TOOLCHAIN_PROOF.md",
+            "contains": [
+              "artifact through Vite",
+              ".svelte-kit/cloudflare/_worker.js"
+            ]
+          }
+        ]
       }
     },
     {
@@ -568,11 +672,21 @@
       "criterion": "`packageManager` names exact Bun; canonical scripts run through Bun; no npm/pnpm/yarn command or lockfile is build authority.",
       "classification": "STATIC",
       "proof": {
-        "command": "bun run check",
-        "source": "Phases/PHASE_01_PROJECT_SCAFFOLD_QUALITY_GATES.md",
-        "contains": [
-          "P1-T11",
-          "Bun authority"
+        "command": "bun run authority:registry",
+        "sources": [
+          {
+            "source": "package.json",
+            "contains": [
+              "\"packageManager\": \"bun@1.2.22\""
+            ]
+          },
+          {
+            "source": "scripts/verify-authority-registry.mjs",
+            "contains": [
+              "packageManager !== 'bun@1.2.22'",
+              "lockfile authority is not exactly bun.lock"
+            ]
+          }
         ]
       }
     },
@@ -582,11 +696,27 @@
       "criterion": "Every direct dependency/devDependency is exact-pinned; no `^`, `~`, `latest`, `next`, prerelease or floating Git ref exists without an explicit architecture amendment.",
       "classification": "STATIC",
       "proof": {
-        "command": "bun run check",
-        "source": "Phases/PHASE_01_PROJECT_SCAFFOLD_QUALITY_GATES.md",
-        "contains": [
-          "P1-T12",
-          "Exact direct pins"
+        "command": "bun run authority:registry",
+        "sources": [
+          {
+            "source": "package.json",
+            "contains": [
+              "\"dependencies\": {",
+              "\"devDependencies\": {"
+            ]
+          },
+          {
+            "source": "scripts/verify-authority-registry.mjs",
+            "contains": [
+              "exact-pinned"
+            ]
+          },
+          {
+            "source": "docs/TOOLCHAIN_PROOF.md",
+            "contains": [
+              "Every direct dependency is exact-pinned"
+            ]
+          }
         ]
       }
     },
@@ -596,10 +726,21 @@
       "criterion": "`bun.lock` is committed and `package-lock.json`, `pnpm-lock.yaml`, `yarn.lock`, and legacy `bun.lockb` are absent.",
       "classification": "STATIC",
       "proof": {
-        "command": "bun run check",
-        "source": "bun.lock",
-        "contains": [
-          "\"lockfileVersion\""
+        "command": "bun run authority:registry",
+        "sources": [
+          {
+            "source": "scripts/verify-authority-registry.mjs",
+            "contains": [
+              "['package-lock.json', 'pnpm-lock.yaml', 'yarn.lock', 'bun.lockb']",
+              "lockfile authority is not exactly bun.lock"
+            ]
+          },
+          {
+            "source": "bun.lock",
+            "contains": [
+              "\"lockfileVersion\": 1"
+            ]
+          }
         ]
       }
     },
@@ -609,11 +750,36 @@
       "criterion": "Clean install + check + lint + Vitest + Playwright smoke + Vite/SvelteKit build + Workers artifact + local Supabase lifecycle all pass together and exact proven versions are recorded in `docs/TOOLCHAIN_PROOF.md`.",
       "classification": "STATIC",
       "proof": {
-        "command": "bun run check",
-        "source": "Phases/PHASE_01_PROJECT_SCAFFOLD_QUALITY_GATES.md",
-        "contains": [
-          "P1-T14",
-          "Full-stack compatibility proof"
+        "command": "bun run test:p1:compatibility",
+        "sources": [
+          {
+            "source": "docs/TOOLCHAIN_PROOF.md",
+            "contains": [
+              "One-time machine prerequisite",
+              "bun run test:p1:compatibility",
+              "owns the sequential Phase 1 proof",
+              "fails if `bun.lock` changes during the run"
+            ]
+          },
+          {
+            "source": "package.json",
+            "contains": [
+              "\"test:p1:compatibility\":"
+            ]
+          },
+          {
+            "source": "scripts/test-p1-compatibility.mjs",
+            "contains": [
+              "const compatibilitySteps = [",
+              "['db:start']",
+              "['db:reset']",
+              "['test:e2e:smoke']",
+              "['db:test']",
+              "['db:security']",
+              "finally",
+              "lockfileHash()"
+            ]
+          }
         ]
       }
     },
@@ -623,11 +789,28 @@
       "criterion": "`wrangler.jsonc` is committed as the sole canonical Wrangler config; there is no competing `wrangler.toml`; configuration matches the generated Workers artifact.",
       "classification": "STATIC",
       "proof": {
-        "command": "bun run check",
-        "source": "Phases/PHASE_01_PROJECT_SCAFFOLD_QUALITY_GATES.md",
-        "contains": [
-          "P1-T15",
-          "Cloudflare config authority"
+        "command": "bun run build",
+        "sources": [
+          {
+            "source": "scripts/test-p1-toolchain.mjs",
+            "contains": [
+              "assert(!existsSync('wrangler.toml'), 'A competing wrangler.toml configuration must not exist.');"
+            ]
+          },
+          {
+            "source": "wrangler.jsonc",
+            "contains": [
+              "\"main\": \".svelte-kit/cloudflare/_worker.js\"",
+              "\"binding\": \"ASSETS\""
+            ]
+          },
+          {
+            "source": "scripts/verify-authority-registry.mjs",
+            "contains": [
+              "wrangler.jsonc",
+              "Cloudflare Pages"
+            ]
+          }
         ]
       }
     },
@@ -637,11 +820,20 @@
       "criterion": "`compatibility_date` is explicit and stable; no script automatically rewrites it to the current date.",
       "classification": "STATIC",
       "proof": {
-        "command": "bun run check",
-        "source": "Phases/PHASE_01_PROJECT_SCAFFOLD_QUALITY_GATES.md",
-        "contains": [
-          "P1-T16",
-          "Compatibility-date freeze"
+        "command": "bun run authority:registry",
+        "sources": [
+          {
+            "source": "wrangler.jsonc",
+            "contains": [
+              "\"compatibility_date\": \"2026-08-21\""
+            ]
+          },
+          {
+            "source": "scripts/verify-authority-registry.mjs",
+            "contains": [
+              "\"compatibility_date\""
+            ]
+          }
         ]
       }
     },
@@ -651,11 +843,27 @@
       "criterion": "SvelteKit builds through Vite; Bun is installer/script runner and does not replace Vite as application bundler.",
       "classification": "STATIC",
       "proof": {
-        "command": "bun run check",
-        "source": "Phases/PHASE_01_PROJECT_SCAFFOLD_QUALITY_GATES.md",
-        "contains": [
-          "P1-T17",
-          "Svelte/Vite responsibility"
+        "command": "bun run build",
+        "sources": [
+          {
+            "source": "package.json",
+            "contains": [
+              "\"build\": \"bun run gen",
+              "vite build"
+            ]
+          },
+          {
+            "source": "DEPENDENCY_BASELINE_v1.0.0.md",
+            "contains": [
+              "Bun must not replace Vite as the SvelteKit application bundler"
+            ]
+          },
+          {
+            "source": "docs/TOOLCHAIN_PROOF.md",
+            "contains": [
+              "Vite owns the SvelteKit build"
+            ]
+          }
         ]
       }
     },
@@ -665,11 +873,22 @@
       "criterion": "`supabase` CLI is an exact project dev dependency, invoked through canonical scripts/Bun; no global CLI version is required for reproducibility.",
       "classification": "STATIC",
       "proof": {
-        "command": "bun run check",
-        "source": "Phases/PHASE_01_PROJECT_SCAFFOLD_QUALITY_GATES.md",
-        "contains": [
-          "P1-T18",
-          "Supabase tool authority"
+        "command": "bun run authority:registry",
+        "sources": [
+          {
+            "source": "package.json",
+            "contains": [
+              "\"supabase\": \"2.115.0\"",
+              "\"db:reset\": \"bunx supabase db reset\""
+            ]
+          },
+          {
+            "source": "DEPENDENCY_BASELINE_v1.0.0.md",
+            "contains": [
+              "Project-local exact dev dependency",
+              "project-local `supabase` CLI dev dependency"
+            ]
+          }
         ]
       }
     },
@@ -679,11 +898,25 @@
       "criterion": "Vitest, Playwright, svelte-check, ESLint and Prettier are configured as the primary tools and no parallel Jest/Cypress/second formatter-linter stack is introduced.",
       "classification": "STATIC",
       "proof": {
-        "command": "bun run check",
-        "source": "Phases/PHASE_01_PROJECT_SCAFFOLD_QUALITY_GATES.md",
-        "contains": [
-          "P1-T19",
-          "Approved quality stack"
+        "command": "bun run test:p1:toolchain",
+        "sources": [
+          {
+            "source": "scripts/test-p1-toolchain.mjs",
+            "contains": [
+              "for (const required of ['vitest', '@playwright/test', 'svelte-check', 'eslint', 'prettier'])",
+              "for (const prohibited of ['jest', 'cypress', 'react-icons', '@fortawesome'])"
+            ]
+          },
+          {
+            "source": "package.json",
+            "contains": [
+              "\"vitest\": \"4.1.11\"",
+              "\"@playwright/test\": \"1.62.1\"",
+              "\"svelte-check\": \"4.7.6\"",
+              "\"eslint\": \"10.9.0\"",
+              "\"prettier\": \"3.9.6\""
+            ]
+          }
         ]
       }
     },
@@ -693,11 +926,36 @@
       "criterion": "After exact pins and `bun.lock` are committed, a clean frozen install (`bun ci` or proven equivalent) followed by the full Phase 1 gate succeeds without lockfile mutation.",
       "classification": "STATIC",
       "proof": {
-        "command": "bun run check",
-        "source": "Phases/PHASE_01_PROJECT_SCAFFOLD_QUALITY_GATES.md",
-        "contains": [
-          "P1-T20",
-          "Frozen reinstall"
+        "command": "bun install --frozen-lockfile && bun run test:p1:compatibility",
+        "sources": [
+          {
+            "source": "docs/TOOLCHAIN_PROOF.md",
+            "contains": [
+              "Frozen reinstall gate:",
+              "bun install --frozen-lockfile && bun run test:p1:compatibility",
+              "without lockfile mutation"
+            ]
+          },
+          {
+            "source": "package.json",
+            "contains": [
+              "\"test:p1:compatibility\":"
+            ]
+          },
+          {
+            "source": "scripts/test-p1-compatibility.mjs",
+            "contains": [
+              "const lockfile = resolve(root, 'bun.lock');",
+              "lockfileHash()",
+              "bun.lock unexpectedly"
+            ]
+          },
+          {
+            "source": "bun.lock",
+            "contains": [
+              "\"lockfileVersion\": 1"
+            ]
+          }
         ]
       }
     },
@@ -707,7 +965,7 @@
       "criterion": "Every base component renders without runtime errors in default, disabled, error, and loading states where applicable.",
       "classification": "AUTOMATED",
       "proof": {
-        "command": "bun run test:e2e -- tests/e2e/design-system.e2e.ts",
+        "command": "bun run test:e2e:smoke",
         "source": "tests/e2e/design-system.e2e.ts",
         "assertion": "test('renders primitive states and labelled controls', async ({ page }) => {"
       }
@@ -718,7 +976,7 @@
       "criterion": "Primary shell/navigation and interactive primitives can be reached and operated by keyboard.",
       "classification": "AUTOMATED",
       "proof": {
-        "command": "bun run test:e2e -- tests/e2e/design-system.e2e.ts",
+        "command": "bun run test:e2e:smoke",
         "source": "tests/e2e/design-system.e2e.ts",
         "assertion": "test('renders primitive states and labelled controls', async ({ page }) => {"
       }
@@ -729,7 +987,7 @@
       "criterion": "Form controls have programmatic labels; obvious accessibility violations are absent.",
       "classification": "AUTOMATED",
       "proof": {
-        "command": "bun run test:e2e -- tests/e2e/design-system.e2e.ts",
+        "command": "bun run test:e2e:smoke",
         "source": "tests/e2e/design-system.e2e.ts",
         "assertion": "test('renders primitive states and labelled controls', async ({ page }) => {"
       }
@@ -740,7 +998,7 @@
       "criterion": "Shell is usable at mobile, tablet, and desktop widths without horizontal overflow from layout chrome.",
       "classification": "STATIC",
       "proof": {
-        "command": "bun run test:e2e -- tests/e2e/design-system.e2e.ts",
+        "command": "bun run test:e2e:smoke",
         "source": "Phases/PHASE_02_DESIGN_SYSTEM_APPLICATION_SHELL.md",
         "contains": [
           "P2-T04",
@@ -754,7 +1012,7 @@
       "criterion": "Core primitives do not duplicate client brand values where semantic tokens exist.",
       "classification": "STATIC",
       "proof": {
-        "command": "bun run test:e2e -- tests/e2e/design-system.e2e.ts",
+        "command": "bun run test:e2e:smoke",
         "source": "Phases/PHASE_02_DESIGN_SYSTEM_APPLICATION_SHELL.md",
         "contains": [
           "P2-T05",
@@ -768,7 +1026,7 @@
       "criterion": "Changing the configured brand tokens visibly updates the shell/primitives without editing component source.",
       "classification": "STATIC",
       "proof": {
-        "command": "bun run test:e2e -- tests/e2e/design-system.e2e.ts",
+        "command": "bun run test:e2e:smoke",
         "source": "Phases/PHASE_02_DESIGN_SYSTEM_APPLICATION_SHELL.md",
         "contains": [
           "P2-T06",
@@ -782,7 +1040,7 @@
       "criterion": "All Phase 1 quality commands still pass.",
       "classification": "AUTOMATED",
       "proof": {
-        "command": "bun run test:e2e -- tests/e2e/design-system.e2e.ts",
+        "command": "bun run test:e2e:smoke",
         "source": "tests/e2e/design-system.e2e.ts",
         "assertion": "test('renders primitive states and labelled controls', async ({ page }) => {"
       }
@@ -793,7 +1051,7 @@
       "criterion": "`components.json` uses the approved configuration; generated components are committed project source and no customised component is destructively regenerated without reviewed migration.",
       "classification": "STATIC",
       "proof": {
-        "command": "bun run test:e2e -- tests/e2e/design-system.e2e.ts",
+        "command": "bun run test:e2e:smoke",
         "source": "Phases/PHASE_02_DESIGN_SYSTEM_APPLICATION_SHELL.md",
         "contains": [
           "P2-T08",
@@ -807,7 +1065,7 @@
       "criterion": "Tailwind 4 is integrated through `@tailwindcss/vite`; no parallel legacy Tailwind/PostCSS styling authority is introduced.",
       "classification": "STATIC",
       "proof": {
-        "command": "bun run test:e2e -- tests/e2e/design-system.e2e.ts",
+        "command": "bun run test:e2e:smoke",
         "source": "Phases/PHASE_02_DESIGN_SYSTEM_APPLICATION_SHELL.md",
         "contains": [
           "P2-T09",
@@ -821,7 +1079,7 @@
       "criterion": "General application icons use `@lucide/svelte`; no second icon library is introduced without architecture amendment.",
       "classification": "STATIC",
       "proof": {
-        "command": "bun run test:e2e -- tests/e2e/design-system.e2e.ts",
+        "command": "bun run test:e2e:smoke",
         "source": "Phases/PHASE_02_DESIGN_SYSTEM_APPLICATION_SHELL.md",
         "contains": [
           "P2-T10",
@@ -835,7 +1093,7 @@
       "criterion": "No second UI kit, large form framework, global state framework or duplicate validation system has been added.",
       "classification": "STATIC",
       "proof": {
-        "command": "bun run test:e2e -- tests/e2e/design-system.e2e.ts",
+        "command": "bun run test:e2e:smoke",
         "source": "Phases/PHASE_02_DESIGN_SYSTEM_APPLICATION_SHELL.md",
         "contains": [
           "P2-T11",
@@ -2826,7 +3084,7 @@
       "proof": {
         "command": "bun run quality",
         "source": "scripts/test-p14-release.mjs",
-        "assertion": "const evidence = validateEvidenceRegistry(registry);"
+        "assertion": "const evidence = validateEvidenceRegistry(registry, { root });"
       }
     },
     {
@@ -2837,7 +3095,7 @@
       "proof": {
         "command": "bun run test:p14:release",
         "source": "scripts/test-p14-release.mjs",
-        "assertion": "evidence.count === 229,"
+        "assertion": "evidence.count === registry.entries.length,"
       }
     },
     {
@@ -2913,8 +3171,162 @@
       "classification": "AUTOMATED",
       "proof": {
         "command": "bun run authority:registry",
-        "source": "scripts/verify-v131-registry.mjs",
+        "source": "scripts/verify-authority-registry.mjs",
         "assertion": "exact-pinned"
+      }
+    },
+    {
+      "id": "P14-T22",
+      "title": "Release truth parity",
+      "criterion": "Machine release state and human readiness projection agree for valid non-terminal and terminal fixtures; stale readiness fails closed.",
+      "classification": "AUTOMATED",
+      "proof": {
+        "command": "bun run release:state:parity",
+        "source": "scripts/test-pilot-readiness-parity.mjs",
+        "assertion": "assert.deepEqual(parseReadinessProjection(readiness(nonTerminal)), {"
+      }
+    },
+    {
+      "id": "P14-T23",
+      "title": "P14 gate semantic integrity",
+      "criterion": "P14 release proof is non-recursive, required browser jobs are protected prerequisites, and every P14 ID maps to real evidence.",
+      "classification": "AUTOMATED",
+      "proof": {
+        "command": "bun run test:p14:gate-semantics",
+        "source": "scripts/test-p14-gate-semantics.mjs",
+        "assertion": "assert(!releaseScript.includes(\"['run', 'quality']\"), 'P14 release proof must not invoke quality.');"
+      }
+    },
+    {
+      "id": "P14-T24",
+      "title": "Authenticated stateful browser harness",
+      "criterion": "A real authenticated CRM browser session persists and reloads business state against fresh local Supabase and a local provider fixture.",
+      "classification": "AUTOMATED",
+      "proof": {
+        "command": "bun run test:p14:browser-harness",
+        "source": "tests/e2e/domain/stateful-harness.e2e.ts",
+        "assertion": "await expect(page.getByRole('heading', { name: 'P14 Browser Harness' })).toBeVisible();"
+      }
+    },
+    {
+      "id": "P14-T25",
+      "title": "Canonical Won browser E2E",
+      "criterion": "Real Bricks intake → Lead → Quote → deterministic send → follow-up → Won → Client completes through product boundaries with frozen PDF and evidence.",
+      "classification": "AUTOMATED",
+      "proof": {
+        "command": "bun run test:p14:won-flow",
+        "source": "tests/e2e/domain/won-flow.e2e.ts",
+        "assertion": "expect(client?.status).toBe('active');"
+      }
+    },
+    {
+      "id": "P14-T26",
+      "title": "Canonical Lost/reopen browser E2E",
+      "criterion": "Lost requires reason and cleanup; Sales cannot reopen; Owner/Admin reopens with reason to QUALIFICATION and preserves history.",
+      "classification": "AUTOMATED",
+      "proof": {
+        "command": "bun run test:p14:lost-flow",
+        "source": "tests/e2e/domain/lost-flow.e2e.ts",
+        "assertion": "await expect(page.getByText('LOST', { exact: true })).toBeVisible();"
+      }
+    },
+    {
+      "id": "P14-T27",
+      "title": "Client lifecycle and maintenance integrity",
+      "criterion": "Client lifecycle, archive lineage guard, conversion-only creation, protected fields, concurrency, identity/type law, and Activity evidence pass.",
+      "classification": "AUTOMATED",
+      "proof": {
+        "command": "bun scripts/test-p14-client-integrity.mjs",
+        "source": "scripts/test-p14-client-integrity.mjs",
+        "assertion": "assert(!directPatch.response.ok, 'Raw Client status PATCH bypassed trusted action');"
+      }
+    },
+    {
+      "id": "P14-T28",
+      "title": "ClientContact lifecycle and primary integrity",
+      "criterion": "Contact create/edit/status/primary actions are concurrent, role-safe, history-preserving, and cannot be bypassed or hard-deleted.",
+      "classification": "AUTOMATED",
+      "proof": {
+        "command": "bun scripts/test-p14-contact-integrity.mjs",
+        "source": "scripts/test-p14-contact-integrity.mjs",
+        "assertion": "assert(!rawDelete.response.ok, 'Raw ClientContact delete bypassed retention law');"
+      }
+    },
+    {
+      "id": "P14-T29",
+      "title": "Task relationship and context integrity",
+      "criterion": "Lead/Client/Quote parent relationships are valid and derived at trusted boundaries; raw bypasses fail; UI shows useful context.",
+      "classification": "AUTOMATED",
+      "proof": {
+        "command": "bun scripts/test-p14-task-integrity.mjs",
+        "source": "scripts/test-p14-task-integrity.mjs",
+        "assertion": "assert(!rawInsert.response.ok, 'Raw Task INSERT bypassed create_task');"
+      }
+    },
+    {
+      "id": "P14-T30",
+      "title": "Quote document production fitness",
+      "criterion": "Long deterministic multi-page PDFs preserve branding, supported characters, first/last items, exact totals, and immutable artifact hashes.",
+      "classification": "AUTOMATED",
+      "proof": {
+        "command": "bun run test:p14:document-fitness",
+        "source": "src/lib/domain/quotes/document.spec.ts",
+        "assertion": "expect(parsed.getPageCount()).toBeGreaterThan(1);"
+      }
+    },
+    {
+      "id": "P14-T31",
+      "title": "Quote email presentation and sender safety",
+      "criterion": "Escaped client-facing email contains required quote identity, sender config fails closed, and attachment bytes equal the frozen PDF.",
+      "classification": "AUTOMATED",
+      "proof": {
+        "command": "bun run test:p14:email-safety",
+        "source": "src/lib/domain/communications/sendpulse-adapter.spec.ts",
+        "assertion": ").rejects.toThrow(/sender email and name/i);"
+      }
+    },
+    {
+      "id": "P14-T32",
+      "title": "Navigation/internal route capability truth",
+      "criterion": "Reports/Settings dead capabilities are absent, visible internal links resolve, and Component Lab is 404 unless explicitly enabled.",
+      "classification": "AUTOMATED",
+      "proof": {
+        "command": "bun run test:p14:navigation",
+        "source": "scripts/test-p14-navigation.mjs",
+        "assertion": "assert.match(reports, /error\\(404/);"
+      }
+    },
+    {
+      "id": "P14-T33",
+      "title": "Role/responsive/accessibility product-flow regression",
+      "criterion": "Viewer, Sales, and Owner/Admin permissions plus 390/768/1280 responsive and core accessibility assertions pass.",
+      "classification": "AUTOMATED",
+      "proof": {
+        "command": "bun run test:p14:product-flow",
+        "source": "tests/e2e/domain/role-accessibility.e2e.ts",
+        "assertion": "await expect(page.getByText('Viewer access is read-only.').first()).toBeVisible();"
+      }
+    },
+    {
+      "id": "P14-T34",
+      "title": "Hardening authority/evidence reconciliation",
+      "criterion": "Every hardening requirement is implemented, explicitly deferred by authority, or tied to a genuine defined stop; no silent omission exists.",
+      "classification": "AUTOMATED",
+      "proof": {
+        "command": "bun scripts/test-p14-hardening-reconciliation.mjs",
+        "source": "docs/release/P14_HARDENING_DISPOSITION.md",
+        "assertion": "| ZH-018 | FIXED |"
+      }
+    },
+    {
+      "id": "P14-T35",
+      "title": "Trusted-mutation boundary parity",
+      "criterion": "Fully migrated current-schema raw authenticated Data API attempts cannot bypass trusted-only Client, Contact, Task, Lead, Quote, Activity, or outbound boundaries.",
+      "classification": "AUTOMATED",
+      "proof": {
+        "command": "bun scripts/test-p14-mutation-parity.mjs",
+        "source": "scripts/test-p14-mutation-parity.mjs",
+        "assertion": "leadAndOutboundLaw.includes('private.allow_outbound_attempt_mutation'),"
       }
     }
   ]

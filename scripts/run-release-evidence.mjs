@@ -32,12 +32,10 @@ function run(command) {
 function metadata() {
 	const gitSha = execFileSync('git', ['rev-parse', 'HEAD'], { cwd: root, encoding: 'utf8' }).trim();
 	const bunVersion = execFileSync('bun', ['--version'], { cwd: root, encoding: 'utf8' }).trim();
-	const nodeVersion = execFileSync('node', ['--version'], { cwd: root, encoding: 'utf8' }).trim();
 	return {
 		git_sha: gitSha,
 		generated_at_utc: new Date().toISOString(),
-		bun_version: bunVersion,
-		node_version: nodeVersion
+		bun_version: bunVersion
 	};
 }
 

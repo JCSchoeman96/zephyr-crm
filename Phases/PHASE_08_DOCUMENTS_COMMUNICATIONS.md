@@ -1,7 +1,7 @@
 # Phase 8 — Documents & Communications
 
 **Project:** Small Business CRM  
-**Roadmap Version:** 1.3.1
+**Roadmap Version:** 1.3.2
 **Phase:** 8  
 **Milestone:** M2 — Production CRM Core  
 **Status:** Implementation Authority  

@@ -1,7 +1,7 @@
 # Phase 4 — Complete CRM Tracer Bullet
 
 **Project:** Small Business CRM  
-**Roadmap Version:** 1.3.1
+**Roadmap Version:** 1.3.2
 **Phase:** 4  
 **Milestone:** M1 — Workflow Proof  
 **Status:** Implementation Authority  

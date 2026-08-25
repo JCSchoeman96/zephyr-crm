@@ -134,7 +134,7 @@ jobs:
       - name: Install Chromium
         run: bun run test:e2e:install
       - name: Run browser smoke tests
-        run: bun run test:e2e
+        run: bun run test:e2e:smoke
       - name: Build Worker and Static Assets artifact
         run: bun run build
       - name: Verify production Worker CSRF boundary
@@ -142,9 +142,60 @@ jobs:
       - name: Scan public build for trusted environment names
         run: bun run security:bundle
 
+  browser-domain-e2e:
+    name: browser-domain-e2e
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6
+        with:
+          bun-version: '1.2.22'
+      - name: Install frozen dependencies
+        run: bun install --frozen-lockfile
+      - name: Start local Supabase
+        run: bun run db:start
+      - name: Reset local database
+        run: bun run db:reset
+      - name: Install Chromium
+        run: bun run test:e2e:install
+      - name: Run authenticated domain browser journeys
+        run: bun run test:e2e:domain
+      - name: Stop local Supabase
+        if: always()
+        run: bun run db:stop
+
+  p14-release:
+    name: p14-release
+    needs: [static, database-domain-security, browser-build, browser-domain-e2e]
+    runs-on: ubuntu-latest
+    timeout-minutes: 75
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6
+        with:
+          bun-version: '1.2.22'
+      - name: Install frozen dependencies
+        run: bun install --frozen-lockfile
+      - name: Start local Supabase
+        run: bun run db:start
+      - name: Reset local database
+        run: bun run db:reset
+      - name: Install Chromium
+        run: bun run test:e2e:install
+      - name: Run P14-specific release proof
+        run: bun run test:p14:release
+      - name: Stop local Supabase
+        if: always()
+        run: bun run db:stop
+
   release-contract:
     name: release-contract
-    needs: [static, database-domain-security, browser-build]
+    needs: [static, database-domain-security, browser-build, browser-domain-e2e, p14-release]
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -160,6 +211,10 @@ jobs:
         run: bun run ci:contract
       - name: Recheck release evidence registry
         run: bun run release:evidence:verify
+      - name: Recheck release truth parity
+        run: bun run release:state:parity
+      - name: Recheck P14 gate semantic contract
+        run: bun run test:p14:gate-semantics
       - name: Recheck release manifest
         run: bun run release:manifest:verify
       - name: Recheck release contract

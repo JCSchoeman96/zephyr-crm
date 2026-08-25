@@ -1,7 +1,7 @@
 # Phase 0 — Architecture & Product Contract
 
 **Project:** Small Business CRM  
-**Roadmap Version:** 1.3.1
+**Roadmap Version:** 1.3.2
 **Phase:** 0  
 **Milestone:** M0 — Foundation  
 **Status:** Implementation Authority  

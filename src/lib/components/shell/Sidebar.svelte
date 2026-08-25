@@ -2,15 +2,13 @@
 	import { resolve } from '$app/paths';
 	import { page } from '$app/state';
 	import {
-		BarChart3,
 		CheckSquare,
 		FileText,
 		LayoutDashboard,
-		Settings,
 		Activity,
 		Users,
 		UserRound
-	} from 'lucide-svelte';
+	} from '@lucide/svelte';
 	import { publicClientConfiguration } from '$lib/config/public-client-config';
 
 	type NavIcon = typeof LayoutDashboard;
@@ -34,17 +32,9 @@
 			]
 		},
 		{
-			id: 'insights',
-			label: 'Insights',
-			items: [{ label: 'Reports', href: '/reports', icon: BarChart3 }]
-		},
-		{
 			id: 'administration',
 			label: 'Administration',
-			items: [
-				{ label: 'Operations', href: '/operations', icon: Activity, adminOnly: true },
-				{ label: 'Settings', href: '/settings', icon: Settings }
-			]
+			items: [{ label: 'Operations', href: '/operations', icon: Activity, adminOnly: true }]
 		}
 	];
 

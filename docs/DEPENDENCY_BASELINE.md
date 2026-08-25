@@ -33,7 +33,7 @@ The Phase 2 runtime UI dependency is also pinned exactly:
 
 | Package | Version |
 |---|---:|
-| `lucide-svelte` | `1.0.1` |
+| `@lucide/svelte` | `1.33.0` |
 
 The Phase 3 Auth and database client dependencies are pinned exactly:
 

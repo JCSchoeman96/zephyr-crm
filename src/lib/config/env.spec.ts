@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { readFileSync } from 'node:fs';
 import { parsePublicEnv, trustedEnvironmentKeys } from './env';
 
 describe('environment contract', () => {
@@ -45,5 +46,16 @@ describe('environment contract', () => {
 			'BRICKS_FORM_ID',
 			'BRICKS_WEBHOOK_SECRET'
 		]);
+	});
+
+	it('keeps the public bundle scanner aligned with every trusted environment key', () => {
+		const scanner = readFileSync(
+			new URL('../../../scripts/check-public-bundle.mjs', import.meta.url),
+			'utf8'
+		);
+
+		for (const key of trustedEnvironmentKeys) {
+			expect(scanner).toContain(`'${key}'`);
+		}
 	});
 });

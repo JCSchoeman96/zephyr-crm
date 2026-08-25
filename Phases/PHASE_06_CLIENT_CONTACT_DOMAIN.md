@@ -1,7 +1,7 @@
 # Phase 6 — Client & Contact Domain
 
 **Project:** Small Business CRM  
-**Roadmap Version:** 1.3.1
+**Roadmap Version:** 1.3.2
 **Phase:** 6  
 **Milestone:** M2 — Production CRM Core  
 **Status:** Implementation Authority  

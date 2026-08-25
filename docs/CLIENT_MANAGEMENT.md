@@ -1,6 +1,6 @@
 # Client Management Contract
 
-Phase 6 makes the distinction between a Lead and a Client durable. A website enquiry remains a Lead until an authenticated Owner, Admin, or Sales user deliberately converts an eligible Decision Lead.
+Phase 6 makes the distinction between a Lead and a Client durable. A website enquiry remains a Lead until an authenticated Owner, Admin, or Sales user deliberately converts an eligible Decision Lead. The P14 hardening amendment makes the post-conversion lifecycle and maintenance boundary explicit.
 
 ## Client identity
 
@@ -19,3 +19,18 @@ The existing legacy `billing_address` column remains readable for compatibility 
 The deterministic duplicate boundary is `source_lead_id`. Email, phone, name, and company are copied as data but are never used alone to merge customers. Two distinct Leads with the same email therefore remain two distinct conversion candidates and Clients.
 
 The source Lead and its existing Activity history are never deleted or rewritten as part of conversion. The Client detail view exposes the source Lead link, contacts, Client-scoped Activity, and conversion evidence.
+
+## Post-conversion lifecycle
+
+There is no generic Client creation, email merge, or implicit conversion. Client
+identity/billing edits use `update_client_details` with `lock_version`; status
+uses `set_client_status`. `active ↔ inactive` is available to active Sales,
+Owner, and Admin staff. Archive requires Owner/Admin, a reason, and no open
+Task or non-terminal Quote through the Client or source-Lead lineage. Restore is
+`archived → inactive` with a reason; archived Clients are read-only and cannot
+be deleted.
+
+ClientContact uses `active ↔ inactive`, retains history, and is maintained by
+trusted contact actions. An inactive contact cannot be primary; primary changes
+are atomic and concurrency-checked. No ordinary UI or Data API path hard-deletes
+a contact.

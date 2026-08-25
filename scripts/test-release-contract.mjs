@@ -2,8 +2,11 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 
 const { validateEvidenceRegistry } = await import('./verify-test-evidence.mjs');
-const { validateP14ReadinessState, validateFinalReleaseState } =
-	await import('./check-release-state.mjs');
+const {
+	validateP14ReadinessState,
+	validateFinalProjectValidationState,
+	validateFinalReleaseState
+} = await import('./check-release-state.mjs');
 const { validateReleaseManifest } = await import('./verify-release-manifest.mjs');
 
 const p14Source = readFileSync('scripts/test-p14-release.mjs', 'utf8');
@@ -15,9 +18,16 @@ assert(
 
 const phase0Source = readFileSync('Phases/PHASE_00_ARCHITECTURE_PRODUCT_CONTRACT.md', 'utf8');
 const evidenceRegistry = JSON.parse(readFileSync('docs/release/TEST_EVIDENCE.json', 'utf8'));
+const evidenceVersion = evidenceRegistry.version;
+const evidenceCount = evidenceRegistry.entry_count;
 const phase0Evidence = new Map(
 	evidenceRegistry.entries
 		.filter((entry) => entry.id.startsWith('P0-'))
+		.map((entry) => [entry.id, entry])
+);
+const phase1Evidence = new Map(
+	evidenceRegistry.entries
+		.filter((entry) => entry.id.startsWith('P1-'))
 		.map((entry) => [entry.id, entry])
 );
 
@@ -42,6 +52,128 @@ function assertStaticEvidence(id, expectedSources) {
 		}
 	}
 }
+
+const expectedP1Commands = {
+	'P1-T01': 'bun install --frozen-lockfile',
+	'P1-T02': 'bun run check',
+	'P1-T03': 'bun run test:unit -- --run',
+	'P1-T04': 'bun run build',
+	'P1-T05': 'bun run test:p1:lifecycle',
+	'P1-T06': 'bun run security:bundle',
+	'P1-T07': 'bun run diff:check',
+	'P1-T08': 'bun run ci:contract',
+	'P1-T09': 'bun install --frozen-lockfile',
+	'P1-T10': 'bun run build',
+	'P1-T11': 'bun run authority:registry',
+	'P1-T12': 'bun run authority:registry',
+	'P1-T13': 'bun run authority:registry',
+	'P1-T14': 'bun run test:p1:compatibility',
+	'P1-T15': 'bun run build',
+	'P1-T16': 'bun run authority:registry',
+	'P1-T17': 'bun run build',
+	'P1-T18': 'bun run authority:registry',
+	'P1-T19': 'bun run test:p1:toolchain',
+	'P1-T20': 'bun install --frozen-lockfile && bun run test:p1:compatibility'
+};
+const expectedP1Sources = {
+	'P1-T01': ['docs/TOOLCHAIN_PROOF.md', 'package.json', 'bun.lock'],
+	'P1-T02': ['package.json'],
+	'P1-T03': ['package.json'],
+	'P1-T04': ['package.json'],
+	'P1-T05': ['scripts/test-p1-lifecycle.mjs'],
+	'P1-T06': [
+		'scripts/check-public-bundle.mjs',
+		'src/lib/config/env.ts',
+		'src/lib/config/client-config.ts',
+		'docs/SECURITY_MODEL.md'
+	],
+	'P1-T07': ['.gitignore', 'package.json'],
+	'P1-T08': ['scripts/check-ci-contract.mjs', '.github/workflows/ci.yml'],
+	'P1-T09': ['docs/TOOLCHAIN_PROOF.md', 'package.json', 'bun.lock'],
+	'P1-T10': ['package.json', 'wrangler.jsonc', 'docs/TOOLCHAIN_PROOF.md'],
+	'P1-T11': ['package.json', 'scripts/verify-authority-registry.mjs'],
+	'P1-T12': ['package.json', 'scripts/verify-authority-registry.mjs', 'docs/TOOLCHAIN_PROOF.md'],
+	'P1-T13': ['scripts/verify-authority-registry.mjs', 'bun.lock'],
+	'P1-T14': ['docs/TOOLCHAIN_PROOF.md', 'package.json', 'scripts/test-p1-compatibility.mjs'],
+	'P1-T15': [
+		'scripts/test-p1-toolchain.mjs',
+		'wrangler.jsonc',
+		'scripts/verify-authority-registry.mjs'
+	],
+	'P1-T16': ['wrangler.jsonc', 'scripts/verify-authority-registry.mjs'],
+	'P1-T17': ['package.json', 'DEPENDENCY_BASELINE_v1.0.0.md', 'docs/TOOLCHAIN_PROOF.md'],
+	'P1-T18': ['package.json', 'DEPENDENCY_BASELINE_v1.0.0.md'],
+	'P1-T19': ['scripts/test-p1-toolchain.mjs', 'package.json'],
+	'P1-T20': [
+		'docs/TOOLCHAIN_PROOF.md',
+		'package.json',
+		'scripts/test-p1-compatibility.mjs',
+		'bun.lock'
+	]
+};
+
+for (const [id, command] of Object.entries(expectedP1Commands)) {
+	const entry = phase1Evidence.get(id);
+	assert(entry, `${id} is missing from the generated evidence registry.`);
+	assert(entry.proof?.command === command, `${id} must use ${command}.`);
+	const actualSources = evidenceSources(entry).map((candidate) => candidate.source);
+	for (const source of expectedP1Sources[id]) {
+		assert(actualSources.includes(source), `${id} must reference ${source}.`);
+	}
+	assert(
+		!actualSources.some((source) => source === 'Phases/PHASE_01_PROJECT_SCAFFOLD_QUALITY_GATES.md'),
+		`${id} must not use Phase 1 authority/title presence as its sole proof.`
+	);
+}
+
+assert(
+	phase1Evidence
+		.get('P1-T06')
+		.proof.sources.some((source) => source.source === 'scripts/check-public-bundle.mjs'),
+	'P1-T06 must use the complete bundle scanner proof.'
+);
+assert(
+	phase1Evidence
+		.get('P1-T14')
+		.proof.sources.some((source) => source.source === 'docs/TOOLCHAIN_PROOF.md'),
+	'P1-T14 must use the complete compatibility-proof documentation.'
+);
+assert(
+	phase1Evidence
+		.get('P1-T20')
+		.proof.sources.some((source) => source.source === 'docs/TOOLCHAIN_PROOF.md'),
+	'P1-T20 must use frozen reinstall proof rather than the phase title.'
+);
+const p1CompatibilitySource = readFileSync('scripts/test-p1-compatibility.mjs', 'utf8');
+for (const token of [
+	"['db:start']",
+	"['db:reset']",
+	"['test:p1:toolchain']",
+	"['test:e2e:smoke']",
+	"['build']",
+	"['security:bundle']",
+	"['db:test']",
+	"['db:security']",
+	'finally',
+	'lockfileHash()'
+]) {
+	assert(
+		p1CompatibilitySource.includes(token),
+		`P1 compatibility orchestration must contain ${token}.`
+	);
+}
+assert(
+	phase1Evidence
+		.get('P1-T14')
+		.proof.sources.some((source) => source.source === 'scripts/test-p1-compatibility.mjs'),
+	'P1-T14 must reference the self-contained compatibility orchestration.'
+);
+assert(
+	phase1Evidence
+		.get('P1-T20')
+		.proof.sources.some((source) => source.source === 'scripts/test-p1-compatibility.mjs'),
+	'P1-T20 must reference the self-contained compatibility orchestration.'
+);
 
 assertStaticEvidence('P0-T01', [
 	['docs/ARCHITECTURE.md', ['Each domain and its canonical resources are defined']],
@@ -213,7 +345,7 @@ assert.throws(
 	() =>
 		validateEvidenceRegistry(
 			{
-				version: 'v1.3.1',
+				version: evidenceVersion,
 				entries: [
 					{
 						id: 'P0-T01',
@@ -232,7 +364,7 @@ assert.throws(
 	() =>
 		validateEvidenceRegistry(
 			{
-				version: 'v1.3.1',
+				version: evidenceVersion,
 				entries: [
 					{
 						id: 'P0-T01',
@@ -255,7 +387,7 @@ assert.throws(
 	() =>
 		validateEvidenceRegistry(
 			{
-				version: 'v1.3.1',
+				version: evidenceVersion,
 				entries: [
 					{
 						id: 'P0-T01',
@@ -284,26 +416,31 @@ assert.throws(
 );
 
 assert.throws(
-	() => validateReleaseManifest({ version: 'v1.3.1', application_version: '1.0.0' }),
+	() => validateReleaseManifest({ version: evidenceVersion, application_version: '1.0.0' }),
 	/rc|application_version/i,
 	'Release manifest must require an application RC identity.'
 );
 
 assert.doesNotThrow(() =>
 	validateReleaseManifest({
-		version: 'v1.3.1',
+		version: evidenceVersion,
 		application_version: 'v1.0.0-rc.1',
-		authority_version: 'v1.3.1',
+		authority_version: evidenceVersion,
 		mandatory_test_registry: {
 			path: 'docs/release/TEST_EVIDENCE.json',
-			version: 'v1.3.1',
-			count: 229
+			version: evidenceVersion,
+			count: evidenceCount
 		},
 		expected_commands: ['bun run authority:registry', 'bun run authority:verify'],
 		git_sha: 'GENERATED_AT_VALIDATION',
 		release_evidence_path: '.agent/goal-loop/RELEASE_EVIDENCE.json',
 		lifecycle: {
-			release_status: 'PILOT_READY',
+			goal_status: 'IN_PROGRESS',
+			execution_stage: 'PHASE_LOOP',
+			current_phase: 'P14',
+			phase_status: 'VALIDATING',
+			local_build_status: 'FINAL_VALIDATION_PENDING',
+			release_status: 'NOT_READY',
 			pilot_status: 'NOT_STARTED',
 			production_status: 'NOT_LAUNCHED'
 		}
@@ -314,7 +451,7 @@ assert.throws(
 	() =>
 		validateEvidenceRegistry(
 			{
-				version: 'v1.3.1',
+				version: evidenceVersion,
 				entries: [
 					{
 						id: 'P0-T01',
@@ -375,9 +512,47 @@ assert.throws(
 const trackedP14Readiness = JSON.parse(
 	readFileSync('docs/release/P14_READINESS_STATE.json', 'utf8')
 );
+if (trackedP14Readiness.execution_stage === 'PHASE_LOOP') {
+	assert.doesNotThrow(
+		() => validateP14ReadinessState(trackedP14Readiness),
+		'Tracked P14 readiness state must be independently executable from a clean checkout.'
+	);
+} else if (trackedP14Readiness.execution_stage === 'FINAL_PROJECT_VALIDATION') {
+	assert.equal(
+		trackedP14Readiness.execution_stage,
+		'FINAL_PROJECT_VALIDATION',
+		'Tracked release state must be P14 readiness or final project validation.'
+	);
+	assert.doesNotThrow(
+		() => validateFinalProjectValidationState(trackedP14Readiness),
+		'Tracked final-validation state must be independently executable from a clean checkout.'
+	);
+} else {
+	assert.equal(
+		trackedP14Readiness.execution_stage,
+		'COMPLETE',
+		'Tracked release state must be P14 readiness, final validation, or terminal completion.'
+	);
+	assert.doesNotThrow(
+		() => validateFinalReleaseState(trackedP14Readiness),
+		'Tracked terminal release state must be independently executable from a clean checkout.'
+	);
+}
+
+const finalValidationState = {
+	...p14Readiness,
+	execution_stage: 'FINAL_PROJECT_VALIDATION',
+	phase_status: 'COMPLETE',
+	completed_phases: Array.from({ length: 15 }, (_, index) => `P${index}`)
+};
 assert.doesNotThrow(
-	() => validateP14ReadinessState(trackedP14Readiness),
-	'Tracked P14 readiness state must be independently executable from a clean checkout.'
+	() => validateFinalProjectValidationState(finalValidationState),
+	'Global final validation must remain non-terminal until every final gate passes.'
+);
+assert.throws(
+	() => validateFinalProjectValidationState({ ...finalValidationState, goal_status: 'COMPLETE' }),
+	/IN_PROGRESS/i,
+	'Final validation must reject terminal global state.'
 );
 
 const finalState = {

@@ -31,27 +31,81 @@ export const load: PageServerLoad = async (event) => {
 		.order('created_at', { ascending: false })
 		.limit(50);
 	if (overdue) taskQuery = taskQuery.eq('is_overdue', true);
-	const [tasksResponse, leadsResponse, staffResponse] = await Promise.all([
-		taskQuery,
+	const [tasksResponse, leadsResponse, clientsResponse, quotesResponse, staffResponse] =
+		await Promise.all([
+			taskQuery,
+			supabase
+				.from('leads')
+				.select('id,lead_number,first_name,last_name,pipeline_stage')
+				.order('created_at', { ascending: false })
+				.limit(100),
+			supabase
+				.from('clients')
+				.select('id,client_number,display_name,status')
+				.in('status', ['active', 'inactive'])
+				.order('display_name')
+				.limit(100),
+			supabase
+				.from('quotes')
+				.select('id,quote_number,subject,lead_id,client_id,status')
+				.in('status', ['draft', 'ready', 'sent'])
+				.order('created_at', { ascending: false })
+				.limit(100),
+			supabase
+				.from('profiles')
+				.select('id,full_name,email,role')
+				.eq('status', 'active')
+				.in('role', ['owner', 'admin', 'sales'])
+				.order('full_name')
+				.limit(100)
+		]);
+	if (
+		tasksResponse.error ||
+		leadsResponse.error ||
+		clientsResponse.error ||
+		quotesResponse.error ||
+		staffResponse.error
+	)
+		throw new Error('Could not load Tasks');
+	const taskRows = tasksResponse.data ?? [];
+	const taskLeadIds = [
+		...new Set(taskRows.flatMap((task) => (task.lead_id ? [task.lead_id] : [])))
+	];
+	const taskClientIds = [
+		...new Set(taskRows.flatMap((task) => (task.client_id ? [task.client_id] : [])))
+	];
+	const taskQuoteIds = [
+		...new Set(taskRows.flatMap((task) => (task.quote_id ? [task.quote_id] : [])))
+	];
+	const emptyId = '00000000-0000-0000-0000-000000000000';
+	const [taskLeadsResponse, taskClientsResponse, taskQuotesResponse] = await Promise.all([
 		supabase
 			.from('leads')
-			.select('id,first_name,last_name,pipeline_stage')
-			.order('created_at', { ascending: false })
-			.limit(100),
+			.select('id,lead_number,first_name,last_name,pipeline_stage')
+			.in('id', taskLeadIds.length ? taskLeadIds : [emptyId]),
 		supabase
-			.from('profiles')
-			.select('id,full_name,email,role')
-			.eq('status', 'active')
-			.in('role', ['owner', 'admin', 'sales'])
-			.order('full_name')
-			.limit(100)
+			.from('clients')
+			.select('id,client_number,display_name,status')
+			.in('id', taskClientIds.length ? taskClientIds : [emptyId]),
+		supabase
+			.from('quotes')
+			.select('id,quote_number,subject,lead_id,client_id,status')
+			.in('id', taskQuoteIds.length ? taskQuoteIds : [emptyId])
 	]);
-	if (tasksResponse.error || leadsResponse.error || staffResponse.error)
-		throw new Error('Could not load Tasks');
+	if (taskLeadsResponse.error || taskClientsResponse.error || taskQuotesResponse.error) {
+		throw new Error('Could not load Task context');
+	}
+	const mergeById = <T extends { id: string }>(primary: T[], historical: T[]) => {
+		const rows = new Map(primary.map((row) => [row.id, row]));
+		for (const row of historical) rows.set(row.id, row);
+		return [...rows.values()];
+	};
 	return {
 		profile,
-		tasks: tasksResponse.data ?? [],
-		leads: leadsResponse.data ?? [],
+		tasks: taskRows,
+		leads: mergeById(leadsResponse.data ?? [], taskLeadsResponse.data ?? []),
+		clients: mergeById(clientsResponse.data ?? [], taskClientsResponse.data ?? []),
+		quotes: mergeById(quotesResponse.data ?? [], taskQuotesResponse.data ?? []),
 		staff: staffResponse.data ?? [],
 		filters: { status, overdue }
 	};
@@ -62,14 +116,20 @@ export const actions: Actions = {
 		const { supabase } = await requireActiveStaff(event);
 		const form = await event.request.formData();
 		try {
-			const leadId = String(form.get('lead_id') ?? '');
+			const contextType = String(form.get('context_type') ?? '');
+			const contextId = String(form.get('context_id') ?? '').trim();
+			if (!['lead', 'client', 'quote'].includes(contextType) || !contextId)
+				throw new Error('Choose a Lead, Client or Quote context');
 			const title = String(form.get('title') ?? '').trim();
 			const dueAt = String(form.get('due_at') ?? '').trim();
 			const assignedTo = String(form.get('assigned_to') ?? '').trim();
 			const response = await supabase.rpc('create_task', {
-				p_lead_id: leadId || undefined,
+				...(contextType === 'lead' ? { p_lead_id: contextId } : {}),
+				...(contextType === 'client' ? { p_client_id: contextId } : {}),
+				...(contextType === 'quote' ? { p_quote_id: contextId } : {}),
 				p_type: String(form.get('type') ?? 'custom'),
 				p_title: title,
+				p_description: String(form.get('description') ?? '').trim() || undefined,
 				...(dueAt ? { p_due_at: new Date(dueAt).toISOString() } : {}),
 				...(assignedTo ? { p_assigned_to: assignedTo } : {})
 			});

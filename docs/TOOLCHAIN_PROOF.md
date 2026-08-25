@@ -1,8 +1,9 @@
-# Zephyr CRM v1.3.1 toolchain proof
+# Zephyr CRM v1.3.2 toolchain proof
 
 Status: `PROVEN LOCALLY`  
-Proof date: 2026-08-22  
-Authority: `DEPENDENCY_BASELINE_v1.0.0.md`
+Proof date: 2026-08-24
+Authority: `DEPENDENCY_BASELINE_v1.0.0.md` plus additive amendment
+`DEPENDENCY_BASELINE_v1.0.1.md`
 
 The complete candidate stack was exercised together before the direct versions
 below were frozen. The proof covered a frozen Bun install, SvelteKit/Vite build,
@@ -22,7 +23,7 @@ RLS/security checks, migrations, recovery, and the phase regression suites.
 | Wrangler | `4.125.0` |
 | Tailwind CSS / Vite plugin | `4.3.3` |
 | shadcn-svelte | `1.5.0` (`new-york`) |
-| Lucide | `lucide-svelte 1.0.1` |
+| Lucide | `@lucide/svelte 1.33.0` |
 | Supabase JS / CLI | `2.112.3` / `2.115.0` |
 | Zod | `4.0.0` |
 | TypeScript | `6.0.3`, strict mode |
@@ -31,11 +32,19 @@ RLS/security checks, migrations, recovery, and the phase regression suites.
 | Playwright | `1.62.1` |
 | ESLint | `10.9.0` |
 | Prettier | `3.9.6` |
+| Deterministic PDF renderer | `pdf-lib 1.17.1` |
 
 Every direct dependency is exact-pinned in `package.json`; `bun.lock` is the
 only JavaScript lockfile. Vite owns the SvelteKit build; Bun only installs
 dependencies and invokes project scripts. SendPulse uses the project-owned REST
 adapter and no provider SDK.
+
+`pdf-lib@1.17.1` is the approved P14 additive dependency for deterministic
+multi-page Quote PDFs. The document module runs in the application Worker
+artifact, embeds the explicit standard fonts used by the contract, disables
+metadata/object-stream nondeterminism, and rejects unsupported glyphs instead
+of replacing customer text. The frozen quote snapshot and PDF bytes are passed
+unchanged into the project-owned SendPulse REST adapter.
 
 ## Candidate deviations
 
@@ -58,17 +67,25 @@ superseded static-hosting output mode or a second bundler.
 ## Reproduction gate
 
 ```sh
+# One-time machine prerequisite for the actual browser smoke test:
+bun run test:e2e:install
+
+# Self-contained Phase 1 compatibility gate:
 bun install --frozen-lockfile
-bun run format:check
-bun run lint
-bun run check
-bun run test:unit -- --run
-bun run test:e2e
-bun run build
-bun run db:reset
-bun run db:test
-bun run db:security
+bun run test:p1:compatibility
 ```
+
+`bun run test:p1:compatibility` owns the sequential Phase 1 proof: it starts
+local Supabase, resets it from canonical migrations/seed, runs the toolchain,
+format, lint, Svelte/TypeScript, Vitest, Playwright, Workers build,
+public-bundle, database-lint, and database-security gates, and always stops
+Supabase in cleanup. It captures command output so local credentials are not
+printed and fails if `bun.lock` changes during the run. The one-time browser
+installation is a machine prerequisite; the actual `bun run test:e2e:smoke` suite
+remains inside the compatibility gate.
+
+Frozen reinstall gate: `bun install --frozen-lockfile && bun run test:p1:compatibility`
+must complete without lockfile mutation before the Phase 1 proof is accepted.
 
 The local release gate additionally runs the phase suites, security/public-bundle
 checks, recovery rehearsal, authority registry/hash/coverage checks, and

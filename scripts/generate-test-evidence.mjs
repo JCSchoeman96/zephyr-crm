@@ -3,6 +3,9 @@ import { resolve } from 'node:path';
 
 const root = process.cwd();
 const coverage = readFileSync(resolve(root, 'docs/REQUIREMENTS_COVERAGE.md'), 'utf8');
+const authorityVersion = JSON.parse(
+	readFileSync(resolve(root, 'docs/AUTHORITY_HASHES.json'), 'utf8')
+).version;
 
 const phaseScripts = {
 	P0: null,
@@ -25,7 +28,7 @@ const phaseScripts = {
 const phaseCommands = {
 	P0: 'bun run authority:verify',
 	P1: 'bun run check',
-	P2: 'bun run test:e2e -- tests/e2e/design-system.e2e.ts',
+	P2: 'bun run test:e2e:smoke',
 	P3: 'bun run db:security',
 	P4: 'bun run test:p4:domain',
 	P5: 'bun run test:p5:leads',
@@ -307,6 +310,350 @@ const p0HistoricalProof = {
 		'Historical Git provenance is reviewed manually; this evidence does not claim that authority verification proves no implementation leakage.'
 };
 
+const p1Proofs = {
+	'P1-T01': {
+		classification: 'STATIC',
+		proof: {
+			command: 'bun install --frozen-lockfile',
+			sources: [
+				{
+					source: 'docs/TOOLCHAIN_PROOF.md',
+					contains: ['bun install --frozen-lockfile', 'only JavaScript lockfile']
+				},
+				{ source: 'package.json', contains: ['"packageManager": "bun@1.2.22"'] },
+				{ source: 'bun.lock', contains: ['"lockfileVersion": 1'] }
+			]
+		}
+	},
+	'P1-T02': {
+		classification: 'AUTOMATED',
+		proof: {
+			command: 'bun run check',
+			source: 'package.json',
+			assertion:
+				'"check": "bun run gen && wrangler types --include-env=false --check && svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",'
+		}
+	},
+	'P1-T03': {
+		classification: 'AUTOMATED',
+		proof: {
+			command: 'bun run test:unit -- --run',
+			source: 'package.json',
+			assertion: '"test:unit": "vitest",'
+		}
+	},
+	'P1-T04': {
+		classification: 'AUTOMATED',
+		proof: {
+			command: 'bun run build',
+			source: 'package.json',
+			assertion:
+				'"build": "bun run gen && wrangler types --include-env=false --check && vite build",'
+		}
+	},
+	'P1-T05': {
+		classification: 'AUTOMATED',
+		proof: {
+			command: 'bun run test:p1:lifecycle',
+			source: 'scripts/test-p1-lifecycle.mjs',
+			assertion:
+				"assert(status.includes('API_URL='), 'Local Supabase status did not expose API_URL after reset.');"
+		}
+	},
+	'P1-T06': {
+		classification: 'STATIC',
+		proof: {
+			command: 'bun run security:bundle',
+			sources: [
+				{
+					source: 'scripts/check-public-bundle.mjs',
+					contains: [
+						'const forbiddenNames = [...trustedEnvironmentKeys, ...privateConfigurationKeys];',
+						'const forbiddenValues = forbiddenValueKeys'
+					]
+				},
+				{
+					source: 'src/lib/config/env.ts',
+					contains: [
+						'SENDPULSE_WEBHOOK_SECRET',
+						'SENDPULSE_SENDER_DOMAIN',
+						'SENDPULSE_DKIM_RECORD',
+						'AUTOMATION_CRON_SECRET'
+					]
+				},
+				{
+					source: 'src/lib/config/client-config.ts',
+					contains: ['assertPublicProjectionInput', 'PUBLIC_CLIENT_CONFIG_JSON']
+				},
+				{
+					source: 'docs/SECURITY_MODEL.md',
+					contains: ['The parser rejects fields outside this explicit']
+				}
+			]
+		}
+	},
+	'P1-T07': {
+		classification: 'STATIC',
+		proof: {
+			command: 'bun run diff:check',
+			sources: [
+				{ source: '.gitignore', contains: ['.env.*', '!.env.example', '.dev.vars'] },
+				{ source: 'package.json', contains: ['"diff:check": "git diff --check"'] }
+			]
+		}
+	},
+	'P1-T08': {
+		classification: 'STATIC',
+		proof: {
+			command: 'bun run ci:contract',
+			sources: [
+				{
+					source: 'scripts/check-ci-contract.mjs',
+					contains: ['const requiredCommands = [', 'if (!workflow.includes', 'if: always()']
+				},
+				{
+					source: '.github/workflows/ci.yml',
+					contains: ['run: bun install --frozen-lockfile', 'run: bun run db:stop']
+				}
+			]
+		}
+	},
+	'P1-T09': {
+		classification: 'STATIC',
+		proof: {
+			command: 'bun install --frozen-lockfile',
+			sources: [
+				{
+					source: 'docs/TOOLCHAIN_PROOF.md',
+					contains: ['Bun package manager/runner', '@lucide/svelte 1.33.0', 'Supabase JS / CLI']
+				},
+				{ source: 'package.json', contains: ['"packageManager": "bun@1.2.22"'] },
+				{ source: 'bun.lock', contains: ['"@lucide/svelte": "1.33.0"'] }
+			]
+		}
+	},
+	'P1-T10': {
+		classification: 'STATIC',
+		proof: {
+			command: 'bun run build',
+			sources: [
+				{
+					source: 'package.json',
+					contains: ['wrangler types --include-env=false --check', 'vite build']
+				},
+				{
+					source: 'wrangler.jsonc',
+					contains: [
+						'"main": ".svelte-kit/cloudflare/_worker.js"',
+						'"directory": ".svelte-kit/cloudflare"',
+						'"binding": "ASSETS"'
+					]
+				},
+				{
+					source: 'docs/TOOLCHAIN_PROOF.md',
+					contains: ['artifact through Vite', '.svelte-kit/cloudflare/_worker.js']
+				}
+			]
+		}
+	},
+	'P1-T11': {
+		classification: 'STATIC',
+		proof: {
+			command: 'bun run authority:registry',
+			sources: [
+				{ source: 'package.json', contains: ['"packageManager": "bun@1.2.22"'] },
+				{
+					source: 'scripts/verify-authority-registry.mjs',
+					contains: [
+						"packageManager !== 'bun@1.2.22'",
+						'lockfile authority is not exactly bun.lock'
+					]
+				}
+			]
+		}
+	},
+	'P1-T12': {
+		classification: 'STATIC',
+		proof: {
+			command: 'bun run authority:registry',
+			sources: [
+				{ source: 'package.json', contains: ['"dependencies": {', '"devDependencies": {'] },
+				{
+					source: 'scripts/verify-authority-registry.mjs',
+					contains: ['exact-pinned']
+				},
+				{
+					source: 'docs/TOOLCHAIN_PROOF.md',
+					contains: ['Every direct dependency is exact-pinned']
+				}
+			]
+		}
+	},
+	'P1-T13': {
+		classification: 'STATIC',
+		proof: {
+			command: 'bun run authority:registry',
+			sources: [
+				{
+					source: 'scripts/verify-authority-registry.mjs',
+					contains: [
+						"['package-lock.json', 'pnpm-lock.yaml', 'yarn.lock', 'bun.lockb']",
+						'lockfile authority is not exactly bun.lock'
+					]
+				},
+				{ source: 'bun.lock', contains: ['"lockfileVersion": 1'] }
+			]
+		}
+	},
+	'P1-T14': {
+		classification: 'STATIC',
+		proof: {
+			command: 'bun run test:p1:compatibility',
+			sources: [
+				{
+					source: 'docs/TOOLCHAIN_PROOF.md',
+					contains: [
+						'One-time machine prerequisite',
+						'bun run test:p1:compatibility',
+						'owns the sequential Phase 1 proof',
+						'fails if `bun.lock` changes during the run'
+					]
+				},
+				{ source: 'package.json', contains: ['"test:p1:compatibility":'] },
+				{
+					source: 'scripts/test-p1-compatibility.mjs',
+					contains: [
+						'const compatibilitySteps = [',
+						"['db:start']",
+						"['db:reset']",
+						"['test:e2e:smoke']",
+						"['db:test']",
+						"['db:security']",
+						'finally',
+						'lockfileHash()'
+					]
+				}
+			]
+		}
+	},
+	'P1-T15': {
+		classification: 'STATIC',
+		proof: {
+			command: 'bun run build',
+			sources: [
+				{
+					source: 'scripts/test-p1-toolchain.mjs',
+					contains: [
+						"assert(!existsSync('wrangler.toml'), 'A competing wrangler.toml configuration must not exist.');"
+					]
+				},
+				{
+					source: 'wrangler.jsonc',
+					contains: ['"main": ".svelte-kit/cloudflare/_worker.js"', '"binding": "ASSETS"']
+				},
+				{
+					source: 'scripts/verify-authority-registry.mjs',
+					contains: ['wrangler.jsonc', 'Cloudflare Pages']
+				}
+			]
+		}
+	},
+	'P1-T16': {
+		classification: 'STATIC',
+		proof: {
+			command: 'bun run authority:registry',
+			sources: [
+				{ source: 'wrangler.jsonc', contains: ['"compatibility_date": "2026-08-21"'] },
+				{ source: 'scripts/verify-authority-registry.mjs', contains: ['"compatibility_date"'] }
+			]
+		}
+	},
+	'P1-T17': {
+		classification: 'STATIC',
+		proof: {
+			command: 'bun run build',
+			sources: [
+				{ source: 'package.json', contains: ['"build": "bun run gen', 'vite build'] },
+				{
+					source: 'DEPENDENCY_BASELINE_v1.0.0.md',
+					contains: ['Bun must not replace Vite as the SvelteKit application bundler']
+				},
+				{ source: 'docs/TOOLCHAIN_PROOF.md', contains: ['Vite owns the SvelteKit build'] }
+			]
+		}
+	},
+	'P1-T18': {
+		classification: 'STATIC',
+		proof: {
+			command: 'bun run authority:registry',
+			sources: [
+				{
+					source: 'package.json',
+					contains: ['"supabase": "2.115.0"', '"db:reset": "bunx supabase db reset"']
+				},
+				{
+					source: 'DEPENDENCY_BASELINE_v1.0.0.md',
+					contains: [
+						'Project-local exact dev dependency',
+						'project-local `supabase` CLI dev dependency'
+					]
+				}
+			]
+		}
+	},
+	'P1-T19': {
+		classification: 'STATIC',
+		proof: {
+			command: 'bun run test:p1:toolchain',
+			sources: [
+				{
+					source: 'scripts/test-p1-toolchain.mjs',
+					contains: [
+						"for (const required of ['vitest', '@playwright/test', 'svelte-check', 'eslint', 'prettier'])",
+						"for (const prohibited of ['jest', 'cypress', 'react-icons', '@fortawesome'])"
+					]
+				},
+				{
+					source: 'package.json',
+					contains: [
+						'"vitest": "4.1.11"',
+						'"@playwright/test": "1.62.1"',
+						'"svelte-check": "4.7.6"',
+						'"eslint": "10.9.0"',
+						'"prettier": "3.9.6"'
+					]
+				}
+			]
+		}
+	},
+	'P1-T20': {
+		classification: 'STATIC',
+		proof: {
+			command: 'bun install --frozen-lockfile && bun run test:p1:compatibility',
+			sources: [
+				{
+					source: 'docs/TOOLCHAIN_PROOF.md',
+					contains: [
+						'Frozen reinstall gate:',
+						'bun install --frozen-lockfile && bun run test:p1:compatibility',
+						'without lockfile mutation'
+					]
+				},
+				{ source: 'package.json', contains: ['"test:p1:compatibility":'] },
+				{
+					source: 'scripts/test-p1-compatibility.mjs',
+					contains: [
+						"const lockfile = resolve(root, 'bun.lock');",
+						'lockfileHash()',
+						'bun.lock unexpectedly'
+					]
+				},
+				{ source: 'bun.lock', contains: ['"lockfileVersion": 1'] }
+			]
+		}
+	}
+};
+
 const proofOverrides = {
 	'P3-T18': {
 		command: 'bun run auth:readiness',
@@ -427,12 +774,12 @@ const proofOverrides = {
 	'P14-T13': {
 		command: 'bun run quality',
 		source: 'scripts/test-p14-release.mjs',
-		assertion: 'const evidence = validateEvidenceRegistry(registry);'
+		assertion: 'const evidence = validateEvidenceRegistry(registry, { root });'
 	},
 	'P14-T14': {
 		command: 'bun run test:p14:release',
 		source: 'scripts/test-p14-release.mjs',
-		assertion: 'evidence.count === 229,'
+		assertion: 'evidence.count === registry.entries.length,'
 	},
 	'P14-T15': {
 		command: 'bun run test:p14:release',
@@ -466,8 +813,81 @@ const proofOverrides = {
 	},
 	'P14-T21': {
 		command: 'bun run authority:registry',
-		source: 'scripts/verify-v131-registry.mjs',
+		source: 'scripts/verify-authority-registry.mjs',
 		assertion: 'exact-pinned'
+	},
+	'P14-T22': {
+		command: 'bun run release:state:parity',
+		source: 'scripts/test-pilot-readiness-parity.mjs',
+		assertion: 'assert.deepEqual(parseReadinessProjection(readiness(nonTerminal)), {'
+	},
+	'P14-T23': {
+		command: 'bun run test:p14:gate-semantics',
+		source: 'scripts/test-p14-gate-semantics.mjs',
+		assertion:
+			"assert(!releaseScript.includes(\"['run', 'quality']\"), 'P14 release proof must not invoke quality.');"
+	},
+	'P14-T24': {
+		command: 'bun run test:p14:browser-harness',
+		source: 'tests/e2e/domain/stateful-harness.e2e.ts',
+		assertion:
+			"await expect(page.getByRole('heading', { name: 'P14 Browser Harness' })).toBeVisible();"
+	},
+	'P14-T25': {
+		command: 'bun run test:p14:won-flow',
+		source: 'tests/e2e/domain/won-flow.e2e.ts',
+		assertion: "expect(client?.status).toBe('active');"
+	},
+	'P14-T26': {
+		command: 'bun run test:p14:lost-flow',
+		source: 'tests/e2e/domain/lost-flow.e2e.ts',
+		assertion: "await expect(page.getByText('LOST', { exact: true })).toBeVisible();"
+	},
+	'P14-T27': {
+		command: 'bun scripts/test-p14-client-integrity.mjs',
+		source: 'scripts/test-p14-client-integrity.mjs',
+		assertion:
+			"assert(!directPatch.response.ok, 'Raw Client status PATCH bypassed trusted action');"
+	},
+	'P14-T28': {
+		command: 'bun scripts/test-p14-contact-integrity.mjs',
+		source: 'scripts/test-p14-contact-integrity.mjs',
+		assertion: "assert(!rawDelete.response.ok, 'Raw ClientContact delete bypassed retention law');"
+	},
+	'P14-T29': {
+		command: 'bun scripts/test-p14-task-integrity.mjs',
+		source: 'scripts/test-p14-task-integrity.mjs',
+		assertion: "assert(!rawInsert.response.ok, 'Raw Task INSERT bypassed create_task');"
+	},
+	'P14-T30': {
+		command: 'bun run test:p14:document-fitness',
+		source: 'src/lib/domain/quotes/document.spec.ts',
+		assertion: 'expect(parsed.getPageCount()).toBeGreaterThan(1);'
+	},
+	'P14-T31': {
+		command: 'bun run test:p14:email-safety',
+		source: 'src/lib/domain/communications/sendpulse-adapter.spec.ts',
+		assertion: ').rejects.toThrow(/sender email and name/i);'
+	},
+	'P14-T32': {
+		command: 'bun run test:p14:navigation',
+		source: 'scripts/test-p14-navigation.mjs',
+		assertion: 'assert.match(reports, /error\\(404/);'
+	},
+	'P14-T33': {
+		command: 'bun run test:p14:product-flow',
+		source: 'tests/e2e/domain/role-accessibility.e2e.ts',
+		assertion: "await expect(page.getByText('Viewer access is read-only.').first()).toBeVisible();"
+	},
+	'P14-T34': {
+		command: 'bun scripts/test-p14-hardening-reconciliation.mjs',
+		source: 'docs/release/P14_HARDENING_DISPOSITION.md',
+		assertion: '| ZH-018 | FIXED |'
+	},
+	'P14-T35': {
+		command: 'bun scripts/test-p14-mutation-parity.mjs',
+		source: 'scripts/test-p14-mutation-parity.mjs',
+		assertion: "leadAndOutboundLaw.includes('private.allow_outbound_attempt_mutation'),"
 	}
 };
 
@@ -597,6 +1017,7 @@ function nearestAssertion(source, id) {
 
 function entryFor(row) {
 	const phase = row.id.match(/^P\d+/)[0];
+	const p1Proof = p1Proofs[row.id];
 	const override = proofOverrides[row.id];
 	const externalGate = externalGates.get(row.id);
 	if (externalGate) {
@@ -624,6 +1045,15 @@ function entryFor(row) {
 			criterion: row.criterion,
 			classification: 'STATIC',
 			proof: p0Proofs[row.id]
+		};
+	}
+	if (p1Proof) {
+		return {
+			id: row.id,
+			title: row.title,
+			criterion: row.criterion,
+			classification: p1Proof.classification,
+			proof: p1Proof.proof
 		};
 	}
 	if (override) {
@@ -695,6 +1125,6 @@ const entries = parseRows().map(entryFor);
 mkdirSync(resolve(root, 'docs/release'), { recursive: true });
 writeFileSync(
 	resolve(root, 'docs/release/TEST_EVIDENCE.json'),
-	`${JSON.stringify({ version: 'v1.3.1', generated_from: 'Phases/PHASE_00...PHASE_14', entry_count: entries.length, entries }, null, 2)}\n`
+	`${JSON.stringify({ version: authorityVersion, generated_from: 'Phases/PHASE_00...PHASE_14', entry_count: entries.length, entries }, null, 2)}\n`
 );
 console.log(`Generated docs/release/TEST_EVIDENCE.json with ${entries.length} entries.`);
