@@ -201,3 +201,66 @@ A valid recovery proof includes PostgreSQL data/schema, private Storage artifact
 ## Security review gates
 
 The final local gate must prove anonymous denial, role matrix behavior, suspended-user enforcement, secret absence from browser output, webhook rejection, XSS-safe rendering, private document denial, Activity append-only behavior, quote immutability, idempotency, optimistic concurrency, and recovery rehearsal. Production/pilot deployment remains outside this local loop.
+
+## v1.4.0 additive Fulfilment authorization
+
+The v1.4.0 amendment preserves the four existing roles and adds no separate
+permission system. RLS still determines which rows a user can see, while
+trusted actions determine whether a material transition is legal.
+
+RLS is also enabled on `FulfilmentCase`, `FulfilmentStep`, and
+`PaymentMilestone`. Their rows are visible only through the same authenticated,
+non-suspended isolated-client boundary as the existing CRM resources.
+
+| Action | Sales | Admin | Owner | Viewer |
+|---|---:|---:|---:|---:|
+| Work Sales queues | yes | yes | yes | read |
+| Create/send/revise Quote | yes | yes | yes | read |
+| Accept or decline current Quote | yes | yes | yes | read |
+| Create/update Fulfilment steps | yes | yes | yes | read |
+| Record payment received/not required | yes | yes | yes | read |
+| Correct received payment evidence | no | yes | yes | read |
+| Cancel FulfilmentCase | no | yes | yes | read |
+| Complete FulfilmentCase | yes | yes | yes | read |
+
+All mutation rows require an active authenticated Profile and the current
+trusted boundary. Admin/Owner payment correction and case cancellation require
+current-session AAL2/MFA, a non-blank reason, expected `lock_version`, and
+Activity plus security-audit evidence. A viewer may read authorised records
+but cannot invoke a mutation action.
+
+The additive protected-field boundary includes FulfilmentCase status and
+lineage, FulfilmentStep type/status/schedule/completion evidence,
+PaymentMilestone type/status/actor/timestamps, and Fulfilment Task parent
+relationships. Browser-supplied Client/Lead IDs for a Fulfilment Task are
+validated against the server-derived case lineage and cannot grant access or
+change ownership.
+
+The trusted v1.4.0 action names are:
+
+```text
+start_lead_qualification
+ready_lead_for_quote
+accept_quote
+revise_quote
+decline_quote
+create_fulfilment_step
+schedule_fulfilment_step
+reschedule_fulfilment_step
+complete_fulfilment_step
+cancel_fulfilment_step
+request_payment_milestone
+record_payment_received
+mark_payment_not_required
+correct_payment_milestone
+complete_fulfilment
+cancel_fulfilment
+create_task
+```
+
+Raw authenticated INSERT/PATCH/DELETE on FulfilmentCase,
+FulfilmentStep, PaymentMilestone, Fulfilment Task lineage, protected Lead
+qualification/decision fields, or Fulfilment Activity must not bypass these
+checks. Unique constraints, deterministic lock order, optimistic versions,
+append-only Activity, and idempotent acceptance protect retries and concurrent
+requests.
