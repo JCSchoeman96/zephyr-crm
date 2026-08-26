@@ -17,5 +17,10 @@
 		description="Build a durable draft from a Proposal or Decision Lead."
 	/>
 	{#if form?.message}<ErrorState title="Quote could not be saved" message={form.message} />{/if}
-	<QuoteEditor action="?/save" leadOptions={data.leads} clientOptions={data.clients} />
+	<QuoteEditor
+		action="?/save"
+		leadId={data.selectedLeadId}
+		leadOptions={data.leads}
+		clientOptions={data.clients}
+	/>
 </AppShell>

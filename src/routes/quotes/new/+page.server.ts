@@ -3,6 +3,8 @@ import type { Actions, PageServerLoad } from './$types';
 import { quoteFormValues } from '$lib/server/quote-form';
 import { requireActiveStaff } from '$lib/server/require-auth';
 
+const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
 function record(value: unknown) {
 	return value && typeof value === 'object' && !Array.isArray(value)
 		? (value as Record<string, unknown>)
@@ -26,8 +28,14 @@ export const load: PageServerLoad = async (event) => {
 			.limit(100)
 	]);
 	if (leadResponse.error || clientResponse.error) throw redirect(303, '/quotes');
+	const leads = leadResponse.data ?? [];
+	const requestedLeadId = event.url.searchParams.get('lead_id')?.trim() ?? '';
+	const selectedLeadId =
+		uuidPattern.test(requestedLeadId) && leads.some((lead) => lead.id === requestedLeadId)
+			? requestedLeadId
+			: '';
 	return {
-		leads: (leadResponse.data ?? []).map((lead) => ({
+		leads: leads.map((lead) => ({
 			id: lead.id,
 			label: `#${lead.lead_number} · ${lead.first_name} ${lead.last_name}${lead.company ? ` · ${lead.company}` : ''}`
 		})),
@@ -35,6 +43,7 @@ export const load: PageServerLoad = async (event) => {
 			id: client.id,
 			label: client.display_name || client.company_name || 'Unnamed client'
 		})),
+		selectedLeadId,
 		profile
 	};
 };
