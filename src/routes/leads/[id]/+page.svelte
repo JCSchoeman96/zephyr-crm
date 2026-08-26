@@ -12,23 +12,23 @@
 	import SectionHeader from '$lib/components/ui/SectionHeader.svelte';
 	import Select from '$lib/components/ui/Select.svelte';
 	import Textarea from '$lib/components/ui/Textarea.svelte';
-import RealtimeStatus from '$lib/realtime/RealtimeStatus.svelte';
-import {
-	formatLeadRequestValue,
-	parseLeadRequestMessage,
-	shouldExpandLeadRequestDetails
-} from '$lib/domain/leads/request-details';
+	import RealtimeStatus from '$lib/realtime/RealtimeStatus.svelte';
+	import {
+		formatLeadRequestValue,
+		parseLeadRequestMessage,
+		shouldExpandLeadRequestDetails
+	} from '$lib/domain/leads/request-details';
 
-let { data, form }: { data: PageData; form: ActionData } = $props();
-const canMutate = $derived(data.profile.role !== 'viewer');
-const leadRequestDetails = $derived(parseLeadRequestMessage(data.lead.message));
-const leadRequestOpenAll = $derived(
-	shouldExpandLeadRequestDetails({
-		createdAt: data.lead.created_at,
-		lastActivityAt: data.lead.last_activity_at,
-		pipelineStage: data.lead.pipeline_stage
-	})
-);
+	let { data, form }: { data: PageData; form: ActionData } = $props();
+	const canMutate = $derived(data.profile.role !== 'viewer');
+	const leadRequestDetails = $derived(parseLeadRequestMessage(data.lead.message));
+	const leadRequestOpenAll = $derived(
+		shouldExpandLeadRequestDetails({
+			createdAt: data.lead.created_at,
+			lastActivityAt: data.lead.last_activity_at,
+			pipelineStage: data.lead.pipeline_stage
+		})
+	);
 
 	function stageTone(stage: string) {
 		if (stage === 'WON') return 'success';
