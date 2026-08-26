@@ -299,6 +299,8 @@ accept_quote
 revise_quote
 decline_quote
 create_fulfilment_step
+dispatch_fulfilment_step
+ready_fulfilment_step
 schedule_fulfilment_step
 reschedule_fulfilment_step
 complete_fulfilment_step

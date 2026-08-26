@@ -29,6 +29,7 @@
 				{ label: 'Qualification', href: '/sales/qualification', icon: CheckSquare },
 				{ label: 'Quotes to prepare', href: '/sales/proposals', icon: FileText },
 				{ label: 'Awaiting feedback', href: '/sales/decisions', icon: Activity },
+				{ label: 'Fulfilment', href: '/fulfilment', icon: Activity },
 				{ label: 'Leads', href: '/leads', icon: UserRound },
 				{ label: 'Quotes', href: '/quotes', icon: FileText },
 				{ label: 'Clients', href: '/clients', icon: Users },

@@ -329,6 +329,7 @@ only; it never changes a PaymentMilestone status.
 handoff actions append Activity in the same transaction as their state change.
 Examples include `fulfilment_created`, `fulfilment_step_created`,
 `fulfilment_step_scheduled`, `fulfilment_step_rescheduled`,
+`fulfilment_step_dispatched`, `fulfilment_step_ready_for_collection`,
 `fulfilment_step_completed`, `fulfilment_step_cancelled`,
 `payment_milestone_requested`, `payment_milestone_received`,
 `payment_milestone_marked_not_required`, `payment_follow_up_created`,
@@ -344,7 +345,7 @@ PostgreSQL remains authoritative for these additions:
 | Lead qualification evidence | PostgreSQL | RLS-secured fields through the trusted qualification actions |
 | Quote acceptance/adjust/decline | PostgreSQL transaction | Trusted Quote decision actions only |
 | FulfilmentCase | PostgreSQL | Created by acceptance; lifecycle through trusted actions |
-| FulfilmentStep | PostgreSQL | Trusted create/schedule/reschedule/complete/cancel actions |
+| FulfilmentStep | PostgreSQL | Trusted create/dispatch/ready/schedule/reschedule/complete/cancel actions |
 | PaymentMilestone | PostgreSQL | Trusted request/receive/not-required actions; correction is privileged |
 | Fulfilment Task | PostgreSQL | Trusted lineage-validating Task action plus existing Task lifecycle actions |
 | Fulfilment Activity | PostgreSQL append-only | Transaction-bound trusted action evidence |
@@ -358,6 +359,8 @@ accept_quote
 revise_quote
 decline_quote
 create_fulfilment_step
+dispatch_fulfilment_step
+ready_fulfilment_step
 schedule_fulfilment_step
 reschedule_fulfilment_step
 complete_fulfilment_step

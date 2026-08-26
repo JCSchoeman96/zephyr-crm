@@ -1910,6 +1910,15 @@ export type Database = {
 						};
 						Returns: Json;
 				  };
+			dispatch_fulfilment_step: {
+				Args: {
+					p_lock_version: number;
+					p_notes?: string;
+					p_step_id: string;
+					p_tracking_reference?: string;
+				};
+				Returns: Json;
+			};
 			expire_quote: {
 				Args: { p_lock_version: number; p_quote_id: string };
 				Returns: Json;
@@ -1986,6 +1995,10 @@ export type Database = {
 			};
 			provision_invited_profile: {
 				Args: { p_role?: string; p_status?: string; p_user_id: string };
+				Returns: Json;
+			};
+			ready_fulfilment_step: {
+				Args: { p_lock_version: number; p_notes?: string; p_step_id: string };
 				Returns: Json;
 			};
 			ready_lead_for_quote: {

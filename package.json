@@ -69,6 +69,8 @@
 		"test:p16:persistence": "bun scripts/test-p16-persistence.mjs",
 		"test:p17:sales-fulfilment": "bun scripts/test-p17-sales-fulfilment.mjs",
 		"test:p18:sales-queues": "playwright test tests/e2e/domain/p18-sales-queues.e2e.ts",
+		"test:p19:fulfilment": "bun scripts/test-p19-fulfilment.mjs",
+		"test:p19:browser": "playwright test tests/e2e/domain/p19-fulfilment.e2e.ts",
 		"release:state": "bun scripts/check-release-state.mjs",
 		"release:state:p14": "bun scripts/check-release-state.mjs --p14-readiness --state=docs/release/P14_READINESS_STATE.json",
 		"release:state:parity": "bun scripts/check-pilot-readiness-parity.mjs",
