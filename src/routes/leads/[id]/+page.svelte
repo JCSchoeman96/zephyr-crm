@@ -566,6 +566,9 @@
 		padding-bottom: var(--space-sm);
 		border-bottom: 1px solid var(--color-border);
 	}
+	.lead-request-fields > div:last-child {
+		border-bottom: 0;
+	}
 	.lead-request-fields dt {
 		color: var(--color-text-muted);
 		font-size: var(--font-size-xs);
@@ -705,6 +708,11 @@
 		.quote-row {
 			align-items: flex-start;
 			flex-direction: column;
+		}
+	}
+	@media (min-width: 761px) {
+		.lead-request-fields > div:nth-last-child(2):nth-child(odd) {
+			border-bottom: 0;
 		}
 	}
 	@media (max-width: 450px) {
