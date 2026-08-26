@@ -34,6 +34,13 @@ screens and one column on small screens. Labels use muted text. Values use the
 normal body color and wrap long values. Notes use the existing readable
 multiline treatment and are visually separated from structured values.
 
+At viewport widths below 450px, the outer request-details card loses its
+border, shadow, and inset padding. The existing page gutter remains in place,
+but the inner accordion groups expand to the full available width. The groups
+keep a clear border or separator between them, and their summary rows keep a
+comfortable tap target. This avoids a card inside a card and gives long town
+names, product labels, and notes more room to wrap.
+
 ## Default open state
 
 The default state uses the lead's last activity timestamp, falling back to
