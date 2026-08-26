@@ -32,9 +32,7 @@ describe('lead request details', () => {
 		expect(result.groups[3].fields).toEqual([
 			{ key: 'promo-code', label: 'Promo code', value: 'Hallo' }
 		]);
-		expect(result.groups[4].fields).toEqual([
-			{ key: 'notes', label: 'Notes', value: 'Big' }
-		]);
+		expect(result.groups[4].fields).toEqual([{ key: 'notes', label: 'Notes', value: 'Big' }]);
 	});
 
 	it('omits blank optional fields and creates a source group only when populated', () => {
@@ -47,13 +45,8 @@ describe('lead request details', () => {
 			'measurements',
 			'source-promotion'
 		]);
-		expect(result.groups[0].fields.map((field) => field.label)).toEqual([
-			'Town / area',
-			'Product'
-		]);
-		expect(result.groups[1].fields).toEqual([
-			{ key: 'width', label: 'Width', value: '100' }
-		]);
+		expect(result.groups[0].fields.map((field) => field.label)).toEqual(['Town / area', 'Product']);
+		expect(result.groups[1].fields).toEqual([{ key: 'width', label: 'Width', value: '100' }]);
 		expect(result.groups[2].fields).toEqual([
 			{ key: 'promo-code', label: 'Promo code', value: 'Hallo' }
 		]);

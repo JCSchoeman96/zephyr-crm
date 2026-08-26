@@ -12,10 +12,23 @@
 	import SectionHeader from '$lib/components/ui/SectionHeader.svelte';
 	import Select from '$lib/components/ui/Select.svelte';
 	import Textarea from '$lib/components/ui/Textarea.svelte';
-	import RealtimeStatus from '$lib/realtime/RealtimeStatus.svelte';
+import RealtimeStatus from '$lib/realtime/RealtimeStatus.svelte';
+import {
+	formatLeadRequestValue,
+	parseLeadRequestMessage,
+	shouldExpandLeadRequestDetails
+} from '$lib/domain/leads/request-details';
 
-	let { data, form }: { data: PageData; form: ActionData } = $props();
-	const canMutate = $derived(data.profile.role !== 'viewer');
+let { data, form }: { data: PageData; form: ActionData } = $props();
+const canMutate = $derived(data.profile.role !== 'viewer');
+const leadRequestDetails = $derived(parseLeadRequestMessage(data.lead.message));
+const leadRequestOpenAll = $derived(
+	shouldExpandLeadRequestDetails({
+		createdAt: data.lead.created_at,
+		lastActivityAt: data.lead.last_activity_at,
+		pipelineStage: data.lead.pipeline_stage
+	})
+);
 
 	function stageTone(stage: string) {
 		if (stage === 'WON') return 'success';
@@ -106,7 +119,6 @@
 						<dd>{data.lead.lock_version}</dd>
 					</div>
 				</dl>
-				{#if data.lead.message}<p class="lead-message">{data.lead.message}</p>{/if}
 			</Card>
 
 			<Card>
@@ -163,6 +175,46 @@
 				</div>
 			</Card>
 		</div>
+
+		{#if leadRequestDetails.hasStructuredFields}
+			<Card class="lead-request-card">
+				<SectionHeader
+					title="Request details"
+					description="Captured from the quote request form."
+				/>
+				<div class="lead-request-groups" aria-label="Captured request details">
+					{#each leadRequestDetails.groups as group, index (group.key)}
+						<details
+							class={`lead-request-group lead-request-group--${group.key}`}
+							open={leadRequestOpenAll || index === 0}
+						>
+							<summary>
+								<span class="lead-request-group__summary">
+									<strong>{group.title}</strong>
+									{#if group.summary}<span>{group.summary}</span>{/if}
+								</span>
+							</summary>
+							{#if group.key === 'notes'}
+								<p class="lead-request-note">{leadRequestDetails.notes}</p>
+							{:else}
+								<dl class="lead-request-fields">
+									{#each group.fields as field (field.key)}
+										<div>
+											<dt>{field.label}</dt>
+											<dd>{formatLeadRequestValue(field.key, field.value)}</dd>
+										</div>
+									{/each}
+								</dl>
+							{/if}
+						</details>
+					{/each}
+				</div>
+			</Card>
+		{:else if leadRequestDetails.fallbackMessage}
+			<Card class="lead-request-card">
+				<p class="lead-message">{leadRequestDetails.fallbackMessage}</p>
+			</Card>
+		{/if}
 	</div>
 
 	{#if canMutate && data.lead.pipeline_stage === 'PROPOSAL' && data.quotes.length === 0}
@@ -443,11 +495,102 @@
 		font-size: var(--font-size-sm);
 		text-align: right;
 	}
+	:global(.lead-request-card .ui-card__body) {
+		display: grid;
+		gap: var(--space-lg);
+	}
+	.lead-request-groups {
+		display: grid;
+		gap: var(--space-sm);
+	}
+	.lead-request-group {
+		overflow: hidden;
+		border: 1px solid var(--color-border-subtle);
+		border-radius: var(--radius-md);
+		background: var(--color-surface);
+	}
+	.lead-request-group > summary {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		gap: var(--space-lg);
+		min-height: 3.5rem;
+		box-sizing: border-box;
+		padding: var(--space-md) var(--space-lg);
+		color: var(--color-text);
+		cursor: pointer;
+		list-style: none;
+	}
+	.lead-request-group > summary::-webkit-details-marker {
+		display: none;
+	}
+	.lead-request-group > summary::after {
+		flex: 0 0 auto;
+		color: var(--color-brand-primary);
+		content: '+';
+		font-size: var(--font-size-lg);
+		font-weight: var(--font-weight-semibold);
+		line-height: 1;
+	}
+	.lead-request-group[open] > summary {
+		border-bottom: 1px solid var(--color-border-subtle);
+	}
+	.lead-request-group[open] > summary::after {
+		content: '−';
+	}
+	.lead-request-group__summary {
+		display: grid;
+		min-width: 0;
+		gap: var(--space-xs);
+	}
+	.lead-request-group__summary strong {
+		font-size: var(--font-size-sm);
+		font-weight: var(--font-weight-semibold);
+	}
+	.lead-request-group__summary span {
+		overflow-wrap: anywhere;
+		color: var(--color-text-muted);
+		font-size: var(--font-size-xs);
+	}
+	.lead-request-fields {
+		display: grid;
+		grid-template-columns: repeat(2, minmax(0, 1fr));
+		gap: var(--space-md) var(--space-lg);
+		margin: 0;
+		padding: var(--space-lg);
+	}
+	.lead-request-fields div {
+		display: grid;
+		min-width: 0;
+		gap: var(--space-xs);
+		padding-bottom: var(--space-sm);
+		border-bottom: 1px solid var(--color-border-subtle);
+	}
+	.lead-request-fields dt {
+		color: var(--color-text-muted);
+		font-size: var(--font-size-xs);
+	}
+	.lead-request-fields dd {
+		margin: 0;
+		overflow-wrap: anywhere;
+		color: var(--color-text);
+		font-size: var(--font-size-sm);
+		font-weight: var(--font-weight-semibold);
+	}
+	.lead-request-note {
+		margin: 0;
+		padding: var(--space-lg);
+		background: var(--color-brand-accent-soft);
+		color: var(--color-text);
+		font-size: var(--font-size-sm);
+		line-height: var(--line-height-relaxed);
+		white-space: pre-wrap;
+	}
 	.lead-message {
-		margin: var(--space-lg) 0 0;
+		margin: 0;
 		padding: var(--space-md);
 		border-radius: var(--radius-md);
-		background: var(--color-background-muted);
+		background: var(--color-surface-raised);
 		color: var(--color-text-muted);
 		white-space: pre-wrap;
 	}
@@ -556,9 +699,31 @@
 		.form-row {
 			grid-template-columns: 1fr;
 		}
+		.lead-request-fields {
+			grid-template-columns: 1fr;
+		}
 		.quote-row {
 			align-items: flex-start;
 			flex-direction: column;
+		}
+	}
+	@media (max-width: 450px) {
+		:global(.lead-request-card) {
+			border: 0;
+			border-radius: 0;
+			background: transparent;
+			box-shadow: none;
+		}
+		:global(.lead-request-card .ui-card__body) {
+			padding: 0;
+		}
+		.lead-request-group > summary {
+			min-height: 3.5rem;
+			padding: var(--space-md) var(--space-lg);
+		}
+		.lead-request-fields,
+		.lead-request-note {
+			padding: var(--space-md) var(--space-lg);
 		}
 	}
 </style>
