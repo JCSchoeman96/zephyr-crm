@@ -10,4 +10,10 @@ describe('lead request details layout', () => {
 			'.lead-request-fields > div:nth-last-child(2):nth-child(odd) {'
 		);
 	});
+
+	it('gives accordion headings stronger hierarchy than field summaries', () => {
+		expect(leadPageSource).toContain(
+			'.lead-request-group__summary strong {\n\t\tfont-size: var(--font-size-md);\n\t\tfont-weight: var(--font-weight-bold);'
+		);
+	});
 });

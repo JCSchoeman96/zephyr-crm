@@ -29,6 +29,10 @@ example, a closed Measurements group can show `100 x 100 mm · 1 opening`.
 Users can open and close each group without a page reload. The control remains
 keyboard accessible and works on narrow screens.
 
+The group title is set one step larger and heavier than the closed value
+summary (`md`/bold title versus `xs`/muted summary) so the accordion menu reads
+as navigation rather than another field row.
+
 Inside an open group, values use a two-column label/value grid on larger
 screens and one column on small screens. Labels use muted text. Values use the
 normal body color and wrap long values. Notes use the existing readable

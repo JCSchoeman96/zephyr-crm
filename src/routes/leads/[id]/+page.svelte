@@ -544,8 +544,8 @@
 		gap: var(--space-xs);
 	}
 	.lead-request-group__summary strong {
-		font-size: var(--font-size-sm);
-		font-weight: var(--font-weight-semibold);
+		font-size: var(--font-size-md);
+		font-weight: var(--font-weight-bold);
 	}
 	.lead-request-group__summary span {
 		overflow-wrap: anywhere;
