@@ -505,7 +505,7 @@
 	}
 	.lead-request-group {
 		overflow: hidden;
-		border: 1px solid var(--color-border-subtle);
+		border: 1px solid var(--color-border);
 		border-radius: var(--radius-md);
 		background: var(--color-surface);
 	}
@@ -533,7 +533,7 @@
 		line-height: 1;
 	}
 	.lead-request-group[open] > summary {
-		border-bottom: 1px solid var(--color-border-subtle);
+		border-bottom: 1px solid var(--color-border);
 	}
 	.lead-request-group[open] > summary::after {
 		content: '−';
@@ -564,7 +564,7 @@
 		min-width: 0;
 		gap: var(--space-xs);
 		padding-bottom: var(--space-sm);
-		border-bottom: 1px solid var(--color-border-subtle);
+		border-bottom: 1px solid var(--color-border);
 	}
 	.lead-request-fields dt {
 		color: var(--color-text-muted);
