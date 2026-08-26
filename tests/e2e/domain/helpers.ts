@@ -378,6 +378,16 @@ export async function readClientContacts(
 	);
 }
 
+export async function readFulfilmentCasesForQuote(
+	quoteId: string,
+	user: StaffUser
+): Promise<Array<{ id: string; client_id: string; lead_id: string; accepted_quote_id: string }>> {
+	return authenticatedRequest(
+		`/rest/v1/fulfilment_cases?accepted_quote_id=eq.${quoteId}&select=id,client_id,lead_id,accepted_quote_id`,
+		user
+	);
+}
+
 export async function lostReasonId(user: StaffUser): Promise<string> {
 	const rows = await authenticatedRequest<LostReason[]>(
 		'/rest/v1/lost_reasons?active=eq.true&select=id,label,code&order=sort_order.asc&limit=1',

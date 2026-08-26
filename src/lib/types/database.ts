@@ -1896,10 +1896,20 @@ export type Database = {
 				Args: { p_from?: string; p_to?: string };
 				Returns: Json;
 			};
-			decline_quote: {
-				Args: { p_lock_version: number; p_quote_id: string };
-				Returns: Json;
-			};
+			decline_quote:
+				| {
+						Args: { p_lock_version: number; p_quote_id: string };
+						Returns: Json;
+				  }
+				| {
+						Args: {
+							p_lock_version: number;
+							p_lost_notes?: string;
+							p_lost_reason_id: string;
+							p_quote_id: string;
+						};
+						Returns: Json;
+				  };
 			expire_quote: {
 				Args: { p_lock_version: number; p_quote_id: string };
 				Returns: Json;

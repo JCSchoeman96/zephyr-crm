@@ -6,9 +6,12 @@
 	import Button from '$lib/components/ui/Button.svelte';
 	import Card from '$lib/components/ui/Card.svelte';
 	import ErrorState from '$lib/components/ui/ErrorState.svelte';
+	import Input from '$lib/components/ui/Input.svelte';
 	import PageHeader from '$lib/components/ui/PageHeader.svelte';
 	import QuoteEditor from '$lib/components/quotes/QuoteEditor.svelte';
 	import RealtimeStatus from '$lib/realtime/RealtimeStatus.svelte';
+	import Select from '$lib/components/ui/Select.svelte';
+	import Textarea from '$lib/components/ui/Textarea.svelte';
 
 	let { data, form }: { data: PageData; form: ActionData } = $props();
 	const editableStatuses = ['draft', 'ready'];
@@ -137,17 +140,39 @@
 					variant="secondary">Create revision</Button
 				>
 			</form>
-			<form method="POST" action="?/accept">
-				<input type="hidden" name="lock_version" value={data.quote.lock_version} /><Button
-					type="submit">Mark accepted</Button
-				>
-			</form>
-			<form method="POST" action="?/decline">
-				<input type="hidden" name="lock_version" value={data.quote.lock_version} /><Button
-					type="submit"
-					variant="danger">Mark declined</Button
-				>
-			</form>
+			<div class="decision-forms">
+				<form method="POST" action="?/accept" class="decision-form">
+					<input type="hidden" name="lock_version" value={data.quote.lock_version} />
+					<Input
+						id="acceptance-source"
+						name="acceptance_source"
+						label="Acceptance source"
+						placeholder="customer_email"
+						maxlength={120}
+						required
+					/>
+					<Textarea
+						id="acceptance-evidence"
+						name="acceptance_evidence"
+						label="Acceptance evidence"
+						rows={3}
+						maxlength={2000}
+						required
+					/>
+					<Button type="submit">Accept sale</Button>
+				</form>
+				<form method="POST" action="?/decline" class="decision-form">
+					<input type="hidden" name="lock_version" value={data.quote.lock_version} />
+					<Select id="quote-lost-reason" name="lost_reason_id" label="Lost reason" required>
+						<option value="">Select a reason</option>
+						{#each data.lostReasons as reason (reason.id)}
+							<option value={reason.id}>{reason.label}</option>
+						{/each}
+					</Select>
+					<Textarea id="quote-lost-notes" name="lost_notes" label="Lost notes" rows={3} />
+					<Button type="submit" variant="danger">Decline quote</Button>
+				</form>
+			</div>
 			<form method="POST" action="?/cancel">
 				<input type="hidden" name="lock_version" value={data.quote.lock_version} /><Button
 					type="submit"
@@ -237,6 +262,23 @@
 	.quote-actions form {
 		display: inline-flex;
 	}
+	.decision-forms {
+		display: grid;
+		grid-template-columns: repeat(2, minmax(260px, 1fr));
+		gap: var(--space-md);
+		flex-basis: 100%;
+	}
+	.decision-form {
+		display: grid !important;
+		gap: var(--space-sm);
+		align-content: start;
+		padding: var(--space-md);
+		border: 1px solid var(--color-border-subtle);
+		border-radius: var(--radius-md);
+	}
+	.decision-form :global(.ui-button) {
+		justify-self: start;
+	}
 	.detail-grid {
 		display: grid;
 		grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -320,6 +362,9 @@
 		font-size: var(--font-size-sm);
 	}
 	@media (max-width: 760px) {
+		.decision-forms {
+			grid-template-columns: 1fr;
+		}
 		.detail-grid {
 			grid-template-columns: 1fr;
 		}
