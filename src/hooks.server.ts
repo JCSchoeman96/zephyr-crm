@@ -1,6 +1,7 @@
 import type { Handle } from '@sveltejs/kit';
 import { env } from '$env/dynamic/public';
 import { createSupabaseServerClient } from '$lib/supabase/server';
+import { createAuthStateLoader } from '$lib/server/auth-state';
 
 function connectSources() {
 	const sources = ["'self'"];
@@ -62,22 +63,7 @@ export const handle: Handle = async ({ event, resolve }) => {
 	}
 
 	event.locals.supabase = supabase;
-	event.locals.getAuthState = async () => {
-		if (!supabase) return { user: null, profile: null };
-
-		const {
-			data: { user }
-		} = await supabase.auth.getUser();
-		if (!user) return { user: null, profile: null };
-
-		const { data: profile } = await supabase
-			.from('profiles')
-			.select('id, full_name, email, role, status, timezone, created_at, updated_at')
-			.eq('id', user.id)
-			.maybeSingle();
-
-		return { user, profile };
-	};
+	event.locals.getAuthState = createAuthStateLoader(supabase);
 
 	const response = await resolve(event);
 	applySecurityHeaders(response);
