@@ -25,9 +25,9 @@
 			id: 'sales',
 			label: 'Sales',
 			items: [
+				{ label: 'All enquiries', href: '/leads', icon: UserRound },
 				{ label: 'New Enquiries', href: '/sales/enquiries', icon: UserRound },
 				{ label: 'Qualification', href: '/sales/qualification', icon: CheckSquare },
-				{ label: 'All enquiries', href: '/leads', icon: UserRound },
 				{ label: 'Quotes to Prepare', href: '/sales/proposals', icon: FileText },
 				{ label: 'Awaiting Feedback', href: '/sales/decisions', icon: Activity },
 				{ label: 'Quotes', href: '/quotes', icon: FileText }
