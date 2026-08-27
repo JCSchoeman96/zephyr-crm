@@ -27,8 +27,8 @@
 
 <Card class="maintenance-card">
 	<SectionHeader
-		title="Client maintenance"
-		description="Updates use the trusted Client boundary and the current lock version. Conversion provenance cannot be edited."
+		title="Customer details"
+		description="Update the customer details here. The enquiry that created this customer remains linked."
 	/>
 	{#if canEditDetails}
 		<form method="POST" action="?/update" class="maintenance-form">
@@ -116,13 +116,13 @@
 				label="Country"
 				value={value('billing_country', client.billing_country ?? '')}
 			/>
-			<div class="form-actions"><Button type="submit" size="sm">Save Client details</Button></div>
+			<div class="form-actions"><Button type="submit" size="sm">Save customer details</Button></div>
 		</form>
 	{:else}
 		<p class="muted">
 			{client.status === 'archived'
-				? 'Archived Clients are read-only for detail changes. Owner/Admin can restore one to inactive.'
-				: 'Viewer access is read-only.'}
+				? 'Archived customers are read-only for detail changes. An administrator can restore one to inactive.'
+				: 'You can view this customer, but you do not have permission to change it.'}
 		</p>
 	{/if}
 	<div class="status-actions">

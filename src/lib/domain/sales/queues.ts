@@ -57,7 +57,7 @@ export type SalesQueueDefinition = {
 export const salesQueueDefinitions: Record<SalesQueueKey, SalesQueueDefinition> = {
 	enquiries: {
 		stage: 'NEW',
-		title: 'New enquiries',
+		title: 'New Enquiries',
 		description:
 			'Review incoming enquiries and start qualification when a person is ready to contact.',
 		emptyMessage: 'New website enquiries will appear here.'
@@ -65,20 +65,20 @@ export const salesQueueDefinitions: Record<SalesQueueKey, SalesQueueDefinition> 
 	qualification: {
 		stage: 'QUALIFICATION',
 		title: 'Qualification',
-		description: 'Capture enough context to decide which enquiries are ready for a proposal.',
-		emptyMessage: 'Leads being qualified will appear here.'
+		description: 'Capture enough context to decide which enquiries are ready for a quote.',
+		emptyMessage: 'Enquiries being qualified will appear here.'
 	},
 	proposals: {
 		stage: 'PROPOSAL',
-		title: 'Proposals',
-		description: 'Prepare, review, and send the latest proposal for each qualified Lead.',
-		emptyMessage: 'Leads ready for proposal work will appear here.'
+		title: 'Quotes to Prepare',
+		description: 'Prepare, review, and send the latest quote for each qualified enquiry.',
+		emptyMessage: 'Enquiries ready for quote work will appear here.'
 	},
 	decisions: {
 		stage: 'DECISION',
-		title: 'Awaiting feedback',
-		description: 'Follow up on the current sent Quote and record the customer decision.',
-		emptyMessage: 'Leads with a current sent Quote will appear here.'
+		title: 'Awaiting Feedback',
+		description: 'Follow up on the current sent quote and record the customer decision.',
+		emptyMessage: 'Enquiries with a current sent quote will appear here.'
 	}
 };
 

@@ -198,14 +198,20 @@ test.describe('P18 Sales work queues', () => {
 		const fixture = await createFixture();
 		try {
 			await signIn(page, fixture.user);
+			const navigation = page.getByRole('navigation', { name: 'Primary navigation' });
+			await expect(navigation.getByRole('link', { name: 'New Enquiries' })).toBeVisible();
+			await expect(navigation.getByRole('link', { name: 'Quotes to Prepare' })).toBeVisible();
+			await expect(navigation.getByRole('link', { name: 'Fulfilment' })).toBeVisible();
+			await expect(navigation.getByRole('link', { name: 'Clients' })).toBeVisible();
+			await expect(navigation.getByRole('link', { name: 'Tasks' })).toBeVisible();
 
 			await page.goto('/sales/enquiries', { waitUntil: 'networkidle' });
-			await expect(page.getByRole('heading', { name: 'New enquiries' })).toBeVisible();
+			await expect(page.getByRole('heading', { name: 'New Enquiries' })).toBeVisible();
 			await expect(page.getByText(fixture.leads.enquiry.company)).toBeVisible();
 			await expect(page.getByText(fixture.leads.qualification.company)).toHaveCount(0);
 			const enquiryRow = page.getByRole('row').filter({ hasText: fixture.leads.enquiry.company });
-			await expect(enquiryRow.getByRole('button', { name: 'Start qualification' })).toBeVisible();
-			await submitFormButton(enquiryRow.getByRole('button', { name: 'Start qualification' }));
+			await expect(enquiryRow.getByRole('button', { name: 'Start Qualification' })).toBeVisible();
+			await submitFormButton(enquiryRow.getByRole('button', { name: 'Start Qualification' }));
 			await expect(page).toHaveURL(/\/sales\/enquiries$/);
 			await expect(page.getByText(fixture.leads.enquiry.company)).toHaveCount(0);
 
@@ -222,9 +228,13 @@ test.describe('P18 Sales work queues', () => {
 			await submitFormButton(qualificationRow.getByRole('button', { name: 'Ready for Quote' }));
 			await expect(page).toHaveURL(/\/sales\/qualification$/);
 			await expect(page.getByText(fixture.leads.qualification.company)).toHaveCount(0);
+			const qualifiedLead = await readLead(fixture.leads.qualification.id, fixture.user);
+			expect(qualifiedLead?.qualification_notes).toBe(
+				'Confirmed budget and delivery requirements.'
+			);
 
 			await page.goto('/sales/proposals', { waitUntil: 'networkidle' });
-			await expect(page.getByRole('heading', { name: 'Proposals' })).toBeVisible();
+			await expect(page.getByRole('heading', { name: 'Quotes to Prepare' })).toBeVisible();
 			await expect(page.getByText(fixture.leads.proposalNotStarted.company)).toBeVisible();
 			await expect(page.getByText(fixture.leads.proposalDraft.company)).toBeVisible();
 			await expect(page.getByText(fixture.leads.proposalReady.company)).toBeVisible();
@@ -250,10 +260,10 @@ test.describe('P18 Sales work queues', () => {
 				.getByRole('link', { name: 'Create quote' })
 				.click({ noWaitAfter: true });
 			await page.waitForURL(/\/quotes\/new\?lead_id=/);
-			await expect(page.getByLabel('Lead')).toHaveValue(fixture.leads.proposalNotStarted.id);
+			await expect(page.getByLabel('Enquiry')).toHaveValue(fixture.leads.proposalNotStarted.id);
 
 			await page.goto('/sales/decisions', { waitUntil: 'networkidle' });
-			await expect(page.getByRole('heading', { name: 'Awaiting feedback' })).toBeVisible();
+			await expect(page.getByRole('heading', { name: 'Awaiting Feedback' })).toBeVisible();
 			await expect(page.getByText(fixture.leads.decisionCurrent.company)).toBeVisible();
 			await expect(page.getByText(fixture.leads.decisionStale.company)).toHaveCount(0);
 			const decisionRow = page

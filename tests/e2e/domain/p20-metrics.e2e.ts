@@ -38,7 +38,7 @@ test('renders the canonical Sales and Fulfilment metrics with payment evidence b
 		const dateRange = page.getByRole('form', { name: 'Dashboard date range' });
 		await expect(dateRange.locator('input[name="from"]')).toHaveValue(/^\d{4}-\d{2}-\d{2}$/);
 		await expect(dateRange.locator('input[name="to"]')).toHaveValue(/^\d{4}-\d{2}-\d{2}$/);
-		await expect(metricsSection.getByText(/recorded CRM evidence/i)).toBeVisible();
+		await expect(metricsSection.getByText(/CRM evidence, not reconciled revenue/i)).toBeVisible();
 
 		await page.setViewportSize({ width: 390, height: 844 });
 		const dimensions = await page.evaluate(() => ({

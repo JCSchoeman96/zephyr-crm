@@ -25,25 +25,23 @@ test.describe('canonical Lost browser journey', () => {
 		try {
 			await signIn(page, user);
 			await page.goto(`/leads/${lead.id}`, { waitUntil: 'networkidle' });
-			await page.getByText('Mark lead lost', { exact: true }).click();
-			await page.getByRole('button', { name: 'Mark lost' }).click();
+			await page.locator('summary').filter({ hasText: 'Close enquiry' }).click();
+			await page.getByRole('button', { name: 'Close enquiry' }).click();
 			expect((await readLead(lead.id, user))?.pipeline_stage).toBe('NEW');
 
 			const otherReason = await lostReasonByCode('other', user);
-			await page.getByLabel('Lost reason').selectOption(otherReason);
-			await page.getByRole('button', { name: 'Mark lost' }).click();
+			await page.getByLabel('Why is it not proceeding?').selectOption(otherReason);
+			await page.getByRole('button', { name: 'Close enquiry' }).click();
 			await expect(page.getByRole('alert')).toContainText(/other lost reason requires/i);
 			expect((await readLead(lead.id, user))?.pipeline_stage).toBe('NEW');
 
-			await page.getByText('Mark lead lost', { exact: true }).click();
+			await page.locator('summary').filter({ hasText: 'Close enquiry' }).click();
 			const reason = await lostReasonId(user);
-			await page.getByLabel('Lost reason').selectOption(reason);
-			await page.getByLabel('Notes').fill('P14 browser Lost acceptance path');
-			await page.getByRole('button', { name: 'Mark lost' }).click();
-			await expect(page.getByText('LOST', { exact: true })).toBeVisible();
-			await expect(
-				page.getByText('This lead is terminal under ordinary operations.')
-			).toBeVisible();
+			await page.getByLabel('Why is it not proceeding?').selectOption(reason);
+			await page.getByLabel('Extra notes (optional)').fill('P14 browser Lost acceptance path');
+			await page.getByRole('button', { name: 'Close enquiry' }).click();
+			await expect(page.getByText('Not proceeding', { exact: true })).toBeVisible();
+			await expect(page.getByText('This enquiry is marked as not proceeding.')).toBeVisible();
 			await expect.poll(async () => (await readLead(lead.id, user))?.pipeline_stage).toBe('LOST');
 			const persisted = await readLead(lead.id, user);
 			if (!persisted) throw new Error('Lost flow did not persist the Lead.');
@@ -56,11 +54,9 @@ test.describe('canonical Lost browser journey', () => {
 			const salesPage = await salesContext.newPage();
 			await signIn(salesPage, sales);
 			await salesPage.goto(`/leads/${lead.id}`, { waitUntil: 'networkidle' });
-			await expect(salesPage.getByRole('button', { name: 'Reopen for qualification' })).toHaveCount(
-				0
-			);
+			await expect(salesPage.getByRole('button', { name: 'Reopen enquiry' })).toHaveCount(0);
 
-			await page.getByRole('button', { name: 'Reopen for qualification' }).click();
+			await page.getByRole('button', { name: 'Reopen enquiry' }).click();
 			expect((await readLead(lead.id, user))?.pipeline_stage).toBe('LOST');
 
 			const freshOwnerPage = await page.context().newPage();
@@ -74,13 +70,17 @@ test.describe('canonical Lost browser journey', () => {
 				},
 				user
 			);
-			await freshOwnerPage.getByLabel('Reopen reason').fill('P14 owner administrative review');
-			await freshOwnerPage.getByRole('button', { name: 'Reopen for qualification' }).click();
+			await freshOwnerPage
+				.getByLabel('Why are you reopening it?')
+				.fill('P14 owner administrative review');
+			await freshOwnerPage.getByRole('button', { name: 'Reopen enquiry' }).click();
 			await expect(freshOwnerPage.getByRole('alert')).toContainText(/reload|conflict|stale/i);
 			await freshOwnerPage.reload({ waitUntil: 'networkidle' });
-			await freshOwnerPage.getByLabel('Reopen reason').fill('P14 owner administrative review');
-			await freshOwnerPage.getByRole('button', { name: 'Reopen for qualification' }).click();
-			await expect(freshOwnerPage.getByText('QUALIFICATION', { exact: true })).toBeVisible();
+			await freshOwnerPage
+				.getByLabel('Why are you reopening it?')
+				.fill('P14 owner administrative review');
+			await freshOwnerPage.getByRole('button', { name: 'Reopen enquiry' }).click();
+			await expect(freshOwnerPage.getByText('Reviewing details', { exact: true })).toBeVisible();
 			expect((await readLead(lead.id, user))?.pipeline_stage).toBe('QUALIFICATION');
 
 			const activities = await readLeadActivities(lead.id, user);

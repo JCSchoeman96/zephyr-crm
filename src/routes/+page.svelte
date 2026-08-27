@@ -8,6 +8,7 @@
 	import EmptyState from '$lib/components/ui/EmptyState.svelte';
 	import PageHeader from '$lib/components/ui/PageHeader.svelte';
 	import StatCard from '$lib/components/ui/StatCard.svelte';
+	import { taskTypeLabel } from '$lib/domain/presentation/labels';
 	import RealtimeStatus from '$lib/realtime/RealtimeStatus.svelte';
 	import { publicClientConfiguration } from '$lib/config/public-client-config';
 
@@ -92,26 +93,26 @@
 				<h2 id="needs-attention-heading">Needs attention</h2>
 				<p>Operational counts for {data.dateRange.from} through {data.dateRange.to}.</p>
 			</div>
-			<a href={resolve('/tasks')}>Open Tasks →</a>
+			<a href={resolve('/tasks')}>Open follow-ups →</a>
 		</div>
 		<div class="attention-grid" aria-label="Needs attention metrics">
 			<a class="attention-card" href={resolve('/leads?stage=NEW')}>
-				<span>New Leads</span><strong>{whole(data.operational.newLeads)}</strong>
+				<span>New enquiries</span><strong>{whole(data.operational.newLeads)}</strong>
 			</a>
 			<a class="attention-card attention-card--warning" href={resolve('/tasks?overdue=true')}>
-				<span>Overdue Tasks</span><strong>{whole(data.operational.overdueTasks)}</strong>
+				<span>Overdue follow-ups</span><strong>{whole(data.operational.overdueTasks)}</strong>
 			</a>
 			<a class="attention-card" href={resolve('/tasks')}>
-				<span>Due today</span><strong>{whole(data.operational.dueToday)}</strong>
+				<span>Follow-ups due today</span><strong>{whole(data.operational.dueToday)}</strong>
 			</a>
 			<a class="attention-card" href={resolve('/leads?attention=waiting_on_us')}>
-				<span>Waiting on us</span><strong>{whole(data.operational.waitingOnUs)}</strong>
+				<span>We need to respond</span><strong>{whole(data.operational.waitingOnUs)}</strong>
 			</a>
 			<a class="attention-card" href={resolve('/leads?attention=waiting_on_client')}>
-				<span>Waiting on client</span><strong>{whole(data.operational.waitingOnClient)}</strong>
+				<span>Waiting for customer</span><strong>{whole(data.operational.waitingOnClient)}</strong>
 			</a>
 			<a class="attention-card attention-card--warning" href={resolve('/quotes?status=sent')}>
-				<span>Expiring Quotes</span><strong>{whole(data.operational.expiringQuotes)}</strong>
+				<span>Quotes expiring soon</span><strong>{whole(data.operational.expiringQuotes)}</strong>
 			</a>
 		</div>
 	</section>
@@ -119,12 +120,12 @@
 	<section class="dashboard-section" aria-labelledby="sales-kpis-heading">
 		<div class="section-heading">
 			<div>
-				<h2 id="sales-kpis-heading">Sales KPIs</h2>
+				<h2 id="sales-kpis-heading">Sales overview</h2>
 				<p>Reconciled PostgreSQL aggregates for the same bounded date range.</p>
 			</div>
 		</div>
 		<div class="kpi-grid" aria-label="Sales KPIs">
-			<StatCard label="Leads" value={whole(data.kpis.leads)} detail="Created in range" />
+			<StatCard label="Enquiries" value={whole(data.kpis.leads)} detail="Created in range" />
 			<StatCard
 				label="Quotes sent"
 				value={whole(data.kpis.quotesSent)}
@@ -142,24 +143,24 @@
 				tone="success"
 			/>
 			<StatCard
-				label="Won"
+				label="Customers confirmed"
 				value={whole(data.kpis.wonLeads)}
 				detail="Terminal leads"
 				tone="success"
 			/>
 			<StatCard
-				label="Lost"
+				label="Not proceeding"
 				value={whole(data.kpis.lostLeads)}
 				detail="Terminal leads"
 				tone="danger"
 			/>
 			<StatCard
-				label="Conversion rate"
+				label="Customer conversion rate"
 				value={percentage(data.kpis.conversionRate)}
 				detail="Won ÷ (Won + Lost)"
 			/>
 			<StatCard
-				label="Pipeline value"
+				label="Open quote value"
 				value={currency(data.kpis.pipelineValue)}
 				detail="Eligible active quotes"
 			/>
@@ -180,22 +181,22 @@
 			<StatCard
 				label="New enquiries waiting"
 				value={whole(data.metrics.newEnquiriesWaiting)}
-				detail="Current NEW Leads"
+				detail="New enquiries currently waiting"
 			/>
 			<StatCard
 				label="Qualification backlog"
 				value={whole(data.metrics.qualificationBacklog)}
-				detail="Current QUALIFICATION Leads"
+				detail="Enquiries with details being reviewed"
 			/>
 			<StatCard
 				label="Quotes needing preparation"
 				value={whole(data.metrics.quotesNeedingPreparation)}
-				detail="Current PROPOSAL Leads"
+				detail="Enquiries with quotes to prepare"
 			/>
 			<StatCard
 				label="Quotes awaiting decision"
 				value={whole(data.metrics.quotesAwaitingDecision)}
-				detail="Current sent Quote revisions"
+				detail="Current sent quotes"
 			/>
 			<StatCard
 				label="Average quote response time"
@@ -205,13 +206,13 @@
 			<StatCard
 				label="Accepted value"
 				value={currency(data.metrics.acceptedValue)}
-				detail="Accepted Quote total; not received cash"
+				detail="Accepted quote total; not recorded cash"
 				tone="success"
 			/>
 			<StatCard
 				label="Open fulfilments"
 				value={whole(data.metrics.openFulfilments)}
-				detail="Current open Cases"
+				detail="Current open fulfilments"
 			/>
 			<StatCard
 				label="Upcoming installations"
@@ -221,17 +222,17 @@
 			<StatCard
 				label="Awaiting dispatch"
 				value={whole(data.metrics.awaitingDispatch)}
-				detail="Current courier Steps"
+				detail="Current courier deliveries"
 			/>
 			<StatCard
 				label="Awaiting collection"
 				value={whole(data.metrics.awaitingCollection)}
-				detail="Current pickup Steps"
+				detail="Current pickup collections"
 			/>
 			<StatCard
 				label="Payments awaiting follow-up"
 				value={whole(data.metrics.paymentsAwaitingFollowUp)}
-				detail="Awaiting milestone with open Task"
+				detail="Awaiting payment evidence and a follow-up action"
 				tone="warning"
 			/>
 			<StatCard
@@ -242,8 +243,8 @@
 			/>
 		</div>
 		<p class="metrics-note">
-			Accepted value and received PaymentMilestones are recorded CRM evidence, not reconciled
-			revenue, bank settlement, or provider confirmation.
+			Accepted value and recorded payments are CRM evidence, not reconciled revenue, bank
+			settlement, or provider confirmation.
 		</p>
 	</section>
 
@@ -251,22 +252,23 @@
 		<Card class="analysis-card">
 			<div class="section-heading">
 				<div>
-					<h2>Lost reasons</h2>
-					<p>Terminal losses by recorded reason and latest non-draft quote value.</p>
+					<h2>Why enquiries did not proceed</h2>
+					<p>Closed enquiries grouped by recorded reason and latest quote value.</p>
 				</div>
 			</div>
 			{#if data.lost.byReason.length === 0}
 				<EmptyState
-					title="No lost Leads"
-					message="No terminal losses fall inside this date range."
+					title="No enquiries closed"
+					message="No closed enquiries fall inside this date range."
 				/>
 			{:else}
 				<div class="table-wrap">
 					<table>
-						<caption class="sr-only">Lost Leads by reason</caption>
+						<caption class="sr-only">Enquiries that did not proceed by reason</caption>
 						<thead
 							><tr
-								><th scope="col">Reason</th><th scope="col">Leads</th><th scope="col">Value</th></tr
+								><th scope="col">Reason</th><th scope="col">Enquiries</th><th scope="col">Value</th
+								></tr
 							></thead
 						>
 						<tbody>
@@ -285,8 +287,8 @@
 		<Card class="analysis-card">
 			<div class="section-heading">
 				<div>
-					<h2>Lost sources</h2>
-					<p>Loss volume and latest non-draft quote value by source.</p>
+					<h2>Enquiry sources</h2>
+					<p>Closed enquiry volume and latest quote value by source.</p>
 				</div>
 			</div>
 			{#if data.lost.bySource.length === 0}
@@ -297,10 +299,11 @@
 			{:else}
 				<div class="table-wrap">
 					<table>
-						<caption class="sr-only">Lost Leads by source</caption>
+						<caption class="sr-only">Closed enquiries by source</caption>
 						<thead
 							><tr
-								><th scope="col">Source</th><th scope="col">Leads</th><th scope="col">Value</th></tr
+								><th scope="col">Source</th><th scope="col">Enquiries</th><th scope="col">Value</th
+								></tr
 							></thead
 						>
 						<tbody>
@@ -323,7 +326,7 @@
 			<div>
 				<h2>Source and UTM attribution</h2>
 				<p>
-					Leads are grouped by captured source and campaign metadata; revenue is accepted quote
+					Enquiries are grouped by captured source and campaign metadata; revenue is accepted quote
 					value.
 				</p>
 			</div>
@@ -339,7 +342,7 @@
 					<caption class="sr-only">Source and UTM attribution</caption>
 					<thead>
 						<tr
-							><th scope="col">Source</th><th scope="col">UTM</th><th scope="col">Leads</th><th
+							><th scope="col">Source</th><th scope="col">UTM</th><th scope="col">Enquiries</th><th
 								scope="col">Won</th
 							><th scope="col">Revenue</th></tr
 						>
@@ -367,19 +370,21 @@
 	<Card class="dashboard-card">
 		<div class="section-heading">
 			<div>
-				<h2>Next actions</h2>
-				<p>Task state is derived from each open Task and the current time.</p>
+				<h2>Next follow-ups</h2>
+				<p>Each open follow-up action is shown with its current due time.</p>
 			</div>
-			<a href={resolve('/tasks')}>View all Tasks →</a>
+			<a href={resolve('/tasks')}>View all follow-ups →</a>
 		</div>
 		{#if data.recentTasks.length === 0}
-			<p class="muted">No open Tasks are currently scheduled.</p>
+			<p class="muted">No open follow-ups are currently scheduled.</p>
 		{:else}
 			<ul class="task-list">
 				{#each data.recentTasks as task (task.id)}
 					<li>
 						<div>
-							<strong>{task.title}</strong><span>{task.type} · {taskDate(task.due_at)}</span>
+							<strong>{task.title}</strong><span
+								>{taskTypeLabel(task.type ?? 'custom')} · {taskDate(task.due_at)}</span
+							>
 						</div>
 						{#if task.is_overdue}<Badge tone="danger">Overdue</Badge>{:else}<Badge tone="info"
 								>Open</Badge

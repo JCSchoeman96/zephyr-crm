@@ -14,7 +14,7 @@
 	<a class="back-link" href={resolve('/quotes')}>← Back to Quotes</a>
 	<PageHeader
 		title="New quote"
-		description="Build a durable draft from a Proposal or Decision Lead."
+		description="Build a quote for an enquiry that is ready for pricing."
 	/>
 	{#if form?.message}<ErrorState title="Quote could not be saved" message={form.message} />{/if}
 	<QuoteEditor

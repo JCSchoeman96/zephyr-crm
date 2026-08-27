@@ -18,7 +18,7 @@
 	const canMutate = $derived(data.profile.role !== 'viewer');
 
 	function leadLabel(row: PageData['queue']['rows'][number]) {
-		return `#${row.lead.lead_number} · ${row.lead.first_name} ${row.lead.last_name}`;
+		return `Reference #${row.lead.lead_number} · ${row.lead.first_name} ${row.lead.last_name}`;
 	}
 
 	function quoteHref(row: PageData['queue']['rows'][number]) {
@@ -53,8 +53,8 @@
 	{#if navigating.to}<LoadingState message="Loading Sales queue…" />{/if}
 
 	<div class="queue-summary" aria-live="polite">
-		<span>{data.queue.rows.length} active {data.queue.definition.title.toLowerCase()}</span>
-		<span>Showing up to {data.queue.limits.leads} Leads</span>
+		<span>{data.queue.rows.length} {data.queue.definition.title.toLowerCase()}</span>
+		<span>Showing up to {data.queue.limits.leads} enquiries</span>
 	</div>
 
 	{#if data.queue.rows.length === 0}
@@ -69,34 +69,37 @@
 							<form method="POST" action="?/start" class="queue-action-form">
 								<input type="hidden" name="lead_id" value={row.lead.id} />
 								<input type="hidden" name="lock_version" value={row.lead.lock_version} />
-								<Button type="submit" size="sm">Start qualification</Button>
+								<Button type="submit" size="sm">Start Qualification</Button>
 							</form>
-						{:else}<span class="queue-read-only">Viewer access is read-only.</span>{/if}
+						{:else}<span class="queue-read-only"
+								>You can view this enquiry, but you do not have permission to change it.</span
+							>{/if}
 					</div>
 				{:else if data.queue.key === 'qualification'}
 					<div class="queue-action-stack">
 						{#if canMutate}
-							<Textarea
-								id={`qualification-notes-${row.lead.id}`}
-								name="qualification_notes"
-								label="Qualification notes"
-								value={row.lead.qualification_notes ?? ''}
-								rows={3}
-								required
-								hint="Capture the evidence that makes this Lead ready for a Quote."
-							/>
 							<form method="POST" action="?/ready" class="queue-action-form">
 								<input type="hidden" name="lead_id" value={row.lead.id} />
 								<input type="hidden" name="lock_version" value={row.lead.lock_version} />
+								<Textarea
+									id={`qualification-notes-${row.lead.id}`}
+									name="qualification_notes"
+									label="Qualification notes"
+									value={row.lead.qualification_notes ?? ''}
+									rows={3}
+									hint="Record the requirements and details you confirmed."
+								/>
 								<Button type="submit" size="sm">Ready for Quote</Button>
 							</form>
-						{:else}<span class="queue-read-only">Viewer access is read-only.</span>{/if}
+						{:else}<span class="queue-read-only"
+								>You can view this enquiry, but you do not have permission to change it.</span
+							>{/if}
 					</div>
 				{:else if data.queue.key === 'proposals'}
 					<div class="queue-action-stack">
 						{#if row.quote || canMutate}
 							<a class="queue-action-link" href={quoteHref(row)}>{proposalActionLabel(row)}</a>
-						{:else}<span class="queue-read-only">Quote not started.</span>{/if}
+						{:else}<span class="queue-read-only">No quote has been started.</span>{/if}
 						{#if row.quote}
 							<span class="queue-action-context">{row.quote.subject}</span>
 						{/if}
@@ -114,7 +117,7 @@
 									id={`acceptance-source-${row.quote.id}`}
 									name="acceptance_source"
 									label="Acceptance source"
-									placeholder="customer_email"
+									placeholder="Email, phone call, or other source"
 									required
 								/>
 								<Textarea
@@ -137,7 +140,7 @@
 								<Select
 									id={`lost-reason-${row.quote.id}`}
 									name="lost_reason_id"
-									label="Lost reason"
+									label="Why is it not proceeding?"
 									required
 								>
 									<option value="">Choose a reason</option>
@@ -148,12 +151,14 @@
 								<Textarea
 									id={`lost-notes-${row.quote.id}`}
 									name="lost_notes"
-									label="Lost notes"
+									label="Extra notes (optional)"
 									rows={2}
 								/>
 								<Button type="submit" variant="danger" size="sm">Decline quote</Button>
 							</form>
-						{:else}<span class="queue-read-only">Viewer access is read-only.</span>{/if}
+						{:else}<span class="queue-read-only"
+								>You can view this enquiry, but you do not have permission to change it.</span
+							>{/if}
 					</div>
 				{/if}
 			{/snippet}

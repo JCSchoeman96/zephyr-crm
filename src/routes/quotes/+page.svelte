@@ -10,6 +10,7 @@
 	import LoadingState from '$lib/components/ui/LoadingState.svelte';
 	import PageHeader from '$lib/components/ui/PageHeader.svelte';
 	import Select from '$lib/components/ui/Select.svelte';
+	import { quoteStatusLabel } from '$lib/domain/presentation/labels';
 	import RealtimeStatus from '$lib/realtime/RealtimeStatus.svelte';
 
 	let { data }: { data: PageData } = $props();
@@ -77,13 +78,13 @@
 			/>
 			<Select id="quote-status" name="status" label="Status" value={data.filters.status}>
 				<option value="">All statuses</option>
-				<option value="draft">Draft</option><option value="ready">Ready</option><option value="sent"
-					>Sent</option
+				<option value="draft">Draft</option><option value="ready">Ready to send</option><option
+					value="sent">Sent</option
 				>
 				<option value="accepted">Accepted</option><option value="declined">Declined</option><option
 					value="expired">Expired</option
 				>
-				<option value="cancelled">Cancelled</option><option value="superseded">Superseded</option>
+				<option value="cancelled">Cancelled</option><option value="superseded">Replaced</option>
 			</Select>
 			<div class="filter-actions">
 				<button class="ui-button ui-button--primary ui-button--sm" type="submit"
@@ -105,7 +106,7 @@
 			title={hasFilters ? 'No matching quotes' : 'No quotes yet'}
 			message={hasFilters
 				? 'Try a different search or status.'
-				: 'Create a quote after a Lead reaches Proposal or Decision.'}
+				: 'Create a quote when an enquiry is ready for pricing.'}
 		/>
 	{:else}
 		<Card class="quotes-card">
@@ -130,10 +131,11 @@
 									>{#if client}{client.display_name || client.company_name}{:else if lead}<a
 											class="source-link"
 											href={resolve(`/leads/${lead.id}`)}
-											>Lead #{lead.lead_number} · {lead.first_name} {lead.last_name}</a
+											>Enquiry #{lead.lead_number} · {lead.first_name} {lead.last_name}</a
 										>{:else}—{/if}</td
 								><td>{quote.currency} {money(quote.total)}</td><td
-									><Badge tone={quoteTone(quote.status)}>{quote.status}</Badge></td
+									><Badge tone={quoteTone(quote.status)}>{quoteStatusLabel(quote.status)}</Badge
+									></td
 								><td>{new Date(quote.updated_at).toLocaleDateString('en-ZA')}</td></tr
 							>
 						{/each}

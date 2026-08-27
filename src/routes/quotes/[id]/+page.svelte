@@ -12,6 +12,7 @@
 	import RealtimeStatus from '$lib/realtime/RealtimeStatus.svelte';
 	import Select from '$lib/components/ui/Select.svelte';
 	import Textarea from '$lib/components/ui/Textarea.svelte';
+	import { activityEventLabel, quoteStatusLabel } from '$lib/domain/presentation/labels';
 
 	let { data, form }: { data: PageData; form: ActionData } = $props();
 	const editableStatuses = ['draft', 'ready'];
@@ -64,7 +65,7 @@
 	<PageHeader title={quoteNumber()} description={data.quote.subject}>
 		{#snippet actions()}
 			<RealtimeStatus scope={`quote-${data.quote.id}`} tables={['quotes']} />
-			<Badge tone={tone(data.quote.status)}>{data.quote.status}</Badge>
+			<Badge tone={tone(data.quote.status)}>{quoteStatusLabel(data.quote.status)}</Badge>
 		{/snippet}
 	</PageHeader>
 	{#if form?.message}<ErrorState
@@ -147,7 +148,7 @@
 						id="acceptance-source"
 						name="acceptance_source"
 						label="Acceptance source"
-						placeholder="customer_email"
+						placeholder="Email, phone call, or other source"
 						maxlength={120}
 						required
 					/>
@@ -194,7 +195,7 @@
 					</dd>
 				</div>
 				<div>
-					<dt>Lead</dt>
+					<dt>Enquiry</dt>
 					<dd><a href={resolve(`/leads/${data.lead.id}`)}>#{data.lead.lead_number}</a></dd>
 				</div>
 				<div>
@@ -202,24 +203,20 @@
 					<dd>{data.quote.valid_until ?? 'Not set'}</dd>
 				</div>
 				<div>
-					<dt>Lock version</dt>
-					<dd>{data.quote.lock_version}</dd>
-				</div>
-				<div>
 					<dt>Snapshot</dt>
 					<dd>{hasCompanySnapshot(data.quote.quote_snapshot) ? 'Captured' : 'Missing'}</dd>
 				</div>
 			</dl></Card
 		>
-		<Card title="Activity"
+		<Card title="History"
 			><ul class="activity-list">
 				{#if data.activities.length === 0}<li class="muted">
 						No quote activity yet.
 					</li>{:else}{#each data.activities as activity (activity.id)}<li>
 							<strong>{activity.summary}</strong><span
-								>{activity.event_type} · {new Date(activity.occurred_at).toLocaleString(
-									'en-ZA'
-								)}</span
+								>{activityEventLabel(activity.event_type)} · {new Date(
+									activity.occurred_at
+								).toLocaleString('en-ZA')}</span
 							>
 						</li>{/each}{/if}
 			</ul></Card

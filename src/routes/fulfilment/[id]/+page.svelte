@@ -13,6 +13,17 @@
 	import PageHeader from '$lib/components/ui/PageHeader.svelte';
 	import Select from '$lib/components/ui/Select.svelte';
 	import Textarea from '$lib/components/ui/Textarea.svelte';
+	import {
+		activityEventLabel,
+		fulfilmentCaseStatusLabel,
+		fulfilmentPaymentStatusLabel,
+		fulfilmentPaymentTypeLabel,
+		fulfilmentStepStatusLabel,
+		fulfilmentStepTypeLabel,
+		quoteStatusLabel,
+		taskStatusLabel,
+		taskTypeLabel
+	} from '$lib/domain/presentation/labels';
 	import RealtimeStatus from '$lib/realtime/RealtimeStatus.svelte';
 	import { publicClientConfiguration } from '$lib/config/public-client-config';
 
@@ -39,10 +50,6 @@
 			minimumFractionDigits: 2,
 			maximumFractionDigits: 2
 		}).format(Number(value ?? 0));
-	}
-
-	function titleCase(value: string) {
-		return value.replaceAll('_', ' ').replace(/\b\w/g, (character) => character.toUpperCase());
 	}
 
 	function caseTone(status: string) {
@@ -75,7 +82,7 @@
 		if (step.type === 'installation')
 			return 'Schedule and complete the accepted installation work.';
 		if (step.type === 'courier') return 'Dispatch and confirm delivery for the accepted sale.';
-		return 'Prepare the pickup and confirm collection by the client.';
+		return 'Prepare the pickup and confirm collection by the customer.';
 	}
 
 	function isActiveStep(status: string) {
@@ -109,9 +116,11 @@
 		<div class="section-heading">
 			<div>
 				<h2 id="overview-heading">Overview</h2>
-				<p>Client and accepted Quote lineage is read-only in Fulfilment.</p>
+				<p>The customer and accepted quote remain unchanged in Fulfilment.</p>
 			</div>
-			<Badge tone={caseTone(data.detail.case.status)}>{titleCase(data.detail.case.status)}</Badge>
+			<Badge tone={caseTone(data.detail.case.status)}
+				>{fulfilmentCaseStatusLabel(data.detail.case.status)}</Badge
+			>
 		</div>
 		<Card class="overview-card">
 			<div class="overview-grid">
@@ -120,22 +129,22 @@
 					>
 				</div>
 				<div>
-					<span class="field-label">Client</span>
+					<span class="field-label">Customer</span>
 					{#if data.detail.client}
 						<a href={resolve(`/clients/${data.detail.client.id}`)}
 							>{data.detail.client.display_name}</a
 						>
-						<span class="secondary">Client #{data.detail.client.client_number}</span>
-					{:else}<span>Client unavailable</span>{/if}
+						<span class="secondary">Customer #{data.detail.client.client_number}</span>
+					{:else}<span>Customer unavailable</span>{/if}
 				</div>
 				<div>
-					<span class="field-label">Source Lead</span>
+					<span class="field-label">Source enquiry</span>
 					{#if data.detail.lead}
 						<a href={resolve(`/leads/${data.detail.lead.id}`)}
 							>#{data.detail.lead.lead_number} · {data.detail.lead.first_name}
 							{data.detail.lead.last_name}</a
 						>
-					{:else}<span>Lead unavailable</span>{/if}
+					{:else}<span>Enquiry unavailable</span>{/if}
 				</div>
 				<div>
 					<span class="field-label">Accepted Quote</span>
@@ -144,7 +153,7 @@
 							>{data.detail.quote.quote_number ?? 'Accepted Quote'} · {data.detail.quote.subject}</a
 						>
 						<span class="secondary"
-							>{data.detail.quote.status} · {money(
+							>{quoteStatusLabel(data.detail.quote.status)} · {money(
 								data.detail.quote.total,
 								data.detail.quote.currency
 							)}</span
@@ -174,7 +183,7 @@
 				{#if canMutate && data.detail.case.status === 'open'}
 					<form method="POST" action="?/completeCase">
 						<input type="hidden" name="lock_version" value={data.detail.case.lock_version} />
-						<Button type="submit">Complete case</Button>
+						<Button type="submit">Complete fulfilment</Button>
 					</form>
 				{/if}
 				{#if canMutate && canCorrect && data.detail.case.status === 'open'}
@@ -184,9 +193,7 @@
 						<Button type="submit" variant="danger">Cancel case</Button>
 					</form>
 				{:else if data.detail.case.status === 'open'}
-					<span class="muted"
-						>Case cancellation is restricted to Owner/Admin with current-session AAL2.</span
-					>
+					<span class="muted">Only authorized administrators can cancel an open fulfilment.</span>
 				{/if}
 			</div>
 		</Card>
@@ -203,7 +210,7 @@
 			<Card class="create-work-card">
 				<h3>Add operational work</h3>
 				<p class="muted">
-					Create one active step per work type. The database owns the initial state.
+					Create one active step per work type. The next status is set automatically.
 				</p>
 				<form method="POST" action="?/createStep" class="work-form">
 					<input type="hidden" name="lock_version" value={data.detail.case.lock_version} />
@@ -230,10 +237,10 @@
 					<Card class="step-card">
 						<div class="step-header">
 							<div>
-								<h3>{titleCase(step.type)}</h3>
+								<h3>{fulfilmentStepTypeLabel(step.type)}</h3>
 								<p>{stepDescription(step)}</p>
 							</div>
-							<Badge tone={stepTone(step.status)}>{titleCase(step.status)}</Badge>
+							<Badge tone={stepTone(step.status)}>{fulfilmentStepStatusLabel(step.status)}</Badge>
 						</div>
 						<div class="evidence-grid">
 							<div>
@@ -242,9 +249,6 @@
 							</div>
 							<div>
 								<span class="field-label">Completed</span><span>{dateTime(step.completed_at)}</span>
-							</div>
-							<div>
-								<span class="field-label">Lock version</span><span>{step.lock_version}</span>
 							</div>
 							{#if step.tracking_reference}<div>
 									<span class="field-label">Tracking reference</span><span
@@ -386,10 +390,12 @@
 					<Card class="payment-card">
 						<div class="step-header">
 							<div>
-								<h3>{titleCase(payment.type)}</h3>
+								<h3>{fulfilmentPaymentTypeLabel(payment.type)}</h3>
 								<p>Milestone status is independent of operational work.</p>
 							</div>
-							<Badge tone={paymentTone(payment.status)}>{titleCase(payment.status)}</Badge>
+							<Badge tone={paymentTone(payment.status)}
+								>{fulfilmentPaymentStatusLabel(payment.status)}</Badge
+							>
 						</div>
 						<div class="evidence-grid">
 							<div>
@@ -400,9 +406,6 @@
 							<div>
 								<span class="field-label">Received</span><span>{dateTime(payment.received_at)}</span
 								>
-							</div>
-							<div>
-								<span class="field-label">Lock version</span><span>{payment.lock_version}</span>
 							</div>
 							{#if payment.received_recorded_by}<div>
 									<span class="field-label">Recorded by</span><span
@@ -502,10 +505,10 @@
 	<section aria-labelledby="tasks-heading" class="detail-section">
 		<div class="section-heading">
 			<div>
-				<h2 id="tasks-heading">Tasks</h2>
-				<p>Follow-up is a concrete next action and never a PaymentMilestone state.</p>
+				<h2 id="tasks-heading">Follow-up actions</h2>
+				<p>Keep track of what needs to happen next.</p>
 			</div>
-			<a href={resolve('/tasks')}>Open Tasks →</a>
+			<a href={resolve('/tasks')}>Open follow-ups →</a>
 		</div>
 		{#if canMutate && data.detail.case.status === 'open'}
 			<Card class="create-task-card">
@@ -513,20 +516,25 @@
 					<Input
 						id="follow-up-title"
 						name="title"
-						label="Payment follow-up title"
+						label="What needs to happen?"
 						value="Confirm payment evidence"
 						required
 					/>
-					<Input id="follow-up-due" name="due_at" label="Due at" type="datetime-local" />
-					<Textarea id="follow-up-description" name="description" label="Description" rows={2} />
-					<Button type="submit" size="sm">Create or reuse follow-up</Button>
+					<Input id="follow-up-due" name="due_at" label="Due date" type="datetime-local" />
+					<Textarea
+						id="follow-up-description"
+						name="description"
+						label="Notes (optional)"
+						rows={2}
+					/>
+					<Button type="submit" size="sm">Add follow-up action</Button>
 				</form>
 			</Card>
 		{/if}
 		{#if data.detail.tasks.length === 0}
 			<EmptyState
-				title="No Fulfilment Tasks"
-				message="Create a payment follow-up when an operator owes the next check."
+				title="No follow-up actions"
+				message="Add a follow-up action when someone needs to do the next check."
 			/>
 		{:else}
 			<ul class="task-list">
@@ -534,7 +542,9 @@
 					<li class="task-row">
 						<div>
 							<strong>{task.title}</strong><span
-								>{titleCase(task.type)}{task.due_at ? ` · due ${dateTime(task.due_at)}` : ''}</span
+								>{taskTypeLabel(task.type)}{task.due_at
+									? ` · due ${dateTime(task.due_at)}`
+									: ''}</span
 							>{#if task.description}<small>{task.description}</small>{/if}
 						</div>
 						<div class="task-state">
@@ -543,7 +553,7 @@
 										? 'success'
 										: task.status === 'cancelled'
 											? 'neutral'
-											: 'info'}>{titleCase(task.status)}</Badge
+											: 'info'}>{taskStatusLabel(task.status)}</Badge
 								>{/if}<span class="secondary">{actorName(task.assigned_to)}</span>
 						</div>
 					</li>
@@ -555,22 +565,19 @@
 	<section aria-labelledby="activity-heading" class="detail-section">
 		<div class="section-heading">
 			<div>
-				<h2 id="activity-heading">Activity</h2>
-				<p>
-					Append-only evidence for handoff, work, payment, Task, cancellation, correction, and
-					completion events.
-				</p>
+				<h2 id="activity-heading">History</h2>
+				<p>See what has happened with this fulfilment.</p>
 			</div>
 		</div>
 		{#if data.detail.activities.length === 0}
-			<EmptyState title="No Activity" message="Trusted Fulfilment actions will appear here." />
+			<EmptyState title="No history" message="Fulfilment actions will appear here." />
 		{:else}
 			<ol class="activity-list">
 				{#each data.detail.activities as activity (activity.id)}
 					<li>
 						<div>
 							<strong>{activity.summary}</strong><span
-								>{titleCase(activity.event_type)} · {actorName(activity.actor_id)}</span
+								>{activityEventLabel(activity.event_type)} · {actorName(activity.actor_id)}</span
 							>
 						</div>
 						<time datetime={activity.occurred_at}>{dateTime(activity.occurred_at)}</time>

@@ -14,6 +14,7 @@ type LeadRecord = {
 	id: string;
 	lock_version: number;
 	pipeline_stage?: string;
+	qualification_notes?: string | null;
 	lost_reason_id?: string | null;
 	lost_notes?: string | null;
 };
@@ -420,6 +421,7 @@ export async function cleanupLead(id: string, userId: string): Promise<void> {
 	if (!apiUrl || !serviceRoleKey) return;
 	const paths = [
 		`/rest/v1/outbound_messages?lead_id=eq.${id}`,
+		`/rest/v1/fulfilment_cases?lead_id=eq.${id}`,
 		`/rest/v1/clients?source_lead_id=eq.${id}`,
 		`/rest/v1/leads?id=eq.${id}`,
 		`/auth/v1/admin/users/${userId}`

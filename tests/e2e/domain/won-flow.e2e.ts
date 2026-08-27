@@ -5,13 +5,14 @@ import {
 	ingestLead,
 	readClientContacts,
 	readClientForLead,
+	readFulfilmentCasesForQuote,
 	readLead,
 	readQuotesForLead,
 	signIn
 } from './helpers';
 
-test.describe('canonical Won browser journey', () => {
-	test('creates a Quote, sends it through the fake provider, and converts the Lead', async ({
+test.describe('canonical Quote acceptance browser journey', () => {
+	test('creates a Quote, sends it through the fake provider, and hands the sale to Fulfilment', async ({
 		page
 	}) => {
 		const user = await createStaff('owner');
@@ -19,8 +20,8 @@ test.describe('canonical Won browser journey', () => {
 		try {
 			await signIn(page, user);
 			await page.goto(`/leads/${lead.id}`, { waitUntil: 'networkidle' });
-			await page.getByRole('button', { name: 'Qualify lead' }).click();
-			await page.getByRole('button', { name: 'Move to proposal' }).click();
+			await page.getByRole('button', { name: 'Start Qualification' }).click();
+			await page.getByRole('button', { name: 'Ready for Quote' }).click();
 			await expect(page.getByRole('heading', { name: 'Create a simple quote' })).toBeVisible();
 			await page.locator('input[name="subject"]').fill('P14 browser Won quote');
 			await page.locator('input[name="item_name"]').fill('P14 implementation');
@@ -56,12 +57,22 @@ test.describe('canonical Won browser journey', () => {
 			expect(documentResponse.bytes).toBeGreaterThan(0);
 
 			await page.goto(`/leads/${lead.id}`, { waitUntil: 'networkidle' });
-			await expect(page.getByText('waiting_on_client', { exact: true })).toBeVisible();
-			await expect(page.getByText('Follow up on sent quote', { exact: true })).toBeVisible();
-			await expect(page.getByRole('button', { name: 'Mark won and create Client' })).toBeVisible();
-			await page.getByRole('button', { name: 'Mark won and create Client' }).click();
-			await expect(page.getByText(/Converted to Client/)).toBeVisible();
-			await expect(page.getByText('WON', { exact: true })).toBeVisible();
+			await expect(page.getByRole('button', { name: 'Mark won and create Client' })).toHaveCount(0);
+			await expect(
+				page
+					.getByRole('navigation', { name: 'Primary navigation' })
+					.getByRole('link', { name: 'Awaiting Feedback' })
+			).toBeVisible();
+			await page.getByRole('link', { name: 'P14 browser Won quote' }).click();
+			await expect(page.getByRole('button', { name: 'Accept sale' })).toBeVisible();
+			await page.getByLabel('Acceptance source').fill('customer_email');
+			await page
+				.getByLabel('Acceptance evidence')
+				.fill('Customer approved the Quote by email during the browser journey.');
+			await page.getByRole('button', { name: 'Accept sale' }).click();
+			await expect(
+				page.locator('[data-tone="success"]').filter({ hasText: /^Accepted$/ })
+			).toBeVisible();
 
 			await expect.poll(async () => (await readLead(lead.id, user))?.pipeline_stage).toBe('WON');
 			const client = await readClientForLead(lead.id, user);
@@ -73,15 +84,19 @@ test.describe('canonical Won browser journey', () => {
 				contacts.filter((contact) => contact.is_primary && contact.status === 'active')
 			).toHaveLength(1);
 			const quotes = await readQuotesForLead(lead.id, user);
-			expect(quotes[0]?.status).toBe('sent');
-			expect(Number(quotes[0]?.total)).toBe(3450);
-			expect(quotes[0]?.document_path).toBeTruthy();
+			const acceptedQuote = quotes.find((quote) => quote.status === 'accepted');
+			if (!acceptedQuote?.id) throw new Error('Won flow did not accept the Quote.');
+			expect(acceptedQuote.status).toBe('accepted');
+			expect(Number(acceptedQuote.total)).toBe(3450);
+			expect(acceptedQuote.document_path).toBeTruthy();
+			const cases = await readFulfilmentCasesForQuote(acceptedQuote.id, user);
+			expect(cases).toHaveLength(1);
 
 			await page.goto(`/clients/${client.id}`, { waitUntil: 'networkidle' });
 			await expect(page.getByRole('heading', { name: 'Contacts' })).toBeVisible();
-			await expect(page.getByText('Source Lead', { exact: true })).toBeVisible();
+			await expect(page.getByText('Source enquiry', { exact: true })).toBeVisible();
 			await page.reload({ waitUntil: 'networkidle' });
-			await expect(page.getByRole('heading', { name: 'Activity history' })).toBeVisible();
+			await expect(page.getByRole('heading', { name: 'History', exact: true })).toBeVisible();
 		} finally {
 			await cleanupLead(lead.id, user.id);
 		}

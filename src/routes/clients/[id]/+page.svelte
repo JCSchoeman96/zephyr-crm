@@ -10,6 +10,7 @@
 	import ErrorState from '$lib/components/ui/ErrorState.svelte';
 	import PageHeader from '$lib/components/ui/PageHeader.svelte';
 	import SectionHeader from '$lib/components/ui/SectionHeader.svelte';
+	import { activityEventLabel } from '$lib/domain/presentation/labels';
 
 	let { data, form }: { data: PageData; form: ActionData } = $props();
 
@@ -30,7 +31,7 @@
 
 <svelte:head>
 	<title>{data.client.display_name} | Zephyr CRM</title>
-	<meta name="description" content="Client detail, contacts, and source Lead history" />
+	<meta name="description" content="Customer detail, contacts, and enquiry history" />
 </svelte:head>
 
 <AppShell userEmail={data.auth.user?.email} userRole={data.auth.profile?.role}>
@@ -46,7 +47,7 @@
 	{#if form?.message}<ErrorState title="Client action failed" message={form.message} />{/if}
 	{#if data.profile.role === 'viewer'}
 		<p class="read-only-note">
-			Viewer access is read-only. Client maintenance is available to active staff.
+			You can view this customer, but you do not have permission to change it.
 		</p>
 	{/if}
 
@@ -54,7 +55,7 @@
 	<nav class="detail-nav" aria-label="Client detail sections">
 		<a href={resolve(`/clients/${data.client.id}#overview`)}>Overview</a>
 		<a href={resolve(`/clients/${data.client.id}#contacts`)}>Contacts</a>
-		<a href={resolve(`/clients/${data.client.id}#activity`)}>Activity</a>
+		<a href={resolve(`/clients/${data.client.id}#activity`)}>History</a>
 	</nav>
 
 	<div id="overview" class="anchor-section detail-grid">
@@ -109,10 +110,10 @@
 				<span>{display(data.client.billing_country)}</span>
 			</address>
 			<div class="source-block">
-				<strong>Source Lead</strong>
+				<strong>Source enquiry</strong>
 				{#if data.sourceLead}
 					<a href={resolve(`/leads/${data.sourceLead.id}`)}>
-						Lead #{data.sourceLead.lead_number} · {data.sourceLead.first_name}
+						Enquiry #{data.sourceLead.lead_number} · {data.sourceLead.first_name}
 						{data.sourceLead.last_name}
 					</a>
 				{:else}—{/if}
@@ -132,31 +133,35 @@
 	<div id="activity" class="anchor-section">
 		<Card>
 			<SectionHeader
-				title="Activity history"
-				description="Conversion evidence remains linked to the original Lead and Client."
+				title="History"
+				description="Conversion evidence remains linked to the original enquiry and client."
 			/>
 			{#if data.activities.length === 0}
 				<EmptyState
-					title="No Client activity"
-					message="No Client-scoped activity has been recorded yet."
+					title="No customer history"
+					message="No history has been recorded for this customer yet."
 				/>
 			{:else}
 				<ol class="activity-list">
 					{#each data.activities as activity (activity.id)}
 						<li>
 							<strong>{activity.summary}</strong>
-							<span>{activity.event_type} · {dateTime(activity.occurred_at)}</span>
+							<span
+								>{activityEventLabel(activity.event_type)} · {dateTime(activity.occurred_at)}</span
+							>
 						</li>
 					{/each}
 				</ol>
 			{/if}
 			{#if data.sourceLeadActivities.length > 0}
-				<h3 class="history-heading">Source Lead history</h3>
+				<h3 class="history-heading">Source enquiry history</h3>
 				<ol class="activity-list">
 					{#each data.sourceLeadActivities as activity (activity.id)}
 						<li>
 							<strong>{activity.summary}</strong>
-							<span>{activity.event_type} · {dateTime(activity.occurred_at)}</span>
+							<span
+								>{activityEventLabel(activity.event_type)} · {dateTime(activity.occurred_at)}</span
+							>
 						</li>
 					{/each}
 				</ol>

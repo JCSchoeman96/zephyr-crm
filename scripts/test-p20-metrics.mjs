@@ -67,6 +67,46 @@ function quote(value) {
 	return sqlLiteral(value);
 }
 
+function responseTimeStats(range) {
+	const from = `${range.from}T00:00:00Z`;
+	const toExclusive = `${dateOffset(range.to, 1)}T00:00:00Z`;
+	const output = sqlScalar(`
+		with decisions as (
+			select q.sent_at, q.accepted_at as decision_at, q.base_quote_number, q.revision_number
+			from public.quotes q
+			where q.status = 'accepted'
+				and q.sent_at is not null
+				and q.accepted_at >= ${quote(from)}::timestamptz
+				and q.accepted_at < ${quote(toExclusive)}::timestamptz
+				and q.accepted_at > q.sent_at
+				and not exists (
+					select 1
+					from public.quotes newer
+					where newer.base_quote_number = q.base_quote_number
+						and newer.revision_number > q.revision_number
+				)
+			union all
+			select q.sent_at, q.declined_at as decision_at, q.base_quote_number, q.revision_number
+			from public.quotes q
+			where q.status = 'declined'
+				and q.sent_at is not null
+				and q.declined_at >= ${quote(from)}::timestamptz
+				and q.declined_at < ${quote(toExclusive)}::timestamptz
+				and q.declined_at > q.sent_at
+				and not exists (
+					select 1
+					from public.quotes newer
+					where newer.base_quote_number = q.base_quote_number
+						and newer.revision_number > q.revision_number
+				)
+		)
+		select count(*)::text || '|' || coalesce(sum(extract(epoch from (decision_at - sent_at)) / 3600), 0)::text
+		from decisions
+	`);
+	const [count, totalHours] = output.split('|').map(Number);
+	return { count, totalHours };
+}
+
 function createLead(label, stage, createdAt) {
 	const safeLabel = `${prefix}-p20-${label}`;
 	return sqlScalar(`
@@ -418,6 +458,7 @@ async function main() {
 
 	try {
 		const before = await readMetrics(sales);
+		const beforeResponseTime = responseTimeStats(metricRange);
 		const newFixture = createPipelineFixture('new-enquiry', 'NEW', owner.id, isoHoursAgo(8));
 		const qualificationFixture = createPipelineFixture(
 			'qualification',
@@ -475,6 +516,7 @@ async function main() {
 		const completedFulfilment = await createCompletedFulfilment(completedFixture, sales);
 
 		const after = await readMetrics(sales);
+		const afterResponseTime = responseTimeStats(metricRange);
 		for (const field of metricFields)
 			contractAssert(field in after, `Metric field ${field} is missing`);
 		assert.equal(after.date_from, metricRange.from);
@@ -489,9 +531,15 @@ async function main() {
 		assertDelta(before, after, 'awaiting_collection', 1);
 		assertDelta(before, after, 'payments_awaiting_follow_up', 1);
 		assertDelta(before, after, 'completed_fulfilments', 1);
+		assert.equal(
+			afterResponseTime.count - beforeResponseTime.count,
+			2,
+			'P20 fixture did not add exactly one accepted and one declined decision'
+		);
+		const expectedResponseHours = (beforeResponseTime.totalHours + 5) / afterResponseTime.count;
 		assert.ok(
-			Math.abs(Number(after.average_quote_response_hours) - 2.5) < 0.1,
-			`average quote response time was ${after.average_quote_response_hours}; expected approximately 2.5 hours`
+			Math.abs(Number(after.average_quote_response_hours) - expectedResponseHours) < 0.1,
+			`average quote response time was ${after.average_quote_response_hours}; expected approximately ${expectedResponseHours.toFixed(2)} hours`
 		);
 		assert.equal(Number(after.accepted_value) - Number(before.accepted_value), 1250);
 

@@ -41,8 +41,8 @@ test.describe('P17 Sales-to-Fulfilment tracer bullet', () => {
 		try {
 			await signIn(page, user);
 			await page.goto(`/leads/${lead.id}`, { waitUntil: 'networkidle' });
-			await page.getByRole('button', { name: 'Qualify lead' }).click();
-			await page.getByRole('button', { name: 'Move to proposal' }).click();
+			await page.getByRole('button', { name: 'Start Qualification' }).click();
+			await page.getByRole('button', { name: 'Ready for Quote' }).click();
 			await expect(page.getByRole('heading', { name: 'Create a simple quote' })).toBeVisible();
 			await page.locator('input[name="subject"]').fill('P17 browser acceptance');
 			await page.locator('input[name="item_name"]').fill('P17 installation');
@@ -69,7 +69,7 @@ test.describe('P17 Sales-to-Fulfilment tracer bullet', () => {
 				form.requestSubmit();
 			});
 			await expect(
-				page.locator('[data-tone="success"]').filter({ hasText: /^accepted$/ })
+				page.locator('[data-tone="success"]').filter({ hasText: /^Accepted$/ })
 			).toBeVisible();
 
 			await expect.poll(async () => (await readLead(lead.id, user))?.pipeline_stage).toBe('WON');

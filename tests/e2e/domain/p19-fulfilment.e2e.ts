@@ -49,8 +49,8 @@ test.describe('P19 Fulfilment work queues', () => {
 		try {
 			await signIn(page, user);
 			await page.goto(`/leads/${lead.id}`, { waitUntil: 'networkidle' });
-			await page.getByRole('button', { name: 'Qualify lead' }).click();
-			await page.getByRole('button', { name: 'Move to proposal' }).click();
+			await page.getByRole('button', { name: 'Start Qualification' }).click();
+			await page.getByRole('button', { name: 'Ready for Quote' }).click();
 			await expect(page.getByRole('heading', { name: 'Create a simple quote' })).toBeVisible();
 			await page.locator('input[name="subject"]').fill('P19 browser acceptance');
 			await page.locator('input[name="item_name"]').fill('P19 fulfilment installation');
@@ -69,7 +69,7 @@ test.describe('P19 Fulfilment work queues', () => {
 				.fill('Customer approved the Quote by email during the P19 browser journey.');
 			await submitFormButton(page.getByRole('button', { name: 'Accept sale' }));
 			await expect(
-				page.locator('[data-tone="success"]').filter({ hasText: /^accepted$/ })
+				page.locator('[data-tone="success"]').filter({ hasText: /^Accepted$/ })
 			).toBeVisible();
 
 			const quotes = await readQuotesForLead(lead.id, user);
@@ -92,7 +92,7 @@ test.describe('P19 Fulfilment work queues', () => {
 			await expect(queueRow.getByRole('link', { name: /Fulfilment #/ })).toBeVisible();
 			await queueRow.getByRole('link', { name: /Open case/ }).click();
 			await page.waitForURL(new RegExp(`/fulfilment/${cases[0].id}$`));
-			for (const heading of ['Overview', 'Work', 'Payments', 'Tasks', 'Activity']) {
+			for (const heading of ['Overview', 'Work', 'Payments', 'Follow-up actions', 'History']) {
 				await expect(page.getByRole('heading', { name: heading, exact: true })).toBeVisible();
 			}
 			await expect(page.getByText('P19 browser acceptance')).toBeVisible();
@@ -101,7 +101,7 @@ test.describe('P19 Fulfilment work queues', () => {
 			await page.getByLabel('Work type').selectOption('installation');
 			await page.getByLabel('Notes', { exact: true }).fill('P19 browser installation');
 			await submitFormButton(page.getByRole('button', { name: 'Add work step' }));
-			await expect(page.getByText('Awaiting Schedule', { exact: true })).toBeVisible();
+			await expect(page.getByText('Awaiting schedule', { exact: true })).toBeVisible();
 			await page.getByLabel('Schedule for').fill('2099-01-01T09:00');
 			await submitFormButton(page.getByRole('button', { name: 'Schedule installation' }));
 			await expect(page.locator('[data-tone]').filter({ hasText: /^Scheduled$/ })).toBeVisible();
@@ -115,7 +115,7 @@ test.describe('P19 Fulfilment work queues', () => {
 
 			await page.getByLabel('Work type').selectOption('courier');
 			await submitFormButton(page.getByRole('button', { name: 'Add work step' }));
-			await expect(page.getByText('Awaiting Dispatch', { exact: true })).toBeVisible();
+			await expect(page.getByText('Awaiting dispatch', { exact: true })).toBeVisible();
 			const dispatchForm = page.locator('form[action="?/dispatch"]');
 			await dispatchForm.getByLabel('Tracking reference').fill('P19-TRACK-001');
 			await dispatchForm.getByLabel('Dispatch notes').fill('Handed to courier');
@@ -130,7 +130,7 @@ test.describe('P19 Fulfilment work queues', () => {
 			const readyForm = page.locator('form[action="?/ready"]');
 			await readyForm.getByLabel('Readiness notes').fill('Packed and ready');
 			await submitFormButton(readyForm.getByRole('button', { name: 'Mark ready for collection' }));
-			await expect(page.getByText('Ready For Collection', { exact: true })).toBeVisible();
+			await expect(page.getByText('Ready for collection', { exact: true })).toBeVisible();
 			await submitFormButton(page.getByRole('button', { name: 'Confirm collection' }));
 			await expect(page.locator('[data-tone]').filter({ hasText: /^Collected$/ })).toBeVisible();
 
@@ -147,21 +147,21 @@ test.describe('P19 Fulfilment work queues', () => {
 				depositCard.locator('[data-tone]').filter({ hasText: /^Received$/ })
 			).toBeVisible();
 
-			const finalBalanceCard = page.locator('.payment-card').filter({ hasText: 'Final Balance' });
+			const finalBalanceCard = page.locator('.payment-card').filter({ hasText: 'Final balance' });
 			await finalBalanceCard
 				.getByLabel('Why not required?')
 				.fill('No final balance due for this accepted sale.');
 			await submitFormButton(finalBalanceCard.getByRole('button', { name: 'Mark not required' }));
 			await expect(
-				finalBalanceCard.locator('[data-tone]').filter({ hasText: /^Not Required$/ })
+				finalBalanceCard.locator('[data-tone]').filter({ hasText: /^Not required$/ })
 			).toBeVisible();
 
-			await page.getByLabel('Payment follow-up title').fill('Confirm payment evidence');
-			await page.getByLabel('Description').fill('P19 browser follow-up evidence.');
-			await submitFormButton(page.getByRole('button', { name: 'Create or reuse follow-up' }));
+			await page.getByLabel('What needs to happen?').fill('Confirm payment evidence');
+			await page.getByLabel('Notes (optional)').fill('P19 browser follow-up evidence.');
+			await submitFormButton(page.getByRole('button', { name: 'Add follow-up action' }));
 			await expect(page.getByText('P19 browser follow-up evidence.')).toBeVisible();
 
-			await submitFormButton(page.getByRole('button', { name: 'Complete case' }));
+			await submitFormButton(page.getByRole('button', { name: 'Complete fulfilment' }));
 			await expect(
 				page.locator('section[aria-labelledby="overview-heading"] [data-tone]').filter({
 					hasText: /^Completed$/

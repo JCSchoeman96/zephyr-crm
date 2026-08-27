@@ -3,10 +3,11 @@
 	import { resolve } from '$app/paths';
 	import Badge from '$lib/components/ui/Badge.svelte';
 	import DataTable from '$lib/components/ui/DataTable.svelte';
-	import type {
-		SalesQueueKey,
-		SalesQueueRow,
-		SalesQueueQuoteState
+	import {
+		salesQueueDefinitions,
+		type SalesQueueKey,
+		type SalesQueueRow,
+		type SalesQueueQuoteState
 	} from '$lib/domain/sales/queues';
 
 	let {
@@ -48,13 +49,13 @@
 	}
 </script>
 
-<DataTable caption={`${queue} Sales queue`} class="sales-queue-table">
+<DataTable caption={`${salesQueueDefinitions[queue].title} queue`} class="sales-queue-table">
 	<thead>
 		<tr>
-			<th scope="col">Lead</th>
+			<th scope="col">Request details</th>
 			<th scope="col">Contact</th>
 			<th scope="col">Enquiry</th>
-			<th scope="col">Work state</th>
+			<th scope="col">Quote status</th>
 			<th scope="col" aria-label="Actions"></th>
 		</tr>
 	</thead>
@@ -65,7 +66,7 @@
 					<a class="sales-queue-table__lead" href={resolve(`/leads/${row.lead.id}`)}>
 						{leadName(row)}
 					</a>
-					<span class="sales-queue-table__number">#{row.lead.lead_number}</span>
+					<span class="sales-queue-table__number">Reference #{row.lead.lead_number}</span>
 					{#if row.lead.company}
 						<span class="sales-queue-table__company">{row.lead.company}</span>
 					{/if}

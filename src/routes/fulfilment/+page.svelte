@@ -20,13 +20,13 @@
 
 <svelte:head>
 	<title>Fulfilment | Zephyr CRM</title>
-	<meta name="description" content="Canonical operational work queues for accepted sales" />
+	<meta name="description" content="Operational work queues for accepted sales" />
 </svelte:head>
 
 <AppShell userEmail={data.auth.user?.email} userRole={data.auth.profile?.role}>
 	<PageHeader
 		title="Fulfilment"
-		description="Work begins from the accepted Quote and remains linked to the canonical Client, case, Task, payment, and Activity records."
+		description="Work starts when a quote is accepted and stays linked to the customer, quote, work, payments, and history."
 	>
 		{#snippet actions()}
 			<RealtimeStatus scope="fulfilment" tables={['tasks', 'quotes']} />
@@ -38,7 +38,7 @@
 	<section class="queue-summary" aria-label="Fulfilment queue counts">
 		{#each fulfilmentQueueKeys as key (key)}
 			{@const queue = queueSummary(key)}
-			<StatCard label={queue.title} value={String(queue.rows.length)} detail="Canonical rows" />
+			<StatCard label={queue.title} value={String(queue.rows.length)} detail="Work items" />
 		{/each}
 	</section>
 
@@ -54,10 +54,7 @@
 					<span class="queue-count">{queue.rows.length}</span>
 				</div>
 				{#if queue.rows.length === 0}
-					<EmptyState
-						title="Queue is clear"
-						message="No canonical Fulfilment records match this queue."
-					/>
+					<EmptyState title="Queue is clear" message="No fulfilment records match this queue." />
 				{:else}
 					<FulfilmentQueueTable {queue} rows={queue.rows} />
 				{/if}

@@ -3,6 +3,12 @@
 	import Badge from '$lib/components/ui/Badge.svelte';
 	import DataTable from '$lib/components/ui/DataTable.svelte';
 	import type { FulfilmentQueue, FulfilmentQueueRow } from '$lib/domain/fulfilment/queues';
+	import {
+		fulfilmentCaseStatusLabel,
+		fulfilmentPaymentTypeLabel,
+		fulfilmentStepStatusLabel,
+		quoteStatusLabel
+	} from '$lib/domain/presentation/labels';
 
 	type QueueRow = FulfilmentQueueRow & {
 		client: {
@@ -37,7 +43,7 @@
 	}
 
 	function clientLabel(row: QueueRow) {
-		return row.client?.display_name ?? 'Client unavailable';
+		return row.client?.display_name ?? 'Customer unavailable';
 	}
 
 	function quoteLabel(row: QueueRow) {
@@ -49,7 +55,12 @@
 		if (status === 'completed' || status === 'delivered' || status === 'collected')
 			return 'success';
 		if (status === 'cancelled') return 'neutral';
-		if (status === 'awaiting' || status === 'awaiting_dispatch' || status === 'awaiting_schedule')
+		if (
+			status === 'awaiting' ||
+			status.endsWith(' awaiting') ||
+			status === 'awaiting_dispatch' ||
+			status === 'awaiting_schedule'
+		)
 			return 'warning';
 		return 'info';
 	}
@@ -58,9 +69,19 @@
 		const step = row.steps.find(
 			(item) => !['completed', 'delivered', 'collected', 'cancelled'].includes(item.status)
 		);
-		if (step) return step.status.replaceAll('_', ' ');
+		if (step) return step.status;
 		const payment = row.payments.find((item) => item.status === 'awaiting');
-		return payment ? `${payment.type.replaceAll('_', ' ')} awaiting` : row.case.status;
+		return payment ? `${payment.type} awaiting` : row.case.status;
+	}
+
+	function workStatusLabel(row: QueueRow) {
+		const status = workStatus(row);
+		if (status.endsWith(' awaiting')) {
+			return `${fulfilmentPaymentTypeLabel(status.replace(' awaiting', ''))} awaiting`;
+		}
+		return fulfilmentStepStatusLabel(status) === 'Status unavailable'
+			? fulfilmentCaseStatusLabel(status)
+			: fulfilmentStepStatusLabel(status);
 	}
 </script>
 
@@ -68,7 +89,7 @@
 	<thead>
 		<tr>
 			<th scope="col">Case</th>
-			<th scope="col">Client</th>
+			<th scope="col">Customer</th>
 			<th scope="col">Accepted Quote</th>
 			<th scope="col">Current work</th>
 			<th scope="col">Next action</th>
@@ -81,20 +102,23 @@
 					<a class="fulfilment-queue-table__case" href={resolve(`/fulfilment/${row.case.id}`)}>
 						{caseLabel(row)}
 					</a>
-					<span class="fulfilment-queue-table__secondary">Lock {row.case.lock_version}</span>
+					<span class="fulfilment-queue-table__secondary"
+						>Reference #{row.case.fulfilment_number}</span
+					>
 				</td>
 				<td>
 					<a href={resolve(`/clients/${row.case.client_id}`)}>{clientLabel(row)}</a>
 					<span class="fulfilment-queue-table__secondary"
-						>Client #{row.client?.client_number ?? '—'}</span
+						>Customer #{row.client?.client_number ?? '—'}</span
 					>
 				</td>
 				<td>
 					<a href={resolve(`/quotes/${row.case.accepted_quote_id}`)}>{quoteLabel(row)}</a>
-					{#if row.quote}<span class="fulfilment-queue-table__secondary">{row.quote.status}</span
+					{#if row.quote}<span class="fulfilment-queue-table__secondary"
+							>{quoteStatusLabel(row.quote.status)}</span
 						>{/if}
 				</td>
-				<td><Badge tone={statusTone(workStatus(row))}>{workStatus(row)}</Badge></td>
+				<td><Badge tone={statusTone(workStatus(row))}>{workStatusLabel(row)}</Badge></td>
 				<td>
 					<span>{row.nextWork}</span>
 					<a class="fulfilment-queue-table__open" href={resolve(`/fulfilment/${row.case.id}`)}

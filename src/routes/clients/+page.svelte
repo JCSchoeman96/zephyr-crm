@@ -50,7 +50,7 @@
 <AppShell userEmail={data.auth.user?.email} userRole={data.auth.profile?.role}>
 	<PageHeader
 		title="Clients"
-		description="Recognized customers remain traceable to the Lead that created them."
+		description="Recognized customers remain traceable to the enquiry that created them."
 	/>
 
 	{#if navigating.to}
@@ -97,7 +97,7 @@
 			title={hasFilters ? 'No matching clients' : 'No clients yet'}
 			message={hasFilters
 				? 'Try a different search or filter combination.'
-				: 'A client appears here after a staff member deliberately converts a qualified Lead.'}
+				: 'A client appears here after a customer accepts a quote.'}
 		/>
 	{:else}
 		<Card class="clients-card">
@@ -110,7 +110,7 @@
 							<th scope="col">Type</th>
 							<th scope="col">Contact</th>
 							<th scope="col">Status</th>
-							<th scope="col">Source Lead</th>
+							<th scope="col">Source enquiry</th>
 						</tr>
 					</thead>
 					<tbody>
@@ -129,12 +129,12 @@
 								<td>
 									{#if lead}
 										<a class="source-link" href={resolve(`/leads/${lead.id}`)}>
-											Lead #{lead.lead_number} · {lead.first_name}
+											Enquiry #{lead.lead_number} · {lead.first_name}
 											{lead.last_name}
 										</a>
 									{:else if client.source_lead_id}
 										<a class="source-link" href={resolve(`/leads/${client.source_lead_id}`)}
-											>View source Lead</a
+											>View source enquiry</a
 										>
 									{:else}—{/if}
 								</td>
