@@ -8,6 +8,21 @@
 		"directory": ".svelte-kit/cloudflare",
 		"binding": "ASSETS"
 	},
+	"observability": {
+		"enabled": true,
+		"head_sampling_rate": 1,
+		"logs": {
+			"enabled": true,
+			"head_sampling_rate": 1,
+			"persist": true,
+			"invocation_logs": true
+		},
+		"traces": {
+			"enabled": true,
+			"persist": true,
+			"head_sampling_rate": 1
+		}
+	},
 	"vars": {
 		"PUBLIC_SUPABASE_URL": "https://ccetqjnptbktttlajzba.supabase.co",
 		"PUBLIC_SUPABASE_PUBLISHABLE_KEY": "sb_publishable_rKenWxVc6Lu6_4SYS1u4Vg_S2otptI9",
