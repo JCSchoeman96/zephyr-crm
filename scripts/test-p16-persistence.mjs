@@ -1,5 +1,6 @@
 import { createHmac } from 'node:crypto';
 import { execFileSync } from 'node:child_process';
+import { readFileSync } from 'node:fs';
 
 import {
 	assert,
@@ -70,6 +71,15 @@ async function expectRpcFailure(name, args, user, label, token = null) {
 }
 
 async function schemaContract() {
+	const foundationMigration = readFileSync(
+		'supabase/migrations/20260826200602_v140_fulfilment_persistence_foundation.sql',
+		'utf8'
+	);
+	assert(
+		(foundationMigration.match(/^begin;$/gm) ?? []).length === 1 &&
+			(foundationMigration.match(/^commit;$/gm) ?? []).length === 1,
+		'P16 foundation migration must apply atomically in one transaction'
+	);
 	expectSqlCount(
 		`select count(*) from pg_class c join pg_namespace n on n.oid = c.relnamespace where n.nspname = 'public' and c.relname in ('fulfilment_cases', 'fulfilment_steps', 'payment_milestones') and c.relkind = 'r'`,
 		3,
@@ -285,7 +295,8 @@ async function fulfilmentContract(owner, sales, viewer) {
 	assert(
 		taskRow.fulfilment_case_id === caseId &&
 			taskRow.client_id === fixture.clientId &&
-			taskRow.lead_id === fixture.leadId,
+			taskRow.lead_id === fixture.leadId &&
+			taskRow.quote_id === fixture.quoteId,
 		'Fulfilment Task lineage was not derived from the case'
 	);
 	await expectRpcFailure(

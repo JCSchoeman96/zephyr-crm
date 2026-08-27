@@ -12,9 +12,10 @@ import {
 } from '$lib/domain/sales/queues';
 
 export const salesQueueLimits = {
-	leads: 50,
-	quotes: 250
+	leads: 50
 } as const;
+
+const salesQueueQuotePageSize = 250;
 
 const leadSelect =
 	'id,lead_number,first_name,last_name,company,email,phone,message,qualification_notes,qualification_started_at,qualified_at,pipeline_stage,attention_state,attention_reason,lock_version,updated_at,last_activity_at';
@@ -44,21 +45,24 @@ export async function loadSalesQueue(
 	if (leadResponse.error) throw error(500, 'Could not load the Sales queue');
 
 	const leads = (leadResponse.data ?? []) as SalesQueueLead[];
-	let quotes: SalesQueueQuote[] = [];
+	const quotes: SalesQueueQuote[] = [];
 	if ((key === 'proposals' || key === 'decisions') && leads.length > 0) {
-		const quoteResponse = await supabase
-			.from('quotes')
-			.select(quoteSelect)
-			.in(
-				'lead_id',
-				leads.map((lead) => lead.id)
-			)
-			.in('status', ['draft', 'ready', 'sent', 'accepted'])
-			.order('created_at', { ascending: false })
-			.order('revision_number', { ascending: false })
-			.limit(salesQueueLimits.quotes);
-		if (quoteResponse.error) throw error(500, 'Could not load Sales proposal details');
-		quotes = (quoteResponse.data ?? []) as SalesQueueQuote[];
+		const leadIds = leads.map((lead) => lead.id);
+		for (let from = 0; ; from += salesQueueQuotePageSize) {
+			const quoteResponse = await supabase
+				.from('quotes')
+				.select(quoteSelect)
+				.in('lead_id', leadIds)
+				.in('status', ['draft', 'ready', 'sent', 'accepted'])
+				.order('created_at', { ascending: false })
+				.order('revision_number', { ascending: false })
+				.order('id', { ascending: true })
+				.range(from, from + salesQueueQuotePageSize - 1);
+			if (quoteResponse.error) throw error(500, 'Could not load Sales proposal details');
+			const page = (quoteResponse.data ?? []) as SalesQueueQuote[];
+			quotes.push(...page);
+			if (page.length < salesQueueQuotePageSize) break;
+		}
 	}
 
 	return {

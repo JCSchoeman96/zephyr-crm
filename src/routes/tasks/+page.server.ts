@@ -1,6 +1,22 @@
 import { fail, redirect } from '@sveltejs/kit';
 import type { Actions, PageServerLoad } from './$types';
+import { actionFailureDetails, logActionFailure } from '$lib/server/action-errors';
+import { loadTrustedClientConfiguration } from '$lib/server/client-config';
+import { localDateTimeToIso } from '$lib/time/zoned-datetime';
 import { requireActiveStaff } from '$lib/server/require-auth';
+import { pageTaskRows, taskQueueLimit } from '$lib/server/task-queue';
+
+function formDateTime(value: string) {
+	if (!value) throw new Error('A due date is required');
+	const { configuration } = loadTrustedClientConfiguration();
+	return localDateTimeToIso(value, configuration.locale.timezone);
+}
+
+function actionFailure(cause: unknown, fallback: string) {
+	const details = actionFailureDetails(cause, fallback);
+	logActionFailure(cause, details.code);
+	return fail(details.status, { message: details.message, code: details.code });
+}
 
 function taskId(form: FormData) {
 	const value = String(form.get('task_id') ?? '');
@@ -23,14 +39,20 @@ export const load: PageServerLoad = async (event) => {
 			? requestedStatus
 			: 'open';
 	const overdue = event.url.searchParams.get('overdue') === 'true';
+	const search = event.url.searchParams.get('search')?.trim().slice(0, 120) ?? '';
+	const requestedPage = Number(event.url.searchParams.get('page') ?? '1');
+	const page = Number.isInteger(requestedPage) && requestedPage > 0 ? requestedPage : 1;
+	const offset = (page - 1) * taskQueueLimit;
 	let taskQuery = supabase
 		.from('task_work_queue')
 		.select('*')
 		.eq('status', status)
 		.order('due_at', { ascending: true, nullsFirst: false })
 		.order('created_at', { ascending: false })
-		.limit(50);
+		.order('id', { ascending: true });
 	if (overdue) taskQuery = taskQuery.eq('is_overdue', true);
+	if (search) taskQuery = taskQuery.ilike('title', `%${search}%`);
+	taskQuery = taskQuery.range(offset, offset + taskQueueLimit);
 	const [tasksResponse, leadsResponse, clientsResponse, quotesResponse, staffResponse] =
 		await Promise.all([
 			taskQuery,
@@ -67,7 +89,8 @@ export const load: PageServerLoad = async (event) => {
 		staffResponse.error
 	)
 		throw new Error('Could not load Tasks');
-	const taskRows = tasksResponse.data ?? [];
+	const taskPage = pageTaskRows(tasksResponse.data ?? []);
+	const taskRows = taskPage.rows;
 	const taskLeadIds = [
 		...new Set(taskRows.flatMap((task) => (task.lead_id ? [task.lead_id] : [])))
 	];
@@ -107,7 +130,8 @@ export const load: PageServerLoad = async (event) => {
 		clients: mergeById(clientsResponse.data ?? [], taskClientsResponse.data ?? []),
 		quotes: mergeById(quotesResponse.data ?? [], taskQuotesResponse.data ?? []),
 		staff: staffResponse.data ?? [],
-		filters: { status, overdue }
+		filters: { status, overdue, search },
+		pagination: { page, hasMore: taskPage.hasMore }
 	};
 };
 
@@ -130,14 +154,12 @@ export const actions: Actions = {
 				p_type: String(form.get('type') ?? 'custom'),
 				p_title: title,
 				p_description: String(form.get('description') ?? '').trim() || undefined,
-				...(dueAt ? { p_due_at: new Date(dueAt).toISOString() } : {}),
+				...(dueAt ? { p_due_at: formDateTime(dueAt) } : {}),
 				...(assignedTo ? { p_assigned_to: assignedTo } : {})
 			});
-			if (response.error) return fail(422, { message: response.error.message });
+			if (response.error) return actionFailure(response.error, 'Could not create Task');
 		} catch (actionError) {
-			return fail(422, {
-				message: actionError instanceof Error ? actionError.message : 'Could not create Task'
-			});
+			return actionFailure(actionError, 'Could not create Task');
 		}
 		throw redirect(303, '/tasks');
 	},
@@ -149,11 +171,9 @@ export const actions: Actions = {
 				p_task_id: taskId(form),
 				p_lock_version: lockVersion(form)
 			});
-			if (response.error) return fail(422, { message: response.error.message });
+			if (response.error) return actionFailure(response.error, 'Could not complete Task');
 		} catch (actionError) {
-			return fail(422, {
-				message: actionError instanceof Error ? actionError.message : 'Could not complete Task'
-			});
+			return actionFailure(actionError, 'Could not complete Task');
 		}
 		throw redirect(303, '/tasks');
 	},
@@ -162,17 +182,16 @@ export const actions: Actions = {
 		try {
 			const form = await event.request.formData();
 			const dueAt = String(form.get('due_at') ?? '').trim();
-			if (!dueAt) return fail(422, { message: 'A due date is required' });
+			if (!dueAt)
+				return actionFailure(new Error('A due date is required'), 'Could not reschedule Task');
 			const response = await supabase.rpc('reschedule_task', {
 				p_task_id: taskId(form),
 				p_lock_version: lockVersion(form),
-				p_due_at: new Date(dueAt).toISOString()
+				p_due_at: formDateTime(dueAt)
 			});
-			if (response.error) return fail(422, { message: response.error.message });
+			if (response.error) return actionFailure(response.error, 'Could not reschedule Task');
 		} catch (actionError) {
-			return fail(422, {
-				message: actionError instanceof Error ? actionError.message : 'Could not reschedule Task'
-			});
+			return actionFailure(actionError, 'Could not reschedule Task');
 		}
 		throw redirect(303, '/tasks');
 	},
@@ -184,11 +203,9 @@ export const actions: Actions = {
 				p_task_id: taskId(form),
 				p_lock_version: lockVersion(form)
 			});
-			if (response.error) return fail(422, { message: response.error.message });
+			if (response.error) return actionFailure(response.error, 'Could not cancel Task');
 		} catch (actionError) {
-			return fail(422, {
-				message: actionError instanceof Error ? actionError.message : 'Could not cancel Task'
-			});
+			return actionFailure(actionError, 'Could not cancel Task');
 		}
 		throw redirect(303, '/tasks');
 	}

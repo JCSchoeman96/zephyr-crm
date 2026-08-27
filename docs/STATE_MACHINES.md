@@ -239,6 +239,24 @@ migration/recovery boundary where policy permits it. Existing Lost transitions
 remain valid, but definitive Quote decline uses the atomic Quote-decline
 action described below.
 
+#### v1.4 compatibility decisions
+
+The v1.4 policy retains the two-argument `convert_lead` RPC for frozen v1.3.2
+callers and migration/recovery work. It is not a normal Sales decision button;
+ordinary `WON` is reached through `accept_quote`. The compatibility boundary
+retains the historical Owner/Admin/Sales grant so completed P0–P14 contracts
+do not break, writes a `lead_converted_compatibility` security-audit event, and
+marks the resulting `lead_won` Activity with `conversion_policy` evidence.
+Operators must supply any case-specific recovery rationale through the
+surrounding incident or migration record. A future strict policy amendment may
+retire this compatibility surface after those callers are migrated.
+
+`transition_lead` remains a compatibility workflow API for non-terminal Lead
+stages and `LOST`. It cannot reach `WON`; its `QUALIFICATION → PROPOSAL` path
+enforces the same usable-contact and meaningful-enquiry evidence required by
+`ready_lead_for_quote`. The dedicated evidence-bearing actions remain the
+preferred browser contract.
+
 ### Quote decision contract
 
 | Action | Quote result | Lead result | Attention | Cross-resource result |

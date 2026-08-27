@@ -3,7 +3,14 @@
 	import { onMount } from 'svelte';
 	import { createClient } from '$lib/supabase/client';
 
-	type RealtimeTable = 'leads' | 'tasks' | 'quotes';
+	type RealtimeTable =
+		| 'leads'
+		| 'tasks'
+		| 'quotes'
+		| 'fulfilment_cases'
+		| 'fulfilment_steps'
+		| 'payment_milestones'
+		| 'activities';
 	type ConnectionState = 'connecting' | 'live' | 'offline';
 
 	let { scope, tables }: { scope: string; tables: readonly RealtimeTable[] } = $props();

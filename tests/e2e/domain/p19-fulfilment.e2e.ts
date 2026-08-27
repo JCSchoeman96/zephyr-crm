@@ -1,35 +1,15 @@
 import { expect, test } from '@playwright/test';
 import {
-	apiUrl,
-	cleanupUser,
+	cleanupLead,
 	createStaff,
+	gotoAndWaitForHeading,
 	ingestLead,
 	readClientForLead,
 	readFulfilmentCasesForQuote,
 	readLead,
 	readQuotesForLead,
-	serviceRoleKey,
 	signIn
 } from './helpers';
-
-async function cleanupP19Lead(leadId: string, userId: string): Promise<void> {
-	const paths = [
-		`/rest/v1/fulfilment_cases?lead_id=eq.${leadId}`,
-		`/rest/v1/tasks?lead_id=eq.${leadId}`,
-		`/rest/v1/activities?lead_id=eq.${leadId}`,
-		`/rest/v1/outbound_messages?lead_id=eq.${leadId}`,
-		`/rest/v1/quotes?lead_id=eq.${leadId}`,
-		`/rest/v1/clients?source_lead_id=eq.${leadId}`,
-		`/rest/v1/leads?id=eq.${leadId}`
-	];
-	for (const path of paths) {
-		await fetch(`${apiUrl}${path}`, {
-			method: 'DELETE',
-			headers: { apikey: serviceRoleKey, Authorization: `Bearer ${serviceRoleKey}` }
-		}).catch(() => {});
-	}
-	await cleanupUser(userId);
-}
 
 async function submitFormButton(button: import('@playwright/test').Locator) {
 	await button.evaluate((element) => {
@@ -48,7 +28,7 @@ test.describe('P19 Fulfilment work queues', () => {
 		const lead = await ingestLead('p19-browser');
 		try {
 			await signIn(page, user);
-			await page.goto(`/leads/${lead.id}`, { waitUntil: 'networkidle' });
+			await gotoAndWaitForHeading(page, `/leads/${lead.id}`, 'P14 Browser Harness');
 			await page.getByRole('button', { name: 'Start Qualification' }).click();
 			await page.getByRole('button', { name: 'Ready for Quote' }).click();
 			await expect(page.getByRole('heading', { name: 'Create a simple quote' })).toBeVisible();
@@ -83,8 +63,7 @@ test.describe('P19 Fulfilment work queues', () => {
 			if (!client?.id) throw new Error('P19 browser acceptance did not create a Client.');
 			await expect.poll(async () => (await readLead(lead.id, user))?.pipeline_stage).toBe('WON');
 
-			await page.goto('/fulfilment', { waitUntil: 'networkidle' });
-			await expect(page.getByRole('heading', { name: 'Fulfilment' })).toBeVisible();
+			await gotoAndWaitForHeading(page, '/fulfilment', 'Fulfilment');
 			await expect(page.getByRole('heading', { name: 'Needs Planning' })).toBeVisible();
 			const caseHref = `/fulfilment/${cases[0].id}`;
 			const queueRow = page.locator('tr').filter({ has: page.locator(`a[href="${caseHref}"]`) });
@@ -167,7 +146,7 @@ test.describe('P19 Fulfilment work queues', () => {
 					hasText: /^Completed$/
 				})
 			).toBeVisible();
-			await page.goto('/fulfilment', { waitUntil: 'networkidle' });
+			await gotoAndWaitForHeading(page, '/fulfilment', 'Fulfilment');
 			const completedQueue = page
 				.locator('.queue-card')
 				.filter({ has: page.getByRole('heading', { name: 'Completed', exact: true }) });
@@ -175,7 +154,7 @@ test.describe('P19 Fulfilment work queues', () => {
 				completedQueue.locator(`a.fulfilment-queue-table__case[href="${caseHref}"]`)
 			).toBeVisible();
 		} finally {
-			await cleanupP19Lead(lead.id, user.id);
+			await cleanupLead(lead.id, user.id);
 		}
 	});
 });

@@ -73,6 +73,23 @@ RLS is enabled on every exposed business table, including Profiles, configuratio
 
 Policies use database-derived identity and role from the authenticated JWT/profile relationship. User-controlled metadata, URL parameters, form fields, or browser state cannot grant authority.
 
+### v1.4 compatibility policy decisions
+
+The normal v1.4 decision path is the evidence-bearing `accept_quote` action;
+generic `transition_lead` cannot produce `WON`. The historical two-argument
+`convert_lead` surface remains executable by Owner/Admin/Sales only as a frozen
+v1.3.2 migration/recovery compatibility boundary. It is not rendered as a
+normal browser decision action. Each non-idempotent compatibility conversion
+records `lead_converted_compatibility` in `security_audit_events` and marks
+the `lead_won` Activity with `conversion_policy = legacy_compatibility_recovery`.
+The operation is retained until its frozen callers are migrated; removing the
+grant requires a separate authority amendment and regression update.
+
+`transition_lead` is likewise retained for compatibility on non-terminal
+workflow stages and `LOST`. The database rejects `WON` and enforces usable
+contact plus meaningful enquiry evidence for `QUALIFICATION → PROPOSAL`, so it
+cannot manufacture qualification completion through the generic endpoint.
+
 ## Protected-field/action mutation matrix
 
 RLS controls which rows a role can see and which ordinary fields it may edit;

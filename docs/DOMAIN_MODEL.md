@@ -235,7 +235,10 @@ sent Quote `declined`, marks the Lead `LOST` with a valid LostReason, closes
 obsolete Sales Tasks, and appends both Quote and Lead Activity in one trusted
 operation. The existing `convert_lead` action remains available only for
 authorised migration or recovery policy and is not the normal day-to-day
-decision button.
+decision button. For v1.4 compatibility it retains the historical
+Owner/Admin/Sales grant, records `lead_converted_compatibility` audit evidence,
+and marks the conversion Activity as `legacy_compatibility_recovery`; the
+ordinary browser path is `accept_quote`.
 
 ### FulfilmentCase
 

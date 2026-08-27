@@ -1,3 +1,4 @@
+import { execFileSync } from 'node:child_process';
 import { chmodSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -22,9 +23,41 @@ const bindingNames = [
 	'SUPABASE_SERVICE_ROLE_KEY'
 ];
 
+function localSupabaseEnvironment() {
+	try {
+		const output = execFileSync('bunx', ['supabase', 'status', '-o', 'env'], {
+			encoding: 'utf8',
+			stdio: ['ignore', 'pipe', 'ignore']
+		});
+		return Object.fromEntries(
+			output
+				.split('\n')
+				.filter((line) => line.includes('='))
+				.map((line) => {
+					const separator = line.indexOf('=');
+					return [line.slice(0, separator), line.slice(separator + 1).replace(/^"(.*)"$/, '$1')];
+				})
+		);
+	} catch {
+		return {};
+	}
+}
+
+const local = localSupabaseEnvironment();
+const runtimeEnvironment = {
+	...process.env,
+	PUBLIC_SUPABASE_URL: process.env.PUBLIC_SUPABASE_URL || local.API_URL || '',
+	SUPABASE_URL: process.env.SUPABASE_URL || local.API_URL || '',
+	PUBLIC_SUPABASE_PUBLISHABLE_KEY:
+		process.env.PUBLIC_SUPABASE_PUBLISHABLE_KEY || local.ANON_KEY || local.PUBLISHABLE_KEY || '',
+	SUPABASE_SERVICE_ROLE_KEY: process.env.SUPABASE_SERVICE_ROLE_KEY || local.SERVICE_ROLE_KEY || '',
+	BRICKS_FORM_ID: process.env.BRICKS_FORM_ID || 'aaa03e',
+	AUTOMATION_CRON_SECRET: process.env.AUTOMATION_CRON_SECRET || 'p14-browser-automation-secret'
+};
+
 writeFileSync(
 	envFile,
-	bindingNames.map((name) => `${name}=${process.env[name] ?? ''}`).join('\n') + '\n',
+	bindingNames.map((name) => `${name}=${runtimeEnvironment[name] ?? ''}`).join('\n') + '\n',
 	{ mode: 0o600 }
 );
 chmodSync(envFile, 0o600);
@@ -46,7 +79,7 @@ process.once('SIGINT', () => stop('SIGINT'));
 process.once('SIGTERM', () => stop('SIGTERM'));
 process.once('exit', cleanup);
 
-const build = spawn('bun', ['run', 'build'], { stdio: 'inherit', env: process.env });
+const build = spawn('bun', ['run', 'build'], { stdio: 'inherit', env: runtimeEnvironment });
 activeChild = build;
 build.once('exit', (buildCode, buildSignal) => {
 	if (buildCode !== 0 || buildSignal) {
@@ -56,7 +89,7 @@ build.once('exit', (buildCode, buildSignal) => {
 	}
 	const preview = spawn('wrangler', ['dev', '--local', '--port', '4173', '--env-file', envFile], {
 		stdio: 'inherit',
-		env: process.env
+		env: runtimeEnvironment
 	});
 	activeChild = preview;
 	preview.once('exit', (previewCode, previewSignal) => {

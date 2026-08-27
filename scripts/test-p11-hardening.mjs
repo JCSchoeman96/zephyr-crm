@@ -113,7 +113,10 @@ function runStaticGates() {
 		'src/routes/leads/+page.server.ts': ['.range('],
 		'src/routes/clients/+page.server.ts': ['.range('],
 		'src/routes/quotes/+page.server.ts': ['.range('],
-		'src/routes/tasks/+page.server.ts': ['.limit(50)'],
+		// Tasks now use the shared queue helper and offset-based pagination. The
+		// route's range is the bounded query boundary; the helper trims the
+		// inclusive response to the canonical 50-row page.
+		'src/routes/tasks/+page.server.ts': ['.range('],
 		'src/routes/leads/[id]/+page.server.ts': [
 			".from('quotes')",
 			".from('tasks')",
@@ -170,15 +173,15 @@ function runStaticGates() {
 
 	const conflict = read('src/lib/server/action-errors.ts');
 	assert(
-		conflict.includes('Conflict: this record changed in another session'),
+		conflict.includes('Conflict: this record changed elsewhere in another session'),
 		'Conflict copy is missing'
 	);
 	assert(
-		read('src/routes/leads/[id]/+page.server.ts').includes('actionFailureStatus'),
+		read('src/routes/leads/[id]/+page.server.ts').includes('actionFailureDetails'),
 		'Lead conflict status is not wired'
 	);
 	assert(
-		read('src/routes/quotes/[id]/+page.server.ts').includes('actionFailureStatus'),
+		read('src/routes/quotes/[id]/+page.server.ts').includes('actionFailureDetails'),
 		'Quote conflict status is not wired'
 	);
 	assert(

@@ -1,11 +1,12 @@
 import { createHmac } from 'node:crypto';
 import { execFileSync } from 'node:child_process';
 import { randomUUID } from 'node:crypto';
-import type { Page } from '@playwright/test';
+import { expect, type Page } from '@playwright/test';
 import { createClient } from '@supabase/supabase-js';
 
 export const appUrl = 'http://127.0.0.1:4173';
 export const bricksSecret = 'p14-browser-bricks-secret';
+const bricksFormId = process.env.BRICKS_FORM_ID?.trim() || 'aaa03e';
 
 type AdminUserResponse = { id: string };
 type AuthTokenResponse = { access_token?: string };
@@ -58,6 +59,7 @@ export const apiUrl = process.env.SUPABASE_URL ?? local.API_URL ?? '';
 const anonKey =
 	process.env.PUBLIC_SUPABASE_PUBLISHABLE_KEY ?? local.ANON_KEY ?? local.PUBLISHABLE_KEY ?? '';
 export const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY ?? local.SERVICE_ROLE_KEY ?? '';
+const databaseUrl = local.DB_URL ?? '';
 const runId = `${Date.now()}-${randomUUID().slice(0, 8)}`;
 let staffSequence = 0;
 
@@ -173,6 +175,30 @@ export async function signIn(page: Page, user: StaffUser): Promise<void> {
 	await page.getByLabel('Password').fill(user.password);
 	await page.getByRole('button', { name: 'Sign in' }).click();
 	await page.waitForURL(/\/$/);
+}
+
+export async function gotoAndWaitForHeading(
+	page: Page,
+	path: string,
+	heading: string
+): Promise<void> {
+	const response = await page.goto(path, { waitUntil: 'domcontentloaded' });
+	if (!response?.ok()) {
+		throw new Error(
+			`Browser navigation failed for ${path} (${response?.status() ?? 'no response'}).`
+		);
+	}
+	await expect(page.getByRole('heading', { name: heading, exact: true })).toBeVisible();
+}
+
+export async function reloadAndWaitForHeading(page: Page, heading: string): Promise<void> {
+	const response = await page.reload({ waitUntil: 'domcontentloaded' });
+	if (!response?.ok()) {
+		throw new Error(
+			`Browser reload failed for ${page.url()} (${response?.status() ?? 'no response'}).`
+		);
+	}
+	await expect(page.getByRole('heading', { name: heading, exact: true })).toBeVisible();
 }
 
 export async function signInWithAal2(page: Page, user: StaffUser): Promise<void> {
@@ -309,12 +335,90 @@ export async function createConvertedClientFixture(label: string): Promise<{
 	return { owner, lead, client };
 }
 
-export async function cleanupUser(userId: string): Promise<void> {
-	if (!apiUrl || !serviceRoleKey) return;
-	await fetch(`${apiUrl}/auth/v1/admin/users/${userId}`, {
+type CleanupOperation = { label: string; run: () => Promise<void> };
+
+function cleanupErrorMessage(error: unknown): string {
+	return error instanceof Error ? error.message : String(error);
+}
+
+export async function runCleanup(operations: readonly CleanupOperation[]): Promise<void> {
+	const failures: string[] = [];
+	for (const operation of operations) {
+		try {
+			await operation.run();
+		} catch (error) {
+			failures.push(`${operation.label}: ${cleanupErrorMessage(error)}`);
+		}
+	}
+	if (failures.length > 0) {
+		throw new Error(`E2E cleanup failed:\n${failures.map((failure) => `- ${failure}`).join('\n')}`);
+	}
+}
+
+async function deleteLocalResource(path: string): Promise<void> {
+	assertConfigured();
+	const response = await fetch(`${apiUrl}${path}`, {
 		method: 'DELETE',
 		headers: { apikey: serviceRoleKey, Authorization: `Bearer ${serviceRoleKey}` }
-	}).catch(() => {});
+	});
+	if (response.status === 404) return;
+	if (!response.ok) {
+		const body = await response.text();
+		throw new Error(`DELETE ${path} failed (${response.status}): ${body || 'empty response'}`);
+	}
+}
+
+function localCleanupSql(query: string): void {
+	if (!databaseUrl) throw new Error('Local Supabase DB_URL is unavailable for E2E cleanup.');
+	let hostname: string;
+	try {
+		hostname = new URL(databaseUrl).hostname;
+	} catch {
+		throw new Error('Local Supabase DB_URL is not a valid URL.');
+	}
+	if (!['127.0.0.1', 'localhost'].includes(hostname)) {
+		throw new Error('E2E cleanup requires a localhost Supabase DB_URL.');
+	}
+	try {
+		execFileSync('psql', [databaseUrl, '-X', '-v', 'ON_ERROR_STOP=1', '-At', '-c', query], {
+			encoding: 'utf8',
+			stdio: ['ignore', 'pipe', 'pipe'],
+			maxBuffer: 16 * 1024 * 1024
+		});
+	} catch (error) {
+		const stderr =
+			error && typeof error === 'object' && 'stderr' in error
+				? String(error.stderr).trim()
+				: 'psql exited unsuccessfully';
+		const diagnostic = stderr || 'no diagnostic output';
+		if (error instanceof Error) {
+			error.message = diagnostic;
+			error.stack = `${error.name}: ${diagnostic}`;
+		}
+		throw new Error(`Local E2E cleanup SQL failed: ${diagnostic}`, {
+			cause: error
+		});
+	}
+}
+
+export async function cleanupUser(userId: string): Promise<void> {
+	if (!/^[0-9a-f-]{36}$/i.test(userId)) throw new Error(`Invalid user ID for cleanup: ${userId}`);
+	const userUuid = `'${userId}'::uuid`;
+	localCleanupSql(`
+		begin;
+		-- Auth deletes profile rows, which would otherwise attempt an append-only
+		-- activity actor_id update. These rows belong only to disposable fixtures.
+		alter table public.activities disable trigger activities_append_only;
+		delete from public.activities where actor_id = ${userUuid};
+		alter table public.activities enable trigger activities_append_only;
+		commit;
+	`);
+	await runCleanup([
+		{
+			label: `auth user ${userId}`,
+			run: () => deleteLocalResource(`/auth/v1/admin/users/${userId}`)
+		}
+	]);
 }
 
 export async function ingestLead(
@@ -326,7 +430,7 @@ export async function ingestLead(
 		method: 'POST',
 		headers: { authorization: `Bearer ${bricksSecret}`, 'content-type': 'application/json' },
 		body: JSON.stringify({
-			form_id: 'contact-form',
+			form_id: bricksFormId,
 			external_submission_id: externalId,
 			first_name: 'P14',
 			last_name:
@@ -417,19 +521,43 @@ export async function readLeadActivities(
 	);
 }
 
+export async function cleanupLeadData(id: string): Promise<void> {
+	if (!/^[0-9a-f-]{36}$/i.test(id)) throw new Error(`Invalid Lead ID for cleanup: ${id}`);
+	const leadId = `'${id}'::uuid`;
+	localCleanupSql(`
+		begin;
+		-- Activity is append-only in product operation; this local-only teardown
+		-- removes disposable fixture rows after the assertions have completed.
+		alter table public.activities disable trigger activities_append_only;
+		delete from public.activities
+		where lead_id = ${leadId}
+			or quote_id in (select id from public.quotes where lead_id = ${leadId})
+			or client_id in (select id from public.clients where source_lead_id = ${leadId})
+			or task_id in (select id from public.tasks where lead_id = ${leadId})
+			or fulfilment_case_id in (select id from public.fulfilment_cases where lead_id = ${leadId});
+		delete from public.outbound_messages
+		where lead_id = ${leadId}
+			or quote_id in (select id from public.quotes where lead_id = ${leadId})
+			or client_id in (select id from public.clients where source_lead_id = ${leadId})
+			or task_id in (select id from public.tasks where lead_id = ${leadId});
+		delete from public.tasks
+		where lead_id = ${leadId}
+			or quote_id in (select id from public.quotes where lead_id = ${leadId})
+			or client_id in (select id from public.clients where source_lead_id = ${leadId})
+			or fulfilment_case_id in (select id from public.fulfilment_cases where lead_id = ${leadId});
+		delete from public.fulfilment_cases where lead_id = ${leadId};
+		delete from public.quotes where lead_id = ${leadId};
+		delete from public.inbound_submissions where lead_id = ${leadId};
+		delete from public.leads where id = ${leadId};
+		delete from public.clients where source_lead_id = ${leadId};
+		alter table public.activities enable trigger activities_append_only;
+		commit;
+	`);
+}
+
 export async function cleanupLead(id: string, userId: string): Promise<void> {
-	if (!apiUrl || !serviceRoleKey) return;
-	const paths = [
-		`/rest/v1/outbound_messages?lead_id=eq.${id}`,
-		`/rest/v1/fulfilment_cases?lead_id=eq.${id}`,
-		`/rest/v1/clients?source_lead_id=eq.${id}`,
-		`/rest/v1/leads?id=eq.${id}`,
-		`/auth/v1/admin/users/${userId}`
-	];
-	for (const path of paths) {
-		await fetch(`${apiUrl}${path}`, {
-			method: 'DELETE',
-			headers: { apikey: serviceRoleKey, Authorization: `Bearer ${serviceRoleKey}` }
-		}).catch(() => {});
-	}
+	await runCleanup([
+		{ label: `Lead ${id} records`, run: () => cleanupLeadData(id) },
+		{ label: `auth user ${userId}`, run: () => cleanupUser(userId) }
+	]);
 }

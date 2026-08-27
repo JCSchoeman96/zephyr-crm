@@ -2,13 +2,13 @@ import { error, fail, redirect } from '@sveltejs/kit';
 import type { Actions, PageServerLoad } from './$types';
 import { sendQuote } from '$lib/server/quote-actions';
 import { decimalValue } from '$lib/server/quote-form';
-import { actionFailureStatus, userFacingActionMessage } from '$lib/server/action-errors';
+import { actionFailureDetails, logActionFailure } from '$lib/server/action-errors';
 import { requireActiveStaff } from '$lib/server/require-auth';
 
 function actionFailure(errorValue: unknown, fallback = 'Could not complete Lead action') {
-	return fail(actionFailureStatus(errorValue), {
-		message: userFacingActionMessage(errorValue, fallback)
-	});
+	const details = actionFailureDetails(errorValue, fallback);
+	logActionFailure(errorValue, details.code);
+	return fail(details.status, { message: details.message, code: details.code });
 }
 
 function lockVersion(formData: FormData) {
@@ -59,7 +59,7 @@ export const load: PageServerLoad = async (event) => {
 			.order('full_name')
 			.limit(100)
 	]);
-	if (leadResponse.error) throw error(500, leadResponse.error.message);
+	if (leadResponse.error) throw error(500, 'Could not load Lead details');
 	if (!leadResponse.data) throw error(404, 'Lead not found');
 	if (
 		quoteResponse.error ||

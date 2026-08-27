@@ -29,7 +29,7 @@ const localServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY ?? local.SERVI
 const appEnvironment: Record<string, string> = {
 	ZEPHYR_COMPONENT_LAB_ENABLED: process.env.ZEPHYR_COMPONENT_LAB_ENABLED ?? '1',
 	BRICKS_WEBHOOK_SECRET: 'p14-browser-bricks-secret',
-	BRICKS_FORM_ID: 'contact-form',
+	BRICKS_FORM_ID: process.env.BRICKS_FORM_ID?.trim() || 'aaa03e',
 	SENDPULSE_CLIENT_ID: 'p14-browser-client',
 	SENDPULSE_CLIENT_SECRET: 'p14-browser-secret',
 	SENDPULSE_API_BASE_URL: 'http://127.0.0.1:4180',

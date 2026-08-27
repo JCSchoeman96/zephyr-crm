@@ -1,36 +1,16 @@
 import { expect, test } from '@playwright/test';
 import {
-	apiUrl,
+	cleanupLead,
 	createStaff,
-	cleanupUser,
+	gotoAndWaitForHeading,
 	ingestLead,
 	readClientContacts,
 	readClientForLead,
 	readFulfilmentCasesForQuote,
 	readLead,
 	readQuotesForLead,
-	serviceRoleKey,
 	signIn
 } from './helpers';
-
-async function cleanupP17Lead(leadId: string, userId: string): Promise<void> {
-	const paths = [
-		`/rest/v1/fulfilment_cases?lead_id=eq.${leadId}`,
-		`/rest/v1/tasks?lead_id=eq.${leadId}`,
-		`/rest/v1/activities?lead_id=eq.${leadId}`,
-		`/rest/v1/outbound_messages?lead_id=eq.${leadId}`,
-		`/rest/v1/quotes?lead_id=eq.${leadId}`,
-		`/rest/v1/clients?source_lead_id=eq.${leadId}`,
-		`/rest/v1/leads?id=eq.${leadId}`
-	];
-	for (const path of paths) {
-		await fetch(`${apiUrl}${path}`, {
-			method: 'DELETE',
-			headers: { apikey: serviceRoleKey, Authorization: `Bearer ${serviceRoleKey}` }
-		}).catch(() => {});
-	}
-	await cleanupUser(userId);
-}
 
 test.describe('P17 Sales-to-Fulfilment tracer bullet', () => {
 	test('accepts a sent Quote in the authenticated browser and creates the handoff', async ({
@@ -40,7 +20,7 @@ test.describe('P17 Sales-to-Fulfilment tracer bullet', () => {
 		const lead = await ingestLead('p17-browser');
 		try {
 			await signIn(page, user);
-			await page.goto(`/leads/${lead.id}`, { waitUntil: 'networkidle' });
+			await gotoAndWaitForHeading(page, `/leads/${lead.id}`, 'P14 Browser Harness');
 			await page.getByRole('button', { name: 'Start Qualification' }).click();
 			await page.getByRole('button', { name: 'Ready for Quote' }).click();
 			await expect(page.getByRole('heading', { name: 'Create a simple quote' })).toBeVisible();
@@ -91,7 +71,7 @@ test.describe('P17 Sales-to-Fulfilment tracer bullet', () => {
 				accepted_quote_id: acceptedQuote.id
 			});
 		} finally {
-			await cleanupP17Lead(lead.id, user.id);
+			await cleanupLead(lead.id, user.id);
 		}
 	});
 });

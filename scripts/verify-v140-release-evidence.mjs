@@ -10,6 +10,7 @@ const expectedIds = [
 	'P20-T01',
 	'P20-T02'
 ];
+const evidenceRunner = 'scripts/run-release-evidence.mjs --v140';
 
 function fail(message) {
 	throw new Error(`v1.4.0 release evidence: ${message}`);
@@ -52,8 +53,64 @@ export function validateV140ReleaseEvidence(evidence, options = {}) {
 			)
 		)
 			fail(`${entry.id} references a missing source proof`);
-		if (!['PASS', 'PENDING'].includes(entry.status)) fail(`${entry.id} has an invalid status`);
+		if (!['PASS', 'PENDING', 'FAIL'].includes(entry.status))
+			fail(`${entry.id} has an invalid status`);
 		entries.set(entry.id, entry);
+	}
+	const execution = evidence.execution;
+	const passEntries = [...entries.values()].filter((entry) => entry.status === 'PASS');
+	if (passEntries.length > 0 && !execution) fail('PASS entries require recorded execution output');
+	if (execution) {
+		if (execution.runner !== evidenceRunner) fail(`execution.runner must be ${evidenceRunner}`);
+		if (!/^[0-9a-f]{40}$/.test(execution.git_sha ?? ''))
+			fail('execution.git_sha must be a full commit hash');
+		if (
+			typeof execution.generated_at_utc !== 'string' ||
+			Number.isNaN(Date.parse(execution.generated_at_utc))
+		)
+			fail('execution.generated_at_utc must be an ISO timestamp');
+		if (!['PASS', 'FAIL'].includes(execution.status)) fail('execution.status is invalid');
+		if (!Array.isArray(execution.commands) || execution.commands.length === 0)
+			fail('execution.commands must record command output');
+		const commandResults = new Map();
+		for (const result of execution.commands) {
+			if (!result?.command || commandResults.has(result.command))
+				fail('execution.commands must contain unique command names');
+			if (!['PASS', 'FAIL'].includes(result.status))
+				fail(`${result.command} has an invalid execution status`);
+			if (!Number.isInteger(result.exit_code))
+				fail(`${result.command} is missing an integer exit code`);
+			if (!/^[0-9a-f]{64}$/.test(result.output_sha256 ?? ''))
+				fail(`${result.command} is missing a SHA-256 output proof`);
+			if (!Number.isInteger(result.output_bytes) || result.output_bytes < 0)
+				fail(`${result.command} is missing an output byte count`);
+			if (typeof result.output_excerpt !== 'string' || result.output_excerpt.trim() === '')
+				fail(`${result.command} is missing a recorded output excerpt`);
+			commandResults.set(result.command, result);
+		}
+		for (const entry of passEntries) {
+			const result = commandResults.get(entry.command);
+			if (!result) fail(`${entry.id} has no recorded result for ${entry.command}`);
+			if (result.status !== 'PASS' || result.exit_code !== 0)
+				fail(`${entry.id} is marked PASS without a successful command result`);
+		}
+		for (const entry of entries.values()) {
+			const result = commandResults.get(entry.command);
+			if (!result) fail(`${entry.id} has no recorded execution result for ${entry.command}`);
+			if (entry.status !== result.status) {
+				fail(`${entry.id} status does not match its recorded execution result`);
+			}
+		}
+		const allCommandsPassed = execution.commands.every(
+			(result) => result.status === 'PASS' && result.exit_code === 0
+		);
+		if ((execution.status === 'PASS') !== allCommandsPassed)
+			fail('execution.status does not match the recorded command results');
+		if (
+			execution.status === 'PASS' &&
+			execution.commands.some((result) => result.status !== 'PASS' || result.exit_code !== 0)
+		)
+			fail('execution.status PASS requires every recorded command to pass');
 	}
 	for (const id of expectedIds) {
 		if (!entries.has(id)) fail(`${id} is missing`);
@@ -62,6 +119,8 @@ export function validateV140ReleaseEvidence(evidence, options = {}) {
 	}
 	if (options.requireComplete && entries.get('P20-T02').status !== 'PASS')
 		fail('P20-T02 must be PASS for terminal release evidence');
+	if (options.requireComplete && (!execution || execution.status !== 'PASS'))
+		fail('complete release evidence requires a successful recorded execution');
 	if (
 		typeof evidence.payment_revenue_boundary !== 'string' ||
 		!evidence.payment_revenue_boundary.includes('not reconciled revenue') ||

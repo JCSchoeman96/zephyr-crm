@@ -77,28 +77,31 @@ for (const path of requiredFiles) {
 	assert(registry.files[path] === sha256(path), `registry hash is stale for ${path}`);
 }
 
-const state = readJson('.agent/goal-loop/STATE.json');
-assert(state.roadmap === 'CRM_IMPLEMENTATION_ROADMAP_v1.4.0.md', 'v1.4.0 roadmap is not active');
-assert(
-	state.architecture === 'docs/FULFILMENT_ARCHITECTURE.md',
-	'v1.4.0 architecture is not active'
-);
-for (const path of requiredFiles) {
+const localStatePath = '.agent/goal-loop/STATE.json';
+if (existsSync(resolve(root, localStatePath))) {
+	const state = readJson(localStatePath);
+	assert(state.roadmap === 'CRM_IMPLEMENTATION_ROADMAP_v1.4.0.md', 'v1.4.0 roadmap is not active');
 	assert(
-		state.authority_sha256?.[path] === registry.files[path],
-		`state hash is stale for ${path}`
+		state.architecture === 'docs/FULFILMENT_ARCHITECTURE.md',
+		'v1.4.0 architecture is not active'
 	);
-}
-assert(
-	state.authority_sha256?.[registryPath] === sha256(registryPath),
-	'state hash is missing for the v1.4 registry'
-);
-for (const [phase, path] of Object.entries(phasePaths)) {
-	assert(state.phase_authority_paths?.[phase] === path, `${phase} phase path is not canonical`);
+	for (const path of requiredFiles) {
+		assert(
+			state.authority_sha256?.[path] === registry.files[path],
+			`state hash is stale for ${path}`
+		);
+	}
 	assert(
-		state.phase_authority_sha256?.[phase] === registry.files[path],
-		`${phase} phase hash is stale`
+		state.authority_sha256?.[registryPath] === sha256(registryPath),
+		'state hash is missing for the v1.4 registry'
 	);
+	for (const [phase, path] of Object.entries(phasePaths)) {
+		assert(state.phase_authority_paths?.[phase] === path, `${phase} phase path is not canonical`);
+		assert(
+			state.phase_authority_sha256?.[phase] === registry.files[path],
+			`${phase} phase hash is stale`
+		);
+	}
 }
 
 const roadmap = read('CRM_IMPLEMENTATION_ROADMAP_v1.4.0.md');
@@ -113,5 +116,5 @@ for (const [phase, path] of Object.entries(phasePaths)) {
 }
 
 console.log(
-	`v1.4.0 authority verification passed: ${requiredFiles.length} files, P15-P20 phase set, and local state hashes.`
+	`v1.4.0 authority verification passed: ${requiredFiles.length} files, P15-P20 phase set, and ${existsSync(resolve(root, localStatePath)) ? 'local state hashes' : 'tracked registry hashes'}.`
 );

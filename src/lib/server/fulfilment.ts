@@ -22,6 +22,8 @@ export const fulfilmentLimits = {
 	context: 100
 } as const;
 
+const fulfilmentRelationPageSize = 500;
+
 const emptyId = '00000000-0000-0000-0000-000000000000';
 
 const caseSelect =
@@ -108,6 +110,12 @@ export type FulfilmentDetail = {
 	tasks: (FulfilmentTask & { is_overdue: boolean })[];
 	activities: ActivitySummary[];
 	actors: ProfileSummary[];
+	truncated: {
+		steps: boolean;
+		payments: boolean;
+		tasks: boolean;
+		activities: boolean;
+	};
 };
 
 type FulfilmentReadClient = SupabaseClient<Database>;
@@ -185,33 +193,51 @@ async function loadRelations(
 	tasks: FulfilmentTask[];
 }> {
 	const relationIds = ids(caseIds);
-	const [stepsResponse, paymentsResponse, tasksResponse] = await Promise.all([
-		supabase
-			.from('fulfilment_steps')
-			.select(stepSelect)
-			.in('fulfilment_case_id', relationIds)
-			.order('created_at', { ascending: true })
-			.limit(fulfilmentLimits.steps),
-		supabase
-			.from('payment_milestones')
-			.select(paymentSelect)
-			.in('fulfilment_case_id', relationIds)
-			.order('type', { ascending: true })
-			.limit(fulfilmentLimits.payments),
-		supabase
-			.from('tasks')
-			.select(taskSelect)
-			.in('fulfilment_case_id', relationIds)
-			.order('created_at', { ascending: false })
-			.limit(fulfilmentLimits.tasks)
+	const loadPages = async <T>(
+		queryPage: (from: number, to: number) => PromiseLike<{ data: unknown[] | null; error: unknown }>
+	) => {
+		const rows: T[] = [];
+		for (let from = 0; ; from += fulfilmentRelationPageSize) {
+			const response = await queryPage(from, from + fulfilmentRelationPageSize - 1);
+			if (response.error) throw error(500, 'Could not load Fulfilment queue work');
+			const page = (response.data ?? []) as T[];
+			rows.push(...page);
+			if (page.length < fulfilmentRelationPageSize) return rows;
+		}
+	};
+	const [steps, payments, tasks] = await Promise.all([
+		loadPages<FulfilmentStep>((from, to) =>
+			supabase
+				.from('fulfilment_steps')
+				.select(stepSelect)
+				.in('fulfilment_case_id', relationIds)
+				.order('created_at', { ascending: true })
+				.order('id', { ascending: true })
+				.range(from, to)
+		),
+		loadPages<FulfilmentPayment>((from, to) =>
+			supabase
+				.from('payment_milestones')
+				.select(paymentSelect)
+				.in('fulfilment_case_id', relationIds)
+				.order('type', { ascending: true })
+				.order('id', { ascending: true })
+				.range(from, to)
+		),
+		loadPages<FulfilmentTask>((from, to) =>
+			supabase
+				.from('tasks')
+				.select(taskSelect)
+				.in('fulfilment_case_id', relationIds)
+				.order('created_at', { ascending: false })
+				.order('id', { ascending: true })
+				.range(from, to)
+		)
 	]);
-	if (stepsResponse.error || paymentsResponse.error || tasksResponse.error) {
-		throw error(500, 'Could not load Fulfilment queue work');
-	}
 	return {
-		steps: (stepsResponse.data ?? []) as FulfilmentStep[],
-		payments: (paymentsResponse.data ?? []) as FulfilmentPayment[],
-		tasks: (tasksResponse.data ?? []) as FulfilmentTask[]
+		steps: steps as FulfilmentStep[],
+		payments: payments as FulfilmentPayment[],
+		tasks: tasks as FulfilmentTask[]
 	};
 }
 
@@ -301,25 +327,29 @@ export async function loadFulfilmentDetail(
 			.select(stepSelect)
 			.eq('fulfilment_case_id', caseId)
 			.order('created_at', { ascending: true })
-			.limit(fulfilmentLimits.steps),
+			.order('id', { ascending: true })
+			.limit(fulfilmentLimits.steps + 1),
 		supabase
 			.from('payment_milestones')
 			.select(paymentSelect)
 			.eq('fulfilment_case_id', caseId)
 			.order('type', { ascending: true })
-			.limit(fulfilmentLimits.payments),
+			.order('id', { ascending: true })
+			.limit(fulfilmentLimits.payments + 1),
 		supabase
 			.from('tasks')
 			.select(taskSelect)
 			.eq('fulfilment_case_id', caseId)
 			.order('created_at', { ascending: false })
-			.limit(fulfilmentLimits.tasks),
+			.order('id', { ascending: true })
+			.limit(fulfilmentLimits.tasks + 1),
 		supabase
 			.from('activities')
 			.select(activitySelect)
 			.eq('fulfilment_case_id', caseId)
 			.order('occurred_at', { ascending: false })
-			.limit(fulfilmentLimits.activities)
+			.order('id', { ascending: true })
+			.limit(fulfilmentLimits.activities + 1)
 	]);
 	if (
 		clientResponse.error ||
@@ -332,10 +362,14 @@ export async function loadFulfilmentDetail(
 	) {
 		throw error(500, 'Could not load Fulfilment history');
 	}
-	const steps = (stepsResponse.data ?? []) as FulfilmentStep[];
-	const payments = (paymentsResponse.data ?? []) as FulfilmentPayment[];
-	const tasks = (tasksResponse.data ?? []) as FulfilmentTask[];
-	const activities = (activitiesResponse.data ?? []) as ActivitySummary[];
+	const stepRows = (stepsResponse.data ?? []) as FulfilmentStep[];
+	const paymentRows = (paymentsResponse.data ?? []) as FulfilmentPayment[];
+	const taskRows = (tasksResponse.data ?? []) as FulfilmentTask[];
+	const activityRows = (activitiesResponse.data ?? []) as ActivitySummary[];
+	const steps = stepRows.slice(0, fulfilmentLimits.steps);
+	const payments = paymentRows.slice(0, fulfilmentLimits.payments);
+	const tasks = taskRows.slice(0, fulfilmentLimits.tasks);
+	const activities = activityRows.slice(0, fulfilmentLimits.activities);
 	const actorIds = ids([
 		...activities.flatMap((activity) => (activity.actor_id ? [activity.actor_id] : [])),
 		...payments.flatMap((payment) =>
@@ -358,6 +392,12 @@ export async function loadFulfilmentDetail(
 		payments,
 		tasks: tasks.map((task) => ({ ...task, is_overdue: isTaskOverdue(task) })),
 		activities,
-		actors: (actorsResponse.data ?? []) as ProfileSummary[]
+		actors: (actorsResponse.data ?? []) as ProfileSummary[],
+		truncated: {
+			steps: stepRows.length > fulfilmentLimits.steps,
+			payments: paymentRows.length > fulfilmentLimits.payments,
+			tasks: taskRows.length > fulfilmentLimits.tasks,
+			activities: activityRows.length > fulfilmentLimits.activities
+		}
 	};
 }

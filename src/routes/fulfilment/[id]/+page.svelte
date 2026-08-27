@@ -26,22 +26,28 @@
 	} from '$lib/domain/presentation/labels';
 	import RealtimeStatus from '$lib/realtime/RealtimeStatus.svelte';
 	import { publicClientConfiguration } from '$lib/config/public-client-config';
+	import { utcIsoToLocalDateTime, utcIsoToLocalLabel } from '$lib/time/zoned-datetime';
 
 	let { data, form }: { data: PageData; form: ActionData } = $props();
 	const canMutate = $derived(data.profile.role !== 'viewer');
 	const canCorrect = $derived(['owner', 'admin'].includes(data.profile.role));
+	const hasTruncatedHistory = $derived(Object.values(data.detail.truncated).some(Boolean));
 
 	function dateTime(value: string | null) {
 		return value
-			? new Date(value).toLocaleString(publicClientConfiguration.locale.language, {
-					timeZone: publicClientConfiguration.locale.timezone
-				})
+			? utcIsoToLocalLabel(
+					value,
+					publicClientConfiguration.locale.timezone,
+					publicClientConfiguration.locale.language
+				)
 			: 'Not recorded';
 	}
 
 	function dateInput(value: string | null) {
-		return value ? new Date(value).toISOString().slice(0, 16) : '';
+		return value ? utcIsoToLocalDateTime(value, publicClientConfiguration.locale.timezone) : '';
 	}
+
+	const dateTimeHint = `Times use ${publicClientConfiguration.locale.timezone}`;
 
 	function money(value: number | null | undefined, currency: string | undefined) {
 		return new Intl.NumberFormat(publicClientConfiguration.locale.language, {
@@ -101,7 +107,17 @@
 		description="One accepted sale, one canonical operational record."
 	>
 		{#snippet actions()}
-			<RealtimeStatus scope={`fulfilment-${data.detail.case.id}`} tables={['tasks', 'quotes']} />
+			<RealtimeStatus
+				scope={`fulfilment-${data.detail.case.id}`}
+				tables={[
+					'quotes',
+					'tasks',
+					'fulfilment_cases',
+					'fulfilment_steps',
+					'payment_milestones',
+					'activities'
+				]}
+			/>
 		{/snippet}
 	</PageHeader>
 
@@ -110,6 +126,12 @@
 			title="Fulfilment action could not be completed"
 			message={form.message}
 		/>{/if}
+	{#if hasTruncatedHistory}
+		<p class="history-notice" role="status">
+			This case has more history than the detail view shows. A bounded history window is displayed;
+			additional records are omitted from this page.
+		</p>
+	{/if}
 	{#if navigating.to}<LoadingState message="Refreshing Fulfilment case…" />{/if}
 
 	<section aria-labelledby="overview-heading" class="detail-section">
@@ -276,6 +298,7 @@
 											name="scheduled_for"
 											label="Schedule for"
 											type="datetime-local"
+											hint={dateTimeHint}
 											required
 										/>
 										<Button type="submit" size="sm">Schedule installation</Button>
@@ -293,6 +316,7 @@
 											label="New schedule"
 											type="datetime-local"
 											value={dateInput(step.scheduled_for)}
+											hint={dateTimeHint}
 											required
 										/>
 										<Button type="submit" variant="secondary" size="sm">Reschedule</Button>
@@ -520,7 +544,13 @@
 						value="Confirm payment evidence"
 						required
 					/>
-					<Input id="follow-up-due" name="due_at" label="Due date" type="datetime-local" />
+					<Input
+						id="follow-up-due"
+						name="due_at"
+						label="Due date"
+						type="datetime-local"
+						hint={dateTimeHint}
+					/>
 					<Textarea
 						id="follow-up-description"
 						name="description"
@@ -598,6 +628,15 @@
 		display: inline-block;
 		margin-bottom: var(--space-lg);
 		font-weight: var(--font-weight-semibold);
+	}
+	.history-notice {
+		margin: var(--space-md) 0;
+		padding: var(--space-sm) var(--space-md);
+		border: 1px solid var(--color-border);
+		border-radius: var(--radius-md);
+		background: var(--color-surface-subtle);
+		color: var(--color-text-muted);
+		font-size: var(--font-size-sm);
 	}
 	.detail-section {
 		margin-bottom: var(--space-xl);

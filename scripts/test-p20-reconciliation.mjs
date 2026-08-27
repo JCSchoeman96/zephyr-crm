@@ -6,6 +6,7 @@ import { validateEvidenceRegistry } from './verify-test-evidence.mjs';
 import { validateV140ReleaseEvidence } from './verify-v140-release-evidence.mjs';
 
 const root = process.cwd();
+const localStatePath = '.agent/goal-loop/STATE.json';
 const phaseIds = Array.from({ length: 21 }, (_, index) => `P${index}`);
 const coreAuthorities = [
 	'docs/ARCHITECTURE.md',
@@ -104,6 +105,15 @@ function assertAuthorityCoverage(state) {
 		assert(existsSync(resolve(root, path)), `missing phase authority ${path}`);
 }
 
+function assertTrackedAuthorityRegistry() {
+	const registry = readJson('docs/AUTHORITY_HASHES_V1.4.0.json');
+	assert(registry.version === '1.4.0', 'tracked v1.4 authority registry version is invalid');
+	for (const [path, expected] of Object.entries(registry.files ?? {})) {
+		assert(existsSync(resolve(root, path)), `missing tracked v1.4 authority file ${path}`);
+		assert(expected === sha256(path), `tracked v1.4 authority hash is stale for ${path}`);
+	}
+}
+
 function assertCanonicalContracts() {
 	const roadmap = read('docs/ROADMAP.md');
 	const metrics = read('docs/METRICS_CONTRACT.md');
@@ -140,10 +150,14 @@ function assertCanonicalContracts() {
 }
 
 function main() {
-	const state = readJson('.agent/goal-loop/STATE.json');
-	assertStateProjection(state);
-	assertStateHashes(state);
-	assertAuthorityCoverage(state);
+	if (existsSync(resolve(root, localStatePath))) {
+		const state = readJson(localStatePath);
+		assertStateProjection(state);
+		assertStateHashes(state);
+		assertAuthorityCoverage(state);
+	} else {
+		assertTrackedAuthorityRegistry();
+	}
 	assertCanonicalContracts();
 	const historical = readJson('docs/release/TEST_EVIDENCE.json');
 	const historicalValidation = validateEvidenceRegistry(historical, { root });

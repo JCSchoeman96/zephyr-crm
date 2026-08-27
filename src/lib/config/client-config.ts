@@ -116,7 +116,7 @@ export const defaultClientConfiguration: ClientConfiguration = {
 	},
 	integrations: {
 		bricks: {
-			formId: 'contact-form',
+			formId: 'aaa03e',
 			webhookSecretEnvKey: 'BRICKS_SECRET_REF'
 		},
 		sendpulse: {

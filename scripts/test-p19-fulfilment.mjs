@@ -319,6 +319,13 @@ async function main() {
 			undefined,
 			await signIn(sales)
 		);
+		const followUpRow = (
+			await serviceRows(`/rest/v1/tasks?id=eq.${followUp.task_id}&select=quote_id`, sales)
+		)[0];
+		assert(
+			followUpRow.quote_id === fixture.quoteId,
+			'Fulfilment payment follow-up did not inherit the accepted Quote lineage'
+		);
 		const repeatedFollowUp = await mustRpc(
 			'create_task',
 			{

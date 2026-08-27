@@ -39,7 +39,7 @@
 	},
 	"integrations": {
 		"bricks": {
-			"formId": "contact-form",
+			"formId": "aaa03e",
 			"webhookSecretEnvKey": "BRICKS_WEBHOOK_SECRET"
 		},
 		"sendpulse": {

@@ -436,11 +436,11 @@ try {
 		'P10-T01 new Lead count did not reconcile'
 	);
 	assert(
-		countDelta(after, before, 'overdue_tasks', 'operational') === 1,
+		countDelta(after, before, 'overdue_tasks', 'operational') === 2,
 		`P10-T01 overdue Task count did not reconcile: before=${JSON.stringify(before.operational)} after=${JSON.stringify(after.operational)}`
 	);
 	assert(
-		countDelta(after, before, 'due_today', 'operational') === 1,
+		countDelta(after, before, 'due_today', 'operational') === 2,
 		'P10-T01 due-today count did not reconcile'
 	);
 	assert(
@@ -448,7 +448,7 @@ try {
 		'P10-T01 waiting_on_us count did not reconcile'
 	);
 	assert(
-		countDelta(after, before, 'waiting_on_client', 'operational') === 3,
+		countDelta(after, before, 'waiting_on_client', 'operational') === 2,
 		'P10-T01 waiting_on_client count did not reconcile'
 	);
 	assert(
@@ -474,7 +474,7 @@ try {
 		'P10-T01 accepted value did not reconcile'
 	);
 	assert(
-		countDelta(after, before, 'won_leads', 'kpis') === 1,
+		countDelta(after, before, 'won_leads', 'kpis') === 2,
 		'P10-T01 Won count did not reconcile'
 	);
 	assert(

@@ -38,8 +38,10 @@ The baseline is a local engineering measurement, not a production capacity claim
 
 ## Selective Realtime contract
 
-Only `leads`, `tasks`, and `quotes` are added to `supabase_realtime`. Screens use
-the smallest useful subscription set:
+The original Phase 11 publication covered `leads`, `tasks`, and `quotes`.
+v1.4 adds the bounded Fulfilment invalidation set
+`fulfilment_cases`, `fulfilment_steps`, `payment_milestones`, and `activities`.
+Screens use the smallest useful subscription set for the data they display:
 
 | Screen | Tables | Immediate value |
 | --- | --- | --- |
@@ -48,12 +50,14 @@ the smallest useful subscription set:
 | Lead detail | Leads, Tasks, Quotes | Active Lead, follow-up, and Quote changes for the open Lead. |
 | Task index | Tasks, Leads | Task changes and the Lead lookup used by the work queue. |
 | Quote index/detail | Quotes | Quote status and revision/send changes. |
+| Fulfilment queue/detail | Quotes, Tasks, Fulfilment Cases, Fulfilment Steps, Payment Milestones, Activities | Refresh accepted-sale work, payment, task, and bounded history views. |
 
 Each subscription is authenticated through the existing browser Supabase client,
 so delivery remains subject to the table's RLS policies. A received event only
 coalesces a short-lived in-memory `invalidateAll()` call; the browser never treats
 the event payload as authoritative CRM data. No polling interval is used, and no
-other table is made realtime.
+unlisted table is made realtime. Fulfilment detail history remains bounded and
+exposes truncation metadata when more rows exist than the current view loads.
 
 ## Conflict and storage decisions
 
