@@ -108,7 +108,12 @@ function validatePilotPackage() {
 
 function runP14SpecificChecks() {
 	const state = JSON.parse(read(releaseStatePath()));
-	const stateGate = state.execution_stage === 'PHASE_LOOP' ? 'release:state:p14' : 'release:state';
+	const stateGate =
+		state.roadmap_version === '1.4.0'
+			? 'release:state:v140'
+			: state.execution_stage === 'PHASE_LOOP'
+				? 'release:state:p14'
+				: 'release:state';
 	const checks = [
 		'release:state:parity',
 		stateGate,

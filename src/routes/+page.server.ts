@@ -27,22 +27,30 @@ export const load: PageServerLoad = async (event) => {
 		event.url.searchParams.get('to')
 	);
 	const range = { p_from: dateRange.from, p_to: dateRange.to };
-	const [operationalResponse, kpiResponse, lostResponse, attributionResponse, recentTasksResponse] =
-		await Promise.all([
-			supabase.rpc('dashboard_operational_summary', range),
-			supabase.rpc('dashboard_sales_kpis', range),
-			supabase.rpc('dashboard_lost_analysis', { ...range, p_limit: 50 }),
-			supabase.rpc('dashboard_attribution', { ...range, p_limit: 50 }),
-			supabase
-				.from('task_work_queue')
-				.select('id,title,type,due_at,is_overdue,status,lead_id,assigned_to,lock_version')
-				.eq('status', 'open')
-				.order('due_at', { ascending: true, nullsFirst: false })
-				.limit(5)
-		]);
+	const [
+		operationalResponse,
+		kpiResponse,
+		metricsResponse,
+		lostResponse,
+		attributionResponse,
+		recentTasksResponse
+	] = await Promise.all([
+		supabase.rpc('dashboard_operational_summary', range),
+		supabase.rpc('dashboard_sales_kpis', range),
+		supabase.rpc('dashboard_sales_fulfilment_metrics', range),
+		supabase.rpc('dashboard_lost_analysis', { ...range, p_limit: 50 }),
+		supabase.rpc('dashboard_attribution', { ...range, p_limit: 50 }),
+		supabase
+			.from('task_work_queue')
+			.select('id,title,type,due_at,is_overdue,status,lead_id,assigned_to,lock_version')
+			.eq('status', 'open')
+			.order('due_at', { ascending: true, nullsFirst: false })
+			.limit(5)
+	]);
 	if (
 		operationalResponse.error ||
 		kpiResponse.error ||
+		metricsResponse.error ||
 		lostResponse.error ||
 		attributionResponse.error ||
 		recentTasksResponse.error
@@ -51,6 +59,7 @@ export const load: PageServerLoad = async (event) => {
 	}
 	const operational = record(operationalResponse.data);
 	const kpis = record(kpiResponse.data);
+	const metrics = record(metricsResponse.data);
 	const lost = record(lostResponse.data);
 	const attribution = record(attributionResponse.data);
 	return {
@@ -73,6 +82,20 @@ export const load: PageServerLoad = async (event) => {
 			lostLeads: numberValue(kpis.lost_leads),
 			conversionRate: numberValue(kpis.conversion_rate),
 			pipelineValue: numberValue(kpis.pipeline_value)
+		},
+		metrics: {
+			newEnquiriesWaiting: numberValue(metrics.new_enquiries_waiting),
+			qualificationBacklog: numberValue(metrics.qualification_backlog),
+			quotesNeedingPreparation: numberValue(metrics.quotes_needing_preparation),
+			quotesAwaitingDecision: numberValue(metrics.quotes_awaiting_decision),
+			averageQuoteResponseHours: numberValue(metrics.average_quote_response_hours),
+			acceptedValue: numberValue(metrics.accepted_value),
+			openFulfilments: numberValue(metrics.open_fulfilments),
+			upcomingInstallations: numberValue(metrics.upcoming_installations),
+			awaitingDispatch: numberValue(metrics.awaiting_dispatch),
+			awaitingCollection: numberValue(metrics.awaiting_collection),
+			paymentsAwaitingFollowUp: numberValue(metrics.payments_awaiting_follow_up),
+			completedFulfilments: numberValue(metrics.completed_fulfilments)
 		},
 		lost: {
 			byReason: rows(lost.by_reason).map((row) => ({

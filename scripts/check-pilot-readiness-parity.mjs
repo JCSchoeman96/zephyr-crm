@@ -1,6 +1,8 @@
 import { existsSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
+import { validateV140ReadinessState } from './check-v140-release-state.mjs';
+
 const lifecycleFields = [
 	'goal_status',
 	'local_build_status',
@@ -110,6 +112,18 @@ export function parseStateMarkdownProjection(stateText) {
 }
 
 export function validateReleaseTruth(machineState, committedState, readinessText, stateText) {
+	if (machineState.roadmap_version === '1.4.0' && machineState.current_phase === 'P20') {
+		validateV140ReadinessState(machineState);
+		validateLifecycleCombination(committedState);
+		const committed = projectionFromState(committedState);
+		const human = parseReadinessProjection(readinessText);
+		assertProjectionEqual(committed, human, 'committed release projection');
+		if (stateText !== undefined) {
+			const humanState = parseStateMarkdownProjection(stateText);
+			assertProjectionEqual(projectionFromState(machineState), humanState, 'v1.4 human loop state');
+		}
+		return true;
+	}
 	validateLifecycleCombination(machineState);
 	const authoritative = projectionFromState(machineState);
 	const committed = projectionFromState(committedState);

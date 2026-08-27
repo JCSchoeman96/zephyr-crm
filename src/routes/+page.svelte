@@ -33,6 +33,12 @@
 		return `${value.toFixed(2)}%`;
 	}
 
+	function responseTime(hours: number) {
+		if (hours <= 0) return '0 h';
+		if (hours < 1) return `${Math.round(hours * 60)} min`;
+		return `${hours.toFixed(2)} h`;
+	}
+
 	function taskDate(value: string | null) {
 		return value
 			? new Date(value).toLocaleString(publicClientConfiguration.locale.language, {
@@ -158,6 +164,87 @@
 				detail="Eligible active quotes"
 			/>
 		</div>
+	</section>
+
+	<section class="dashboard-section" aria-labelledby="sales-fulfilment-metrics-heading">
+		<div class="section-heading">
+			<div>
+				<h2 id="sales-fulfilment-metrics-heading">Sales and Fulfilment metrics</h2>
+				<p>
+					Current work queues plus bounded UTC event metrics for {data.dateRange.from} through
+					{data.dateRange.to}.
+				</p>
+			</div>
+		</div>
+		<div class="kpi-grid" aria-label="Sales and Fulfilment metrics">
+			<StatCard
+				label="New enquiries waiting"
+				value={whole(data.metrics.newEnquiriesWaiting)}
+				detail="Current NEW Leads"
+			/>
+			<StatCard
+				label="Qualification backlog"
+				value={whole(data.metrics.qualificationBacklog)}
+				detail="Current QUALIFICATION Leads"
+			/>
+			<StatCard
+				label="Quotes needing preparation"
+				value={whole(data.metrics.quotesNeedingPreparation)}
+				detail="Current PROPOSAL Leads"
+			/>
+			<StatCard
+				label="Quotes awaiting decision"
+				value={whole(data.metrics.quotesAwaitingDecision)}
+				detail="Current sent Quote revisions"
+			/>
+			<StatCard
+				label="Average quote response time"
+				value={responseTime(data.metrics.averageQuoteResponseHours)}
+				detail="Sent to accepted or declined"
+			/>
+			<StatCard
+				label="Accepted value"
+				value={currency(data.metrics.acceptedValue)}
+				detail="Accepted Quote total; not received cash"
+				tone="success"
+			/>
+			<StatCard
+				label="Open fulfilments"
+				value={whole(data.metrics.openFulfilments)}
+				detail="Current open Cases"
+			/>
+			<StatCard
+				label="Upcoming installations"
+				value={whole(data.metrics.upcomingInstallations)}
+				detail="Scheduled in selected window"
+			/>
+			<StatCard
+				label="Awaiting dispatch"
+				value={whole(data.metrics.awaitingDispatch)}
+				detail="Current courier Steps"
+			/>
+			<StatCard
+				label="Awaiting collection"
+				value={whole(data.metrics.awaitingCollection)}
+				detail="Current pickup Steps"
+			/>
+			<StatCard
+				label="Payments awaiting follow-up"
+				value={whole(data.metrics.paymentsAwaitingFollowUp)}
+				detail="Awaiting milestone with open Task"
+				tone="warning"
+			/>
+			<StatCard
+				label="Completed fulfilments"
+				value={whole(data.metrics.completedFulfilments)}
+				detail="Completed in selected window"
+				tone="success"
+			/>
+		</div>
+		<p class="metrics-note">
+			Accepted value and received PaymentMilestones are recorded CRM evidence, not reconciled
+			revenue, bank settlement, or provider confirmation.
+		</p>
 	</section>
 
 	<section class="analysis-grid" aria-label="Management analysis">
@@ -369,6 +456,11 @@
 	}
 	.section-heading p {
 		margin-top: var(--space-xs);
+	}
+	.metrics-note {
+		margin: var(--space-md) 0 0;
+		color: var(--color-text-muted);
+		font-size: var(--font-size-xs);
 	}
 	.attention-grid,
 	.kpi-grid {

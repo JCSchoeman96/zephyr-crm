@@ -1892,6 +1892,10 @@ export type Database = {
 				Args: { p_from?: string; p_to?: string };
 				Returns: Json;
 			};
+			dashboard_sales_fulfilment_metrics: {
+				Args: { p_from?: string; p_to?: string };
+				Returns: Json;
+			};
 			dashboard_sales_kpis: {
 				Args: { p_from?: string; p_to?: string };
 				Returns: Json;
