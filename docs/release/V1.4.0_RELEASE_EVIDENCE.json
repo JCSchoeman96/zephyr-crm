@@ -1,0 +1,203 @@
+{
+	"version": "v1.4.0",
+	"application_version": "v1.0.0-rc.1",
+	"scope": "LOCAL_ONLY",
+	"generated_from": "P15-P20 local validation",
+	"source_state": ".agent/goal-loop/STATE.json",
+	"historical_evidence": {
+		"path": "docs/release/TEST_EVIDENCE.json",
+		"version": "v1.3.2",
+		"entry_count": 243
+	},
+	"phase_evidence": [
+		{
+			"id": "P15-T01",
+			"status": "PASS",
+			"command": "bun run authority:v140:verify",
+			"sources": ["docs/FULFILMENT_ARCHITECTURE.md", "CRM_IMPLEMENTATION_ROADMAP_v1.4.0.md"]
+		},
+		{
+			"id": "P15-T02",
+			"status": "PASS",
+			"command": "bun run authority:v140:verify",
+			"sources": ["docs/STATE_MACHINES.md", "docs/FULFILMENT_ARCHITECTURE.md"]
+		},
+		{
+			"id": "P15-T03",
+			"status": "PASS",
+			"command": "bun run authority:v140:verify",
+			"sources": [
+				"docs/DOMAIN_MODEL.md",
+				"docs/SECURITY_MODEL.md",
+				"docs/METRICS_CONTRACT.md",
+				"docs/FULFILMENT_ARCHITECTURE.md"
+			]
+		},
+		{
+			"id": "P16-T01",
+			"status": "PASS",
+			"command": "bun run test:p16:persistence",
+			"sources": ["supabase/migrations/20260826200602_v140_fulfilment_persistence_foundation.sql"]
+		},
+		{
+			"id": "P16-T02",
+			"status": "PASS",
+			"command": "bun run test:p16:persistence",
+			"sources": ["scripts/test-p16-persistence.mjs"]
+		},
+		{
+			"id": "P16-T03",
+			"status": "PASS",
+			"command": "bun run test:p16:persistence",
+			"sources": ["scripts/test-p16-persistence.mjs"]
+		},
+		{
+			"id": "P17-T01",
+			"status": "PASS",
+			"command": "bun run test:p17:sales-fulfilment",
+			"sources": ["scripts/test-p17-sales-fulfilment.mjs"]
+		},
+		{
+			"id": "P17-T02",
+			"status": "PASS",
+			"command": "bun run test:p17:sales-fulfilment",
+			"sources": ["scripts/test-p17-sales-fulfilment.mjs"]
+		},
+		{
+			"id": "P17-T03",
+			"status": "PASS",
+			"command": "bun run test:p17:sales-fulfilment",
+			"sources": ["scripts/test-p17-sales-fulfilment.mjs"]
+		},
+		{
+			"id": "P17-T04",
+			"status": "PASS",
+			"command": "bun run test:p17:sales-fulfilment",
+			"sources": ["scripts/test-p17-sales-fulfilment.mjs", "tests/e2e/domain/p17-sales-fulfilment.e2e.ts"]
+		},
+		{
+			"id": "P18-T01",
+			"status": "PASS",
+			"command": "bun run test:unit -- --run src/lib/domain/sales/queues.spec.ts",
+			"sources": ["src/lib/domain/sales/queues.ts", "src/lib/domain/sales/queues.spec.ts"]
+		},
+		{
+			"id": "P18-T02",
+			"status": "PASS",
+			"command": "bun run test:p18:sales-queues",
+			"sources": ["tests/e2e/domain/p18-sales-queues.e2e.ts"]
+		},
+		{
+			"id": "P18-T03",
+			"status": "PASS",
+			"command": "bun run test:p18:sales-queues",
+			"sources": ["tests/e2e/domain/p18-sales-queues.e2e.ts"]
+		},
+		{
+			"id": "P18-T04",
+			"status": "PASS",
+			"command": "bun run test:p18:sales-queues",
+			"sources": ["tests/e2e/domain/p18-sales-queues.e2e.ts"]
+		},
+		{
+			"id": "P18-T05",
+			"status": "PASS",
+			"command": "bun run test:p18:sales-queues",
+			"sources": ["tests/e2e/domain/p18-sales-queues.e2e.ts"]
+		},
+		{
+			"id": "P18-T06",
+			"status": "PASS",
+			"command": "bun run test:p18:sales-queues",
+			"sources": ["tests/e2e/domain/p18-sales-queues.e2e.ts"]
+		},
+		{
+			"id": "P19-T01",
+			"status": "PASS",
+			"command": "bun run test:p19:fulfilment",
+			"sources": ["src/lib/domain/fulfilment/queues.ts", "scripts/test-p19-fulfilment.mjs"]
+		},
+		{
+			"id": "P19-T02",
+			"status": "PASS",
+			"command": "bun run test:p19:browser",
+			"sources": ["src/lib/server/fulfilment.ts", "tests/e2e/domain/p19-fulfilment.e2e.ts"]
+		},
+		{
+			"id": "P19-T03",
+			"status": "PASS",
+			"command": "bun run test:p19:browser",
+			"sources": ["tests/e2e/domain/p19-fulfilment.e2e.ts"]
+		},
+		{
+			"id": "P19-T04",
+			"status": "PASS",
+			"command": "bun run test:p19:browser",
+			"sources": ["tests/e2e/domain/p19-fulfilment.e2e.ts"]
+		},
+		{
+			"id": "P19-T05",
+			"status": "PASS",
+			"command": "bun run test:p19:browser",
+			"sources": ["tests/e2e/domain/p19-fulfilment.e2e.ts"]
+		},
+		{
+			"id": "P19-T06",
+			"status": "PASS",
+			"command": "bun run test:p19:fulfilment",
+			"sources": ["scripts/test-p19-fulfilment.mjs"]
+		},
+		{
+			"id": "P20-T01",
+			"status": "PASS",
+			"command": "bun run test:p20:metrics",
+			"sources": [
+				"docs/METRICS_CONTRACT.md",
+				"supabase/migrations/20260827110000_v140_dashboard_metrics.sql",
+				"scripts/test-p20-metrics.mjs"
+			]
+		},
+		{
+			"id": "P20-T02",
+			"status": "PASS",
+			"command": "bun run test:p20:reconciliation:complete",
+			"sources": [
+				"scripts/test-p20-reconciliation.mjs",
+				"docs/AUTHORITY_HASHES_V1.4.0.json",
+				"src/lib/types/database.ts",
+				".agent/goal-loop/STATE.json"
+			]
+		}
+	],
+	"required_validation_commands": [
+		"bun run db:reset",
+		"bun run test:p20:metrics",
+		"bun run test:p20:browser",
+		"bun run test:unit -- --run",
+		"bun run test:p16:persistence",
+		"bun run test:p17:sales-fulfilment",
+		"bun run test:p18:sales-queues",
+		"bun run test:p19:fulfilment",
+		"bun run test:p19:browser",
+		"bun run db:test",
+		"bun run db:types:check",
+		"bun run db:security",
+		"bun run lint",
+		"bun run check",
+		"bun run build",
+		"bun run authority:verify",
+		"bun run authority:v140:verify",
+		"bun run release:evidence:v140:verify:complete",
+		"bun run test:p20:reconciliation:complete",
+		"git diff --check"
+	],
+	"payment_revenue_boundary": "Accepted value and received PaymentMilestones are recorded CRM evidence, not reconciled revenue, bank settlement, provider confirmation, or accounting data.",
+	"external_boundaries": {
+		"remote_deployment": false,
+		"live_dns": false,
+		"sender_domain_proof": false,
+		"human_pilot": false,
+		"production_launch": false,
+		"accounting_reconciliation": false
+	}
+}

@@ -2974,7 +2974,7 @@
       "proof": {
         "command": "bun run test:p4:tracer",
         "source": "scripts/test-p4-tracer.mjs",
-        "assertion": "if (!lostDetail.includes('LOST')) throw new Error('Lost transition with reason did not persist');"
+        "assertion": "if (!lostDetail.includes('Not proceeding'))\n\t\tthrow new Error('Lost transition with reason did not persist');"
       }
     },
     {
@@ -3227,7 +3227,7 @@
       "proof": {
         "command": "bun run test:p14:lost-flow",
         "source": "tests/e2e/domain/lost-flow.e2e.ts",
-        "assertion": "await expect(page.getByText('LOST', { exact: true })).toBeVisible();"
+        "assertion": "await expect(page.getByText('Not proceeding', { exact: true })).toBeVisible();"
       }
     },
     {
@@ -3304,7 +3304,7 @@
       "proof": {
         "command": "bun run test:p14:product-flow",
         "source": "tests/e2e/domain/role-accessibility.e2e.ts",
-        "assertion": "await expect(page.getByText('Viewer access is read-only.').first()).toBeVisible();"
+        "assertion": "await expect(readOnlyMessage).toBeVisible();"
       }
     },
     {

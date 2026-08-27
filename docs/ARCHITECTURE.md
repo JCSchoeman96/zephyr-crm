@@ -4,6 +4,12 @@
 **Version:** 1.2.2 (v1.3.2 hardening amendment)
 **Deployment model:** One isolated stack per client
 
+`CRM_IMPLEMENTATION_ROADMAP_v1.4.0.md` and
+`docs/FULFILMENT_ARCHITECTURE.md` are the additive v1.4.0 authority for the
+Sales-to-Fulfilment extension. The original v1.3.2 boundary remains historical
+evidence for P0-P14; the marked v1.4.0 amendment below governs only the new
+scope.
+
 ## Product boundary
 
 Zephyr CRM is a focused sales-workflow system for small businesses. Its bounded workflow is:
@@ -162,4 +168,52 @@ The current product deliberately excludes marketing campaigns, mass mailing, inb
 
 ## Authority rule
 
-This document describes structure and boundaries. Resource definitions belong in `docs/DOMAIN_MODEL.md`, states and transitions belong in `docs/STATE_MACHINES.md`, security rules belong in `docs/SECURITY_MODEL.md`, and phase sequence belongs in `docs/ROADMAP.md`. If implementation code appears to conflict with these documents, the frozen authority documents take precedence until a formally authorized change is recorded.
+This document describes structure and boundaries. Resource definitions belong in `docs/DOMAIN_MODEL.md`, states and transitions belong in `docs/STATE_MACHINES.md`, security rules belong in `docs/SECURITY_MODEL.md`, and phase sequence belongs in `docs/ROADMAP.md`. If implementation code appears to conflict with these documents, the frozen authority documents take precedence until a formally authorized change is recorded. The v1.4.0 additive boundary authority is the formally recorded change for the Sales-to-Fulfilment extension.
+
+## v1.4.0 additive Sales-to-Fulfilment boundary
+
+The v1.4.0 extension changes the product boundary at one event:
+
+```text
+Quote accepted
+─────────────── Sales ends / Fulfilment begins ───────────────
+```
+
+Sales still owns the Lead and the immutable accepted Quote. The trusted
+acceptance action also creates or links the Client and creates exactly one
+`FulfilmentCase` for that accepted Quote. A Client is a long-lived customer
+record; a FulfilmentCase is one accepted sale. One Client may therefore have
+many FulfilmentCases over time.
+
+Fulfilment tracks manual operational evidence through independent
+`FulfilmentStep` records and `PaymentMilestone` records. A payment milestone
+means that an authorised user recorded a business fact. It does not mean that
+Zephyr processed a payment, reconciled a bank transaction, posted a ledger,
+calculated VAT, or issued an invoice.
+
+The additive domain is:
+
+```text
+Profile
+  └──< Lead
+       ├──< Quote ──< QuoteItem
+       ├──< Task
+       ├──< Activity
+       └──> Client ──< ClientContact
+                    └──< FulfilmentCase
+                         ├──< FulfilmentStep
+                         ├──< PaymentMilestone
+                         ├──< Task
+                         └──< Activity
+```
+
+For v1.4.0, Fulfilment is an additional bounded domain. It owns
+FulfilmentCase, FulfilmentStep, and PaymentMilestone records and consumes the
+accepted Quote and Client lineage. It does not own commercial pricing,
+customer identity, accounting, inventory, or provider logistics.
+
+The complete v1.4.0 boundary, state, security, metric, and route definitions
+are in `docs/FULFILMENT_ARCHITECTURE.md`. It explicitly supersedes the old
+"ends at Client" and "payments deferred" wording for this additive roadmap
+only. It does not add Redis, queues, microservices, inventory, logistics
+provider integrations, payment gateways, accounting, or multi-client tenancy.

@@ -14,6 +14,7 @@ type LeadRecord = {
 	id: string;
 	lock_version: number;
 	pipeline_stage?: string;
+	qualification_notes?: string | null;
 	lost_reason_id?: string | null;
 	lost_notes?: string | null;
 };
@@ -378,6 +379,16 @@ export async function readClientContacts(
 	);
 }
 
+export async function readFulfilmentCasesForQuote(
+	quoteId: string,
+	user: StaffUser
+): Promise<Array<{ id: string; client_id: string; lead_id: string; accepted_quote_id: string }>> {
+	return authenticatedRequest(
+		`/rest/v1/fulfilment_cases?accepted_quote_id=eq.${quoteId}&select=id,client_id,lead_id,accepted_quote_id`,
+		user
+	);
+}
+
 export async function lostReasonId(user: StaffUser): Promise<string> {
 	const rows = await authenticatedRequest<LostReason[]>(
 		'/rest/v1/lost_reasons?active=eq.true&select=id,label,code&order=sort_order.asc&limit=1',
@@ -410,6 +421,7 @@ export async function cleanupLead(id: string, userId: string): Promise<void> {
 	if (!apiUrl || !serviceRoleKey) return;
 	const paths = [
 		`/rest/v1/outbound_messages?lead_id=eq.${id}`,
+		`/rest/v1/fulfilment_cases?lead_id=eq.${id}`,
 		`/rest/v1/clients?source_lead_id=eq.${id}`,
 		`/rest/v1/leads?id=eq.${id}`,
 		`/auth/v1/admin/users/${userId}`

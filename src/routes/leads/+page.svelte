@@ -11,6 +11,7 @@
 	import LoadingState from '$lib/components/ui/LoadingState.svelte';
 	import PageHeader from '$lib/components/ui/PageHeader.svelte';
 	import Select from '$lib/components/ui/Select.svelte';
+	import { followUpLabel, leadStageLabel } from '$lib/domain/presentation/labels';
 	import RealtimeStatus from '$lib/realtime/RealtimeStatus.svelte';
 
 	let { data }: { data: PageData } = $props();
@@ -34,8 +35,12 @@
 		return 'neutral';
 	}
 
+	function statusLabel(stage: string) {
+		return leadStageLabel(stage);
+	}
+
 	function dateTime(value: string | null) {
-		return value ? new Date(value).toLocaleString('en-ZA') : 'No activity recorded';
+		return value ? new Date(value).toLocaleString('en-ZA') : 'No update recorded';
 	}
 
 	function leadName(firstName: string, lastName: string) {
@@ -59,24 +64,21 @@
 </script>
 
 <svelte:head>
-	<title>Leads | Zephyr CRM</title>
-	<meta name="description" content="Review and qualify Zephyr CRM leads" />
+	<title>Enquiries | Zephyr CRM</title>
+	<meta name="description" content="Review new enquiries and keep each one moving" />
 </svelte:head>
 
 <AppShell userEmail={data.auth.user?.email} userRole={data.auth.profile?.role}>
-	<PageHeader
-		title="Leads"
-		description="Qualify enquiries and move the right opportunities forward."
-	>
+	<PageHeader title="Enquiries" description="Review new enquiries and keep each one moving.">
 		{#snippet actions()}<RealtimeStatus scope="leads" tables={['leads']} />{/snippet}
 	</PageHeader>
 
 	{#if navigating.to}
-		<LoadingState message="Loading leads…" />
+		<LoadingState message="Loading enquiries…" />
 	{/if}
 
 	<Card class="filters-card">
-		<form method="GET" class="filters-form" aria-label="Filter leads">
+		<form method="GET" class="filters-form" aria-label="Filter enquiries">
 			<Input
 				id="lead-search"
 				name="q"
@@ -84,26 +86,26 @@
 				placeholder="Name, company or email"
 				value={data.filters.q}
 			/>
-			<Select id="lead-stage" name="stage" label="Pipeline stage" value={data.filters.stage}>
-				<option value="">All stages</option>
-				<option value="NEW">New</option>
+			<Select id="lead-stage" name="stage" label="Enquiry status" value={data.filters.stage}>
+				<option value="">All statuses</option>
+				<option value="NEW">New enquiries</option>
 				<option value="QUALIFICATION">Qualification</option>
-				<option value="PROPOSAL">Proposal</option>
-				<option value="DECISION">Decision</option>
-				<option value="WON">Won</option>
-				<option value="LOST">Lost</option>
+				<option value="PROPOSAL">Quotes to prepare</option>
+				<option value="DECISION">Awaiting feedback</option>
+				<option value="WON">Customer confirmed</option>
+				<option value="LOST">Not proceeding</option>
 			</Select>
-			<Select id="lead-attention" name="attention" label="Attention" value={data.filters.attention}>
-				<option value="">All attention states</option>
-				<option value="none">None</option>
-				<option value="waiting_on_client">Waiting on client</option>
-				<option value="waiting_on_us">Waiting on us</option>
+			<Select id="lead-attention" name="attention" label="Follow-up" value={data.filters.attention}>
+				<option value="">All follow-up statuses</option>
+				<option value="none">No follow-up needed</option>
+				<option value="waiting_on_client">Waiting for customer</option>
+				<option value="waiting_on_us">We need to respond</option>
 			</Select>
 			<Select id="lead-sort" name="sort" label="Sort by" value={data.filters.sort}>
 				<option value="updated_at">Recently updated</option>
 				<option value="created_at">Recently created</option>
 				<option value="last_activity_at">Last activity</option>
-				<option value="lead_number">Lead number</option>
+				<option value="lead_number">Reference number</option>
 			</Select>
 			<Select id="lead-direction" name="direction" label="Direction" value={data.filters.direction}>
 				<option value="desc">Descending</option>
@@ -118,32 +120,32 @@
 
 	<div class="list-summary" aria-live="polite">
 		<span>
-			{#if data.pagination.total === 0}No matching leads{:else}Showing {data.leads.length} of {data
-					.pagination.total} leads{/if}
+			{#if data.pagination.total === 0}No enquiries match this search{:else}Showing {data.leads
+					.length} of {data.pagination.total} enquiries{/if}
 		</span>
 		<span>Page {data.pagination.page} of {data.pagination.totalPages}</span>
 	</div>
 
 	{#if data.leads.length === 0}
 		<EmptyState
-			title={hasFilters ? 'No matching leads' : 'No leads yet'}
+			title={hasFilters ? 'No enquiries match this search' : 'No enquiries yet'}
 			message={hasFilters
-				? 'Try a different search or filter combination.'
-				: 'Website enquiries will appear here after authenticated intake.'}
+				? 'Try a different search or filter.'
+				: 'New website enquiries will appear here automatically.'}
 		/>
 	{:else}
 		<Card class="leads-card">
 			<div class="leads-table-wrap">
 				<table class="leads-table">
-					<caption class="sr-only">Lead pipeline</caption>
+					<caption class="sr-only">Enquiry list</caption>
 					<thead>
 						<tr>
-							<th scope="col">Lead</th>
+							<th scope="col">Enquiry</th>
 							<th scope="col">Contact</th>
-							<th scope="col">Pipeline</th>
-							<th scope="col">Attention</th>
-							<th scope="col">Owner</th>
-							<th scope="col">Last activity</th>
+							<th scope="col">Status</th>
+							<th scope="col">Follow-up</th>
+							<th scope="col">Person responsible</th>
+							<th scope="col">Last update</th>
 						</tr>
 					</thead>
 					<tbody>
@@ -153,14 +155,20 @@
 									<a class="lead-link" href={resolve(`/leads/${lead.id}`)}
 										>{leadName(lead.first_name, lead.last_name)}</a
 									>
-									<span>#{lead.lead_number}</span>
+									<span>Reference #{lead.lead_number}</span>
 								</td>
 								<td>{lead.email ?? lead.phone ?? 'No contact detail'}</td>
-								<td><Badge tone={stageTone(lead.pipeline_stage)}>{lead.pipeline_stage}</Badge></td>
+								<td
+									><Badge tone={stageTone(lead.pipeline_stage)}
+										>{statusLabel(lead.pipeline_stage)}</Badge
+									></td
+								>
 								<td>
-									<Badge tone={attentionTone(lead.attention_state)}>{lead.attention_state}</Badge>
+									<Badge tone={attentionTone(lead.attention_state)}
+										>{followUpLabel(lead.attention_state)}</Badge
+									>
 								</td>
-								<td>{lead.assigned_to ? `User ${lead.assigned_to.slice(0, 8)}` : 'Unassigned'}</td>
+								<td>{lead.assigned_to ? 'Assigned' : 'Unassigned'}</td>
 								<td>{dateTime(lead.last_activity_at ?? lead.updated_at)}</td>
 							</tr>
 						{/each}
@@ -171,7 +179,7 @@
 	{/if}
 
 	{#if data.pagination.totalPages > 1}
-		<nav class="pagination" aria-label="Lead list pages">
+		<nav class="pagination" aria-label="Enquiry list pages">
 			<a
 				class:disabled={data.pagination.page <= 1}
 				aria-disabled={data.pagination.page <= 1}

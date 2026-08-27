@@ -407,7 +407,7 @@ async function postStaleBrowserSave(lead, quote, staleLock) {
 async function testIndexes(leadId, clientId, readyQuoteId) {
 	const plans = [
 		[
-			'quotes_lead_status_idx',
+			['quotes_lead_status_idx', 'quotes_dashboard_current_actionable_idx'],
 			sql(
 				`set enable_seqscan=off; explain (costs off) select * from public.quotes where lead_id = '${leadId}' and status = 'draft' order by updated_at desc, id`
 			)
@@ -437,8 +437,13 @@ async function testIndexes(leadId, clientId, readyQuoteId) {
 			)
 		]
 	];
-	for (const [index, plan] of plans)
-		assert(plan.includes(index), `${index} was not used:\n${plan}`);
+	for (const [indexes, plan] of plans) {
+		const acceptedIndexes = Array.isArray(indexes) ? indexes : [indexes];
+		assert(
+			acceptedIndexes.some((index) => plan.includes(index)),
+			`${acceptedIndexes.join(' or ')} was not used:\n${plan}`
+		);
+	}
 }
 
 async function main() {

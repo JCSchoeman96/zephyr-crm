@@ -214,3 +214,111 @@ New contacts start active. An inactive contact cannot be primary. A primary
 switch clears the previous primary atomically; inactivating the current primary
 requires an active replacement when another active contact exists. Contact
 history is retained and ordinary hard delete is prohibited.
+
+## v1.4.0 additive Sales-to-Fulfilment state authority
+
+This section is an additive amendment to the v1.3.2 state machines. Existing
+Lead, Quote, Task, message, user, intake, Client, and ClientContact values
+remain unchanged except for the explicitly amended Quote decision path.
+
+### Qualification evidence and Lead decision path
+
+Qualification is a meaningful working stage, not a ceremonial click. The
+trusted Start Qualification action moves `NEW → QUALIFICATION` and records
+`qualification_started_at`. The trusted Ready for Quote action moves
+`QUALIFICATION → PROPOSAL`, records `qualified_at`, and requires:
+
+- a usable contact method, meaning a non-blank email or phone; and
+- meaningful enquiry information, meaning a non-blank Lead `message` or
+  `qualification_notes`.
+
+The ordinary v1.4.0 path from `DECISION → WON` is only the trusted acceptance
+of the current valid sent Quote. A normal browser action may not call a generic
+Lead transition to win an opportunity. `convert_lead` remains an authorised
+migration/recovery boundary where policy permits it. Existing Lost transitions
+remain valid, but definitive Quote decline uses the atomic Quote-decline
+action described below.
+
+### Quote decision contract
+
+| Action | Quote result | Lead result | Attention | Cross-resource result |
+|---|---|---|---|---|
+| Send | `sent` | `DECISION` | `waiting_on_client` | follow-up Task remains/creates |
+| Adjust / Requote | new `draft` revision | `PROPOSAL` | `waiting_on_us` | old sent Quote remains immutable; prepare-quote Task is ensured |
+| Send revision | current revision `sent`; previous sent revision `superseded` | `DECISION` | `waiting_on_client` | old revision remains readable |
+| Decline | current sent Quote `declined` | `LOST` | `none` | LostReason required; obsolete Sales Tasks close |
+| Accept | current sent Quote `accepted` | `WON` | `none` | Client conversion/link, one FulfilmentCase, planning Task, and Activity occur atomically |
+
+The current valid sent Quote is the latest actionable sent revision for the
+Lead, is not terminal or superseded, and has no newer draft revision awaiting
+send. Acceptance or decline locks the Quote and Lead in deterministic order,
+checks both current `lock_version` values, and rejects a stale or conflicting
+request. A repeated request returns the existing terminal handoff result when
+the same acceptance has already committed.
+
+### FulfilmentCase lifecycle
+
+Canonical values are lowercase:
+
+```text
+open → completed
+open → cancelled
+```
+
+`completed` and `cancelled` are terminal. Only a trusted action can create a
+case or change its lifecycle. Completion requires at least one successful
+non-cancelled FulfilmentStep, all required non-cancelled steps in successful
+terminal states, and each required PaymentMilestone in `received` or
+`not_required`. Cancellation requires an Owner/Admin-authorised reason and
+does not erase step, payment, Task, or Activity history.
+
+### FulfilmentStep lifecycles
+
+Steps use lowercase type and status values. A case may hold independent
+installation, courier, and pickup steps. At most one active step of a given
+type may exist for a case.
+
+| Type | Legal states and transitions | Successful terminal state |
+|---|---|---|
+| `installation` | `awaiting_schedule → scheduled → completed`; `awaiting_schedule → cancelled`; `scheduled → cancelled` | `completed` |
+| `courier` | `awaiting_dispatch → dispatched → delivered`; `awaiting_dispatch → cancelled`; `dispatched → cancelled` | `delivered` |
+| `pickup` | `preparing → ready_for_collection → collected`; `preparing → cancelled`; `ready_for_collection → cancelled` | `collected` |
+
+Rescheduling an installation changes `scheduled_for`, checks the current
+`lock_version`, and appends `fulfilment_step_rescheduled`; it does not create
+a new status. Cancellation requires a non-blank reason and trusted action.
+
+### PaymentMilestone lifecycle
+
+Each FulfilmentCase has at most one `deposit` and one `final_balance`
+milestone. Canonical statuses are lowercase:
+
+```text
+not_due → awaiting → received
+   └──────────────→ not_required
+```
+
+`not_due → not_required` is the ordinary waived-milestone path. A trusted
+action may request payment with `not_due → awaiting`, and an authorised user
+may record `awaiting → received` with `received_at` and
+`received_recorded_by`. Marking an awaiting milestone not required, reversing
+a received fact, or changing its evidence is a privileged correction with a
+reason, current lock, Activity, and security-audit evidence. There is no
+`follow_up` payment status. An open `payment_follow_up` Task is the only
+follow-up evidence.
+
+### Fulfilment transition rules
+
+- The accepted Quote remains immutable and is the commercial source for the
+  case.
+- Acceptance, decline, and revision handback use the existing Quote/Lead
+  trusted-action boundary and append Activity transactionally.
+- Case and step actions validate active Profile, role, current state,
+  expected `lock_version`, required relationships, and idempotency where
+  retries are possible.
+- Fulfilment Tasks derive Client and Lead lineage from the case. Browser hints
+  that disagree with that lineage are rejected.
+- Payment evidence is a CRM fact, not a payment processor or accounting
+  event.
+- A case may not complete merely because all payment milestones are done; a
+  successful operational step is required as well.

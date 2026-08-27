@@ -149,6 +149,7 @@
 
 .app-shell__content {
 	width: min(100%, 96rem);
+	min-width: 0;
 	box-sizing: border-box;
 	margin: 0 auto;
 	padding: var(--space-3xl) var(--space-2xl);

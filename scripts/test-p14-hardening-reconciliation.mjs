@@ -122,8 +122,42 @@ const terminalProjection =
 	state.final_project_status === 'COMPLETE' &&
 	state.last_validation?.status === 'PASS' &&
 	state.last_validation?.scope === 'GLOBAL_FINAL';
+const v140Projection =
+	state.roadmap_version === '1.4.0' &&
+	state.current_phase === 'P20' &&
+	Array.isArray(state.completed_phases) &&
+	state.completed_phases.includes('P19') &&
+	Array.isArray(state.completed_subphases) &&
+	state.completed_subphases.includes('P20-T01') &&
+	((state.goal_status === 'IN_PROGRESS' &&
+		state.execution_stage === 'PHASE_LOOP' &&
+		state.current_subphase === 'P20-T02' &&
+		state.phase_status === 'VALIDATING' &&
+		state.local_build_status === 'FINAL_VALIDATION_PENDING' &&
+		state.release_status === 'NOT_READY' &&
+		state.pilot_status === 'NOT_STARTED' &&
+		state.production_status === 'NOT_LAUNCHED') ||
+		(state.goal_status === 'IN_PROGRESS' &&
+			state.execution_stage === 'FINAL_PROJECT_VALIDATION' &&
+			state.phase_status === 'COMPLETE' &&
+			state.completed_phases.includes('P20') &&
+			state.local_build_status === 'FINAL_VALIDATION_PENDING' &&
+			state.release_status === 'NOT_READY' &&
+			state.pilot_status === 'NOT_STARTED' &&
+			state.production_status === 'NOT_LAUNCHED') ||
+		(state.goal_status === 'COMPLETE' &&
+			state.execution_stage === 'COMPLETE' &&
+			state.phase_status === 'COMPLETE' &&
+			state.completed_phases.includes('P20') &&
+			state.local_build_status === 'LOCAL_BUILD_COMPLETE' &&
+			state.release_status === 'PILOT_READY' &&
+			state.pilot_status === 'NOT_STARTED' &&
+			state.production_status === 'NOT_LAUNCHED' &&
+			state.final_project_status === 'COMPLETE' &&
+			state.last_validation?.status === 'PASS' &&
+			state.last_validation?.scope === 'GLOBAL_FINAL_V140'));
 assert(
-	phaseLoopProjection || finalValidationProjection || terminalProjection,
+	phaseLoopProjection || finalValidationProjection || terminalProjection || v140Projection,
 	'P14 loop state is not an honest release projection.'
 );
 

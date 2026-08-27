@@ -23,3 +23,8 @@ Small Business CRM — Complete Architecture, Domain & Implementation Blueprint 
 Phases/
 docs/
 .agent/
+
+# Workspace-managed agent metadata is not project source.
+.agents/
+.superpowers/
+skills-lock.json

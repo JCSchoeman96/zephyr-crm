@@ -12,4 +12,8 @@ describe('lead transition contract', () => {
 		expect(() => assertLegalLeadTransition('NEW', 'DECISION')).toThrow(/legal transition/i);
 		expect(() => assertLegalLeadTransition('PROPOSAL', 'LOST')).toThrow(/lost reason/i);
 	});
+
+	it('does not expose a generic path from Decision to Won', () => {
+		expect(() => assertLegalLeadTransition('DECISION', 'WON')).toThrow(/legal transition/i);
+	});
 });

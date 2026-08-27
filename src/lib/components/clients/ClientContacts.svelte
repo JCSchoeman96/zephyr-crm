@@ -25,7 +25,7 @@
 <Card>
 	<SectionHeader
 		title="Contacts"
-		description="A Client may have multiple contacts; at most one is primary."
+		description="A customer may have multiple contacts; at most one is primary."
 	/>
 	{#if canMutate}
 		<form method="POST" action="?/contactCreate" class="contact-create-form">
@@ -42,7 +42,7 @@
 		</form>
 	{/if}
 	{#if contacts.length === 0}
-		<EmptyState title="No contacts" message="No contact records are attached to this Client." />
+		<EmptyState title="No contacts" message="No contact records are attached to this customer." />
 	{:else}
 		<div class="contacts-table-wrap">
 			<table class="contacts-table">

@@ -269,12 +269,17 @@ async function main() {
 	) {
 		throw new Error('SendPulse contract did not complete the Quote → Task workflow');
 	}
-	lock = hiddenValue(detail, 'lock_version');
-	await postForm(`/leads/${leadId}?/win`, { lock_version: lock });
+	const sentQuoteLock = hiddenValue(detail, 'lock_version', 1);
+	await postForm(`/quotes/${quoteId}?/accept`, {
+		lock_version: sentQuoteLock,
+		acceptance_source: 'tracer_test',
+		acceptance_evidence: 'Customer accepted the quote during the tracer journey.'
+	});
 	detail = await getPage(`/leads/${leadId}`);
-	if (!detail.includes('Converted to Client') || !detail.includes('WON'))
-		throw new Error('Won conversion did not create/link a Client');
-	clientId = detail.match(/Converted to Client ([0-9a-f-]{36})/)?.[1];
+	if (!detail.includes('Customer confirmed') || !detail.includes('Fulfilment'))
+		throw new Error('Quote acceptance did not create/link the customer and Fulfilment case');
+	const clientsPage = await getPage('/clients');
+	clientId = clientsPage.match(/href="(?:\.\/|\/)clients\/([0-9a-f-]{36})"/i)?.[1];
 	if (!clientId) throw new Error('Won conversion did not expose the created Client link');
 
 	const lostPayload = {
@@ -306,10 +311,11 @@ async function main() {
 		lost_notes: ''
 	});
 	const lostDetail = await getPage(`/leads/${lostLeadId}`);
-	if (!lostDetail.includes('LOST')) throw new Error('Lost transition with reason did not persist');
+	if (!lostDetail.includes('Not proceeding'))
+		throw new Error('Lost transition with reason did not persist');
 
 	console.log(
-		'P4 tracer bullet passed: authenticated Bricks intake, retry idempotency, Lead visibility, legal qualification, Quote creation, SendPulse adapter contract, follow-up Task, Won/Client conversion, and Lost validation.'
+		'P4 tracer bullet passed: authenticated Bricks intake, retry idempotency, Lead visibility, legal qualification, Quote creation, SendPulse adapter contract, follow-up Task, Quote acceptance/customer conversion, and Lost validation.'
 	);
 }
 

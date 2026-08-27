@@ -9,6 +9,7 @@ export type Database = {
 					client_id: string | null;
 					created_at: string;
 					event_type: string;
+					fulfilment_case_id: string | null;
 					id: string;
 					lead_id: string | null;
 					metadata: Json;
@@ -23,6 +24,7 @@ export type Database = {
 					client_id?: string | null;
 					created_at?: string;
 					event_type: string;
+					fulfilment_case_id?: string | null;
 					id?: string;
 					lead_id?: string | null;
 					metadata?: Json;
@@ -37,6 +39,7 @@ export type Database = {
 					client_id?: string | null;
 					created_at?: string;
 					event_type?: string;
+					fulfilment_case_id?: string | null;
 					id?: string;
 					lead_id?: string | null;
 					metadata?: Json;
@@ -59,6 +62,13 @@ export type Database = {
 						columns: ['client_id'];
 						isOneToOne: false;
 						referencedRelation: 'clients';
+						referencedColumns: ['id'];
+					},
+					{
+						foreignKeyName: 'activities_fulfilment_case_id_fkey';
+						columns: ['fulfilment_case_id'];
+						isOneToOne: false;
+						referencedRelation: 'fulfilment_cases';
 						referencedColumns: ['id'];
 					},
 					{
@@ -338,6 +348,143 @@ export type Database = {
 					}
 				];
 			};
+			fulfilment_cases: {
+				Row: {
+					accepted_quote_id: string;
+					cancel_reason: string | null;
+					cancelled_at: string | null;
+					client_id: string;
+					completed_at: string | null;
+					created_at: string;
+					fulfilment_number: number;
+					id: string;
+					lead_id: string;
+					lock_version: number;
+					status: string;
+					updated_at: string;
+				};
+				Insert: {
+					accepted_quote_id: string;
+					cancel_reason?: string | null;
+					cancelled_at?: string | null;
+					client_id: string;
+					completed_at?: string | null;
+					created_at?: string;
+					fulfilment_number?: number;
+					id?: string;
+					lead_id: string;
+					lock_version?: number;
+					status?: string;
+					updated_at?: string;
+				};
+				Update: {
+					accepted_quote_id?: string;
+					cancel_reason?: string | null;
+					cancelled_at?: string | null;
+					client_id?: string;
+					completed_at?: string | null;
+					created_at?: string;
+					fulfilment_number?: number;
+					id?: string;
+					lead_id?: string;
+					lock_version?: number;
+					status?: string;
+					updated_at?: string;
+				};
+				Relationships: [
+					{
+						foreignKeyName: 'fulfilment_cases_accepted_quote_id_fkey';
+						columns: ['accepted_quote_id'];
+						isOneToOne: false;
+						referencedRelation: 'dashboard_quote_facts';
+						referencedColumns: ['id'];
+					},
+					{
+						foreignKeyName: 'fulfilment_cases_accepted_quote_id_fkey';
+						columns: ['accepted_quote_id'];
+						isOneToOne: false;
+						referencedRelation: 'quotes';
+						referencedColumns: ['id'];
+					},
+					{
+						foreignKeyName: 'fulfilment_cases_client_id_fkey';
+						columns: ['client_id'];
+						isOneToOne: false;
+						referencedRelation: 'clients';
+						referencedColumns: ['id'];
+					},
+					{
+						foreignKeyName: 'fulfilment_cases_lead_id_fkey';
+						columns: ['lead_id'];
+						isOneToOne: false;
+						referencedRelation: 'dashboard_lead_facts';
+						referencedColumns: ['id'];
+					},
+					{
+						foreignKeyName: 'fulfilment_cases_lead_id_fkey';
+						columns: ['lead_id'];
+						isOneToOne: false;
+						referencedRelation: 'leads';
+						referencedColumns: ['id'];
+					}
+				];
+			};
+			fulfilment_steps: {
+				Row: {
+					cancel_reason: string | null;
+					cancelled_at: string | null;
+					completed_at: string | null;
+					created_at: string;
+					fulfilment_case_id: string;
+					id: string;
+					lock_version: number;
+					notes: string | null;
+					scheduled_for: string | null;
+					status: string;
+					tracking_reference: string | null;
+					type: string;
+					updated_at: string;
+				};
+				Insert: {
+					cancel_reason?: string | null;
+					cancelled_at?: string | null;
+					completed_at?: string | null;
+					created_at?: string;
+					fulfilment_case_id: string;
+					id?: string;
+					lock_version?: number;
+					notes?: string | null;
+					scheduled_for?: string | null;
+					status: string;
+					tracking_reference?: string | null;
+					type: string;
+					updated_at?: string;
+				};
+				Update: {
+					cancel_reason?: string | null;
+					cancelled_at?: string | null;
+					completed_at?: string | null;
+					created_at?: string;
+					fulfilment_case_id?: string;
+					id?: string;
+					lock_version?: number;
+					notes?: string | null;
+					scheduled_for?: string | null;
+					status?: string;
+					tracking_reference?: string | null;
+					type?: string;
+					updated_at?: string;
+				};
+				Relationships: [
+					{
+						foreignKeyName: 'fulfilment_steps_fulfilment_case_id_fkey';
+						columns: ['fulfilment_case_id'];
+						isOneToOne: false;
+						referencedRelation: 'fulfilment_cases';
+						referencedColumns: ['id'];
+					}
+				];
+			};
 			inbound_submissions: {
 				Row: {
 					error_message: string | null;
@@ -448,6 +595,9 @@ export type Database = {
 					phone: string | null;
 					phone_normalized: string | null;
 					pipeline_stage: string;
+					qualification_notes: string | null;
+					qualification_started_at: string | null;
+					qualified_at: string | null;
 					referrer: string | null;
 					resume_at: string | null;
 					source_id: string | null;
@@ -483,6 +633,9 @@ export type Database = {
 					phone?: string | null;
 					phone_normalized?: string | null;
 					pipeline_stage?: string;
+					qualification_notes?: string | null;
+					qualification_started_at?: string | null;
+					qualified_at?: string | null;
 					referrer?: string | null;
 					resume_at?: string | null;
 					source_id?: string | null;
@@ -518,6 +671,9 @@ export type Database = {
 					phone?: string | null;
 					phone_normalized?: string | null;
 					pipeline_stage?: string;
+					qualification_notes?: string | null;
+					qualification_started_at?: string | null;
+					qualified_at?: string | null;
 					referrer?: string | null;
 					resume_at?: string | null;
 					source_id?: string | null;
@@ -828,6 +984,63 @@ export type Database = {
 						columns: ['task_id'];
 						isOneToOne: false;
 						referencedRelation: 'tasks';
+						referencedColumns: ['id'];
+					}
+				];
+			};
+			payment_milestones: {
+				Row: {
+					created_at: string;
+					fulfilment_case_id: string;
+					id: string;
+					lock_version: number;
+					note: string | null;
+					received_at: string | null;
+					received_recorded_by: string | null;
+					requested_at: string | null;
+					status: string;
+					type: string;
+					updated_at: string;
+				};
+				Insert: {
+					created_at?: string;
+					fulfilment_case_id: string;
+					id?: string;
+					lock_version?: number;
+					note?: string | null;
+					received_at?: string | null;
+					received_recorded_by?: string | null;
+					requested_at?: string | null;
+					status?: string;
+					type: string;
+					updated_at?: string;
+				};
+				Update: {
+					created_at?: string;
+					fulfilment_case_id?: string;
+					id?: string;
+					lock_version?: number;
+					note?: string | null;
+					received_at?: string | null;
+					received_recorded_by?: string | null;
+					requested_at?: string | null;
+					status?: string;
+					type?: string;
+					updated_at?: string;
+				};
+				Relationships: [
+					{
+						foreignKeyName: 'payment_milestones_fulfilment_case_id_fkey';
+						columns: ['fulfilment_case_id'];
+						isOneToOne: false;
+						referencedRelation: 'fulfilment_cases';
+						referencedColumns: ['id'];
+					},
+					{
+						foreignKeyName: 'payment_milestones_received_recorded_by_fkey';
+						columns: ['received_recorded_by'];
+						isOneToOne: false;
+						referencedRelation: 'profiles';
 						referencedColumns: ['id'];
 					}
 				];
@@ -1147,6 +1360,7 @@ export type Database = {
 					created_by: string;
 					description: string | null;
 					due_at: string | null;
+					fulfilment_case_id: string | null;
 					id: string;
 					lead_id: string | null;
 					lock_version: number;
@@ -1173,6 +1387,7 @@ export type Database = {
 					created_by: string;
 					description?: string | null;
 					due_at?: string | null;
+					fulfilment_case_id?: string | null;
 					id?: string;
 					lead_id?: string | null;
 					lock_version?: number;
@@ -1199,6 +1414,7 @@ export type Database = {
 					created_by?: string;
 					description?: string | null;
 					due_at?: string | null;
+					fulfilment_case_id?: string | null;
 					id?: string;
 					lead_id?: string | null;
 					lock_version?: number;
@@ -1235,6 +1451,13 @@ export type Database = {
 						columns: ['created_by'];
 						isOneToOne: false;
 						referencedRelation: 'profiles';
+						referencedColumns: ['id'];
+					},
+					{
+						foreignKeyName: 'tasks_fulfilment_case_id_fkey';
+						columns: ['fulfilment_case_id'];
+						isOneToOne: false;
+						referencedRelation: 'fulfilment_cases';
 						referencedColumns: ['id'];
 					},
 					{
@@ -1540,12 +1763,32 @@ export type Database = {
 				};
 				Returns: Json;
 			};
+			cancel_fulfilment: {
+				Args: {
+					p_fulfilment_case_id: string;
+					p_lock_version: number;
+					p_reason: string;
+				};
+				Returns: Json;
+			};
+			cancel_fulfilment_step: {
+				Args: { p_lock_version: number; p_reason: string; p_step_id: string };
+				Returns: Json;
+			};
 			cancel_quote: {
 				Args: { p_lock_version: number; p_quote_id: string };
 				Returns: Json;
 			};
 			cancel_task: {
 				Args: { p_lock_version: number; p_task_id: string };
+				Returns: Json;
+			};
+			complete_fulfilment: {
+				Args: { p_fulfilment_case_id: string; p_lock_version: number };
+				Returns: Json;
+			};
+			complete_fulfilment_step: {
+				Args: { p_lock_version: number; p_step_id: string };
 				Returns: Json;
 			};
 			complete_quote_send: {
@@ -1560,6 +1803,16 @@ export type Database = {
 				Args: { p_lead_id: string; p_lock_version: number };
 				Returns: Json;
 			};
+			correct_payment_milestone: {
+				Args: {
+					p_lock_version: number;
+					p_note?: string;
+					p_payment_milestone_id: string;
+					p_reason: string;
+					p_status: string;
+				};
+				Returns: Json;
+			};
 			create_client_contact: {
 				Args: {
 					p_client_id: string;
@@ -1569,6 +1822,20 @@ export type Database = {
 					p_job_title?: string;
 					p_last_name?: string;
 					p_phone?: string;
+				};
+				Returns: Json;
+			};
+			create_fulfilment_case_for_accepted_quote: {
+				Args: { p_quote_id: string };
+				Returns: Json;
+			};
+			create_fulfilment_step: {
+				Args: {
+					p_fulfilment_case_id: string;
+					p_lock_version: number;
+					p_notes?: string;
+					p_tracking_reference?: string;
+					p_type: string;
 				};
 				Returns: Json;
 			};
@@ -1583,20 +1850,36 @@ export type Database = {
 				};
 				Returns: Json;
 			};
-			create_task: {
-				Args: {
-					p_assigned_to?: string;
-					p_automation_key?: string;
-					p_client_id?: string;
-					p_description?: string;
-					p_due_at?: string;
-					p_lead_id?: string;
-					p_quote_id?: string;
-					p_title?: string;
-					p_type?: string;
-				};
-				Returns: Json;
-			};
+			create_task:
+				| {
+						Args: {
+							p_assigned_to?: string;
+							p_automation_key?: string;
+							p_client_id?: string;
+							p_description?: string;
+							p_due_at?: string;
+							p_fulfilment_case_id: string;
+							p_lead_id?: string;
+							p_quote_id?: string;
+							p_title?: string;
+							p_type?: string;
+						};
+						Returns: Json;
+				  }
+				| {
+						Args: {
+							p_assigned_to?: string;
+							p_automation_key?: string;
+							p_client_id?: string;
+							p_description?: string;
+							p_due_at?: string;
+							p_lead_id?: string;
+							p_quote_id?: string;
+							p_title?: string;
+							p_type?: string;
+						};
+						Returns: Json;
+				  };
 			dashboard_attribution: {
 				Args: { p_from?: string; p_limit?: number; p_to?: string };
 				Returns: Json;
@@ -1609,12 +1892,35 @@ export type Database = {
 				Args: { p_from?: string; p_to?: string };
 				Returns: Json;
 			};
+			dashboard_sales_fulfilment_metrics: {
+				Args: { p_from?: string; p_to?: string };
+				Returns: Json;
+			};
 			dashboard_sales_kpis: {
 				Args: { p_from?: string; p_to?: string };
 				Returns: Json;
 			};
-			decline_quote: {
-				Args: { p_lock_version: number; p_quote_id: string };
+			decline_quote:
+				| {
+						Args: { p_lock_version: number; p_quote_id: string };
+						Returns: Json;
+				  }
+				| {
+						Args: {
+							p_lock_version: number;
+							p_lost_notes?: string;
+							p_lost_reason_id: string;
+							p_quote_id: string;
+						};
+						Returns: Json;
+				  };
+			dispatch_fulfilment_step: {
+				Args: {
+					p_lock_version: number;
+					p_notes?: string;
+					p_step_id: string;
+					p_tracking_reference?: string;
+				};
 				Returns: Json;
 			};
 			expire_quote: {
@@ -1630,6 +1936,14 @@ export type Database = {
 					p_external_submission_id: string;
 					p_form_id: string;
 					p_payload: Json;
+				};
+				Returns: Json;
+			};
+			mark_payment_not_required: {
+				Args: {
+					p_lock_version: number;
+					p_note?: string;
+					p_payment_milestone_id: string;
 				};
 				Returns: Json;
 			};
@@ -1687,6 +2001,18 @@ export type Database = {
 				Args: { p_role?: string; p_status?: string; p_user_id: string };
 				Returns: Json;
 			};
+			ready_fulfilment_step: {
+				Args: { p_lock_version: number; p_notes?: string; p_step_id: string };
+				Returns: Json;
+			};
+			ready_lead_for_quote: {
+				Args: {
+					p_lead_id: string;
+					p_lock_version: number;
+					p_qualification_notes?: string;
+				};
+				Returns: Json;
+			};
 			reconcile_quote_submission: {
 				Args: { p_logical_key: string; p_provider_message_id: string };
 				Returns: Json;
@@ -1701,6 +2027,14 @@ export type Database = {
 					p_external_submission_id: string;
 					p_form_id: string;
 					p_payload: Json;
+				};
+				Returns: Json;
+			};
+			record_payment_received: {
+				Args: {
+					p_lock_version: number;
+					p_note?: string;
+					p_payment_milestone_id: string;
 				};
 				Returns: Json;
 			};
@@ -1723,6 +2057,18 @@ export type Database = {
 			};
 			reopen_lead: {
 				Args: { p_lead_id: string; p_lock_version: number; p_reason: string };
+				Returns: Json;
+			};
+			request_payment_milestone: {
+				Args: { p_lock_version: number; p_payment_milestone_id: string };
+				Returns: Json;
+			};
+			reschedule_fulfilment_step: {
+				Args: {
+					p_lock_version: number;
+					p_scheduled_for: string;
+					p_step_id: string;
+				};
 				Returns: Json;
 			};
 			reschedule_task: {
@@ -1751,6 +2097,14 @@ export type Database = {
 					p_tax_rate: number;
 					p_terms: string;
 					p_valid_until: string;
+				};
+				Returns: Json;
+			};
+			schedule_fulfilment_step: {
+				Args: {
+					p_lock_version: number;
+					p_scheduled_for: string;
+					p_step_id: string;
 				};
 				Returns: Json;
 			};
@@ -1800,6 +2154,14 @@ export type Database = {
 					p_role: string;
 					p_status: string;
 					p_user_id: string;
+				};
+				Returns: Json;
+			};
+			start_lead_qualification: {
+				Args: {
+					p_lead_id: string;
+					p_lock_version: number;
+					p_qualification_notes?: string;
 				};
 				Returns: Json;
 			};

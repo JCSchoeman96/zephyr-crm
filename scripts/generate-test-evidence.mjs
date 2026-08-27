@@ -724,7 +724,7 @@ const proofOverrides = {
 		command: 'bun run test:p4:tracer',
 		source: 'scripts/test-p4-tracer.mjs',
 		assertion:
-			"if (!lostDetail.includes('LOST')) throw new Error('Lost transition with reason did not persist');"
+			"if (!lostDetail.includes('Not proceeding'))\n\t\tthrow new Error('Lost transition with reason did not persist');"
 	},
 	'P14-T04': {
 		command: 'bun run test:p7:quotes',
@@ -841,7 +841,7 @@ const proofOverrides = {
 	'P14-T26': {
 		command: 'bun run test:p14:lost-flow',
 		source: 'tests/e2e/domain/lost-flow.e2e.ts',
-		assertion: "await expect(page.getByText('LOST', { exact: true })).toBeVisible();"
+		assertion: "await expect(page.getByText('Not proceeding', { exact: true })).toBeVisible();"
 	},
 	'P14-T27': {
 		command: 'bun scripts/test-p14-client-integrity.mjs',
@@ -877,7 +877,7 @@ const proofOverrides = {
 	'P14-T33': {
 		command: 'bun run test:p14:product-flow',
 		source: 'tests/e2e/domain/role-accessibility.e2e.ts',
-		assertion: "await expect(page.getByText('Viewer access is read-only.').first()).toBeVisible();"
+		assertion: 'await expect(readOnlyMessage).toBeVisible();'
 	},
 	'P14-T34': {
 		command: 'bun scripts/test-p14-hardening-reconciliation.mjs',

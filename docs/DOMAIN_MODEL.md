@@ -181,3 +181,218 @@ The following actions are atomic, authorization-checked, idempotent where retrya
 8. Client conversion is atomic and repeatable without duplicate Client/Contact rows.
 9. Activity is append-only and records material actions.
 10. UTC is used for storage; configured IANA timezone is used for presentation and scheduling.
+
+## v1.4.0 additive Sales-to-Fulfilment authority
+
+The following definitions extend this document for the v1.4.0 roadmap. They
+do not change the meaning of the existing P0-P14 resources or historical
+fields unless this section explicitly names an additive extension.
+
+The additive resource graph is:
+
+```text
+Profile
+  └──< Lead
+       ├──< Quote ──< QuoteItem
+       │       └──< OutboundMessage
+       ├──< Task
+       ├──< Activity
+       └──> Client ──< ClientContact
+                    └──< FulfilmentCase
+                         ├──< FulfilmentStep
+                         ├──< PaymentMilestone
+                         ├──< Task
+                         └──< Activity
+```
+
+### Lead qualification evidence
+
+`Lead` gains the additive fields `qualification_notes`,
+`qualification_started_at`, and `qualified_at`. `qualification_started_at`
+is set by the trusted Start Qualification action when a `NEW` Lead enters
+`QUALIFICATION`. `qualified_at` is set by the trusted Ready for Quote action
+when the Lead enters `PROPOSAL`.
+
+Ready for Quote requires at least one usable contact method, meaning a
+non-blank email or phone value, and meaningful enquiry information, meaning a
+non-blank original `message` or `qualification_notes`. It does not require a
+large questionnaire. These fields are evidence for the existing Lead
+pipeline, not a second qualification status system.
+
+### Quote decision handoff
+
+The existing Quote remains the immutable commercial authority. In v1.4.0,
+ordinary `WON` is reached through acceptance of the current valid sent Quote,
+not through a separate normal UI conversion action. The trusted acceptance
+action records acceptance evidence, invokes the existing idempotent conversion
+policy, links the accepted Quote to the Client, creates one FulfilmentCase,
+closes obsolete Sales Tasks, creates initial planning work, and appends the
+required Activity records in one transaction.
+
+An adjustment creates a new draft revision and returns the Lead to `PROPOSAL`;
+the old sent Quote is never edited. A definitive decline marks the current
+sent Quote `declined`, marks the Lead `LOST` with a valid LostReason, closes
+obsolete Sales Tasks, and appends both Quote and Lead Activity in one trusted
+operation. The existing `convert_lead` action remains available only for
+authorised migration or recovery policy and is not the normal day-to-day
+decision button.
+
+### FulfilmentCase
+
+`FulfilmentCase` represents one accepted sale after the Sales handoff. It has:
+
+```text
+id
+fulfilment_number
+client_id
+lead_id
+accepted_quote_id
+status
+created_at
+updated_at
+completed_at
+cancelled_at
+cancel_reason
+lock_version
+```
+
+`accepted_quote_id` is unique. It references the accepted Quote that created
+the case and cannot be changed through ordinary CRUD. `client_id` and
+`lead_id` are server-derived lineage. `status` is `open`, `completed`, or
+`cancelled`. A case is created only by the trusted acceptance handoff; there
+is no generic browser-created case.
+
+### FulfilmentStep
+
+`FulfilmentStep` records one independent operational work item for a case. It
+has:
+
+```text
+id
+fulfilment_case_id
+type
+status
+scheduled_for
+completed_at
+tracking_reference
+notes
+created_at
+updated_at
+lock_version
+```
+
+`type` is `installation`, `courier`, or `pickup`. A case may contain more
+than one type, including installation and courier together. There is at most
+one active step of a given type for a case in v1.4.0; a retained cancelled
+step is history, not an active work item. Step state combinations and trusted
+transitions are defined in `docs/STATE_MACHINES.md`.
+
+### PaymentMilestone
+
+`PaymentMilestone` records operator-entered CRM evidence for one payment
+milestone. It has:
+
+```text
+id
+fulfilment_case_id
+type
+status
+requested_at
+received_at
+received_recorded_by
+note
+created_at
+updated_at
+lock_version
+```
+
+`type` is `deposit` or `final_balance`. There is exactly one milestone of
+each type per FulfilmentCase. v1.4.0 deliberately has no amount field. The
+accepted Quote remains the commercial amount authority. `received_recorded_by`
+and `received_at` prove who recorded the CRM fact and when; they do not prove
+bank settlement or accounting reconciliation.
+
+### Task and Activity lineage
+
+`Task` gains nullable `fulfilment_case_id`. Its v1.4.0 types add
+`plan_fulfilment`, `schedule_installation`, `complete_installation`,
+`dispatch_order`, `confirm_delivery`, `prepare_pickup`,
+`confirm_collection`, and `payment_follow_up`. Existing Task states remain
+`open`, `completed`, and `cancelled`.
+
+For a FulfilmentCase Task, the trusted database action derives the Client and
+Lead lineage from the case. A caller-supplied Client or Lead hint that does
+not match the case is rejected. A payment follow-up changes Task evidence
+only; it never changes a PaymentMilestone status.
+
+`Activity` gains nullable `fulfilment_case_id`. Case, step, payment, and
+handoff actions append Activity in the same transaction as their state change.
+Examples include `fulfilment_created`, `fulfilment_step_created`,
+`fulfilment_step_scheduled`, `fulfilment_step_rescheduled`,
+`fulfilment_step_dispatched`, `fulfilment_step_ready_for_collection`,
+`fulfilment_step_completed`, `fulfilment_step_cancelled`,
+`payment_milestone_requested`, `payment_milestone_received`,
+`payment_milestone_marked_not_required`, `payment_follow_up_created`,
+`fulfilment_completed`, `fulfilment_cancelled`, and
+`payment_milestone_corrected`.
+
+### v1.4.0 ownership and trusted actions
+
+PostgreSQL remains authoritative for these additions:
+
+| Resource/action | Durable authority | Ordinary mutation boundary |
+|---|---|---|
+| Lead qualification evidence | PostgreSQL | RLS-secured fields through the trusted qualification actions |
+| Quote acceptance/adjust/decline | PostgreSQL transaction | Trusted Quote decision actions only |
+| FulfilmentCase | PostgreSQL | Created by acceptance; lifecycle through trusted actions |
+| FulfilmentStep | PostgreSQL | Trusted create/dispatch/ready/schedule/reschedule/complete/cancel actions |
+| PaymentMilestone | PostgreSQL | Trusted request/receive/not-required actions; correction is privileged |
+| Fulfilment Task | PostgreSQL | Trusted lineage-validating Task action plus existing Task lifecycle actions |
+| Fulfilment Activity | PostgreSQL append-only | Transaction-bound trusted action evidence |
+
+The v1.4.0 trusted action set is:
+
+```text
+start_lead_qualification
+ready_lead_for_quote
+accept_quote
+revise_quote
+decline_quote
+create_fulfilment_step
+dispatch_fulfilment_step
+ready_fulfilment_step
+schedule_fulfilment_step
+reschedule_fulfilment_step
+complete_fulfilment_step
+cancel_fulfilment_step
+request_payment_milestone
+record_payment_received
+mark_payment_not_required
+correct_payment_milestone
+complete_fulfilment
+cancel_fulfilment
+create_task
+```
+
+`accept_quote`, `revise_quote`, `decline_quote`, and `create_task` extend the
+existing trusted actions rather than introducing a second mutation model.
+
+### v1.4.0 domain invariants
+
+The following invariants are additive:
+
+11. A Lead in ordinary `WON` state has an accepted current Quote, a linked or newly created Client, and exactly one FulfilmentCase for that accepted Quote.
+12. `accepted_quote_id` is unique across FulfilmentCases, and repeating acceptance returns the existing handoff result without duplicate Client, Contact, case, or planning Task rows.
+13. A FulfilmentCase belongs to one Client and one accepted Quote/Lead lineage; a Client may have many cases over time.
+14. FulfilmentCase status is independent of every step and payment milestone status.
+15. A FulfilmentStep has one of the documented type/status combinations; rescheduling changes schedule evidence and does not invent a state.
+16. A PaymentMilestone has one type per case, and `received` requires actor and timestamp evidence.
+17. Follow-up remains Task-derived. No `follow_up` PaymentMilestone status exists.
+18. A FulfilmentCase can complete only with at least one successful non-cancelled step, every required non-cancelled step in its successful terminal state, and every required payment milestone `received` or `not_required`.
+19. Fulfilment Task Client/Lead lineage is derived from its case; mismatched browser-supplied parent IDs are rejected.
+20. Privileged payment correction and case cancellation require authorised role, current lock version, a reason, and append-only Activity/security evidence.
+21. Fulfilment state changes use optimistic locking, deterministic row-lock order, trusted transactions, unique constraints, and idempotency where retries can occur.
+
+Fulfilment is still a CRM record of work and operator-entered evidence. It is
+not accounting, inventory, project management, or a logistics-provider
+integration.

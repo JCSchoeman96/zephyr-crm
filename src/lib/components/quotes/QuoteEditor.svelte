@@ -6,6 +6,7 @@
 	import Select from '$lib/components/ui/Select.svelte';
 	import Textarea from '$lib/components/ui/Textarea.svelte';
 	import { publicClientConfiguration } from '$lib/config/public-client-config';
+	import { quoteStatusLabel } from '$lib/domain/presentation/labels';
 
 	type EditorItem = {
 		name: string;
@@ -115,7 +116,7 @@
 					<span class="eyebrow">{quoteNumber || 'Quote'} · Revision</span>
 					<h2>{subject}</h2>
 				</div>
-				<strong>{status}</strong>
+				<strong>{quoteStatusLabel(status)}</strong>
 			</div>
 			{#if introduction}<p class="preview-copy">{introduction}</p>{/if}
 			<div class="preview-lines">
@@ -152,8 +153,8 @@
 			<Card title="Customer and header" class="editor-card">
 				<div class="editor-grid">
 					{#if leadOptions.length}
-						<Select id="quote-lead" name="lead_id" label="Lead" bind:value={leadId} required>
-							<option value="">Select a Lead</option>
+						<Select id="quote-lead" name="lead_id" label="Enquiry" bind:value={leadId} required>
+							<option value="">Select an enquiry</option>
 							{#each leadOptions as lead (lead.id)}<option value={lead.id}>{lead.label}</option
 								>{/each}
 						</Select>
@@ -162,10 +163,10 @@
 						<Select
 							id="quote-client"
 							name="client_id"
-							label="Client (optional)"
+							label="Customer (optional)"
 							bind:value={clientId}
 						>
-							<option value="">No linked Client</option>
+							<option value="">No linked customer</option>
 							{#each clientOptions as client (client.id)}<option value={client.id}
 									>{client.label}</option
 								>{/each}

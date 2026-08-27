@@ -21,13 +21,16 @@ test.describe('P14 role and accessibility regression', () => {
 		try {
 			await signIn(page, viewer);
 			await page.goto(`/leads/${lead.id}`, { waitUntil: 'networkidle' });
-			await expect(page.getByRole('heading', { name: 'Lead details' })).toBeVisible();
-			await expect(page.getByText('Viewer access is read-only.').first()).toBeVisible();
-			await expect(page.getByRole('button', { name: 'Qualify lead' })).toHaveCount(0);
+			await expect(page.getByRole('heading', { name: 'Enquiry details' })).toBeVisible();
+			const readOnlyMessage = page
+				.getByText('You can view this enquiry, but you do not have permission to change it.')
+				.first();
+			await expect(readOnlyMessage).toBeVisible();
+			await expect(page.getByRole('button', { name: 'Start Qualification' })).toHaveCount(0);
 
 			await page.goto('/tasks', { waitUntil: 'networkidle' });
-			await expect(page.getByRole('heading', { name: 'Tasks', exact: true })).toBeVisible();
-			await expect(page.getByRole('heading', { name: 'Create Task' })).toHaveCount(0);
+			await expect(page.getByRole('heading', { name: 'Follow-ups', exact: true })).toBeVisible();
+			await expect(page.getByRole('heading', { name: 'Add follow-up action' })).toHaveCount(0);
 
 			const operationsResponse = await page.goto('/operations', { waitUntil: 'networkidle' });
 			expect(operationsResponse?.status()).toBe(403);
@@ -48,7 +51,7 @@ test.describe('P14 role and accessibility regression', () => {
 		try {
 			await signIn(page, sales);
 			await page.goto(`/clients/${fixture.client.id}`, { waitUntil: 'networkidle' });
-			await expect(page.getByRole('button', { name: 'Save Client details' })).toBeVisible();
+			await expect(page.getByRole('button', { name: 'Save customer details' })).toBeVisible();
 			await expect(
 				page.getByLabel('Change status').locator('option[value="archived"]')
 			).toHaveCount(0);
@@ -65,7 +68,7 @@ test.describe('P14 role and accessibility regression', () => {
 				fixture.owner
 			);
 			await page.getByLabel('Display name').fill('P14 stale detail attempt');
-			await page.getByRole('button', { name: 'Save Client details' }).click();
+			await page.getByRole('button', { name: 'Save customer details' }).click();
 			await expect(page.getByRole('alert')).toContainText(/changed elsewhere.*reload/i);
 			await expect(page.getByLabel('Display name')).toHaveValue('P14 stale detail attempt');
 
@@ -94,13 +97,13 @@ test.describe('P14 role and accessibility regression', () => {
 			);
 
 			await page.goto(`/leads/${lostLead.id}`, { waitUntil: 'networkidle' });
-			await page.getByText('Mark lead lost', { exact: true }).click();
+			await page.locator('summary').filter({ hasText: 'Close enquiry' }).click();
 			const reason = await lostReasonId(sales);
-			await page.getByLabel('Lost reason').selectOption(reason);
-			await page.getByLabel('Notes').fill('P14 Sales role Lost');
-			await page.getByRole('button', { name: 'Mark lost' }).click();
-			await expect(page.getByText('LOST', { exact: true })).toBeVisible();
-			await expect(page.getByRole('button', { name: 'Reopen for qualification' })).toHaveCount(0);
+			await page.getByLabel('Why is it not proceeding?').selectOption(reason);
+			await page.getByLabel('Extra notes (optional)').fill('P14 Sales role Lost');
+			await page.getByRole('button', { name: 'Close enquiry' }).click();
+			await expect(page.getByText('Not proceeding', { exact: true })).toBeVisible();
+			await expect(page.getByRole('button', { name: 'Reopen enquiry' })).toHaveCount(0);
 
 			const operationsResponse = await page.goto('/operations', { waitUntil: 'networkidle' });
 			expect(operationsResponse?.status()).toBe(403);
@@ -110,9 +113,11 @@ test.describe('P14 role and accessibility regression', () => {
 			await signIn(ownerPage, fixture.owner);
 			await signInWithAal2(ownerPage, fixture.owner);
 			await ownerPage.goto(`/leads/${lostLead.id}`, { waitUntil: 'networkidle' });
-			await ownerPage.getByLabel('Reopen reason').fill('P14 owner administrative review');
-			await ownerPage.getByRole('button', { name: 'Reopen for qualification' }).click();
-			await expect(ownerPage.getByText('QUALIFICATION', { exact: true })).toBeVisible();
+			await ownerPage
+				.getByLabel('Why are you reopening it?')
+				.fill('P14 owner administrative review');
+			await ownerPage.getByRole('button', { name: 'Reopen enquiry' }).click();
+			await expect(ownerPage.getByText('Reviewing details', { exact: true })).toBeVisible();
 			await ownerPage.goto('/operations', { waitUntil: 'networkidle' });
 			await expect(ownerPage.getByRole('heading', { name: 'Operations' })).toBeVisible();
 		} finally {
@@ -157,7 +162,7 @@ test.describe('P14 role and accessibility regression', () => {
 				await expect(page.getByRole('button', { name: 'Save draft' })).toBeVisible();
 				await page.goto(`/clients/${fixture.client.id}`, { waitUntil: 'networkidle' });
 				await expect(page.getByLabel('Display name')).toBeVisible();
-				await expect(page.getByRole('button', { name: 'Save Client details' })).toBeVisible();
+				await expect(page.getByRole('button', { name: 'Save customer details' })).toBeVisible();
 			}
 		} finally {
 			await cleanupLead(fixture.lead.id, fixture.owner.id);

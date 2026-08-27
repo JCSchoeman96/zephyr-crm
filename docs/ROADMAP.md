@@ -65,6 +65,27 @@ The frozen implementation authority is split by responsibility:
 
 No phase may introduce a competing definition for Lead, Client, Quote, Task, Activity, role, state, or deployment.
 
+## v1.4.0 additive Sales-to-Fulfilment extension
+
+`CRM_IMPLEMENTATION_ROADMAP_v1.4.0.md` is the additive roadmap after the
+completed v1.3.2/P14 local release candidate. It preserves P0-P14 and adds
+P15-P20 in strict order:
+
+```text
+P15 architecture
+  → P16 persistence foundation
+  → P17 Sales-to-Fulfilment tracer bullet
+  → P18 Sales work queues
+  → P19 Fulfilment work queues
+  → P20 analytics and release reconciliation
+```
+
+The v1.4.0 architecture authority is `docs/FULFILMENT_ARCHITECTURE.md`.
+It explicitly amends the old product boundary at Quote acceptance and the
+old deferred-payment wording only for this new scope. P15 is documentation
+only and must close before migrations or application code begin. P16-P20 are
+not complete merely because their phase authorities exist.
+
 ## P14 hardening amendment
 
 The v1.3.2 patch preserves all P0–P13 semantics and P14-T01 through P14-T21.

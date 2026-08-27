@@ -17,6 +17,10 @@ function lockVersion(formData: FormData) {
 	return value;
 }
 
+function formText(formData: FormData, name: string) {
+	return String(formData.get(name) ?? '').trim();
+}
+
 export const load: PageServerLoad = async (event) => {
 	const { supabase, profile } = await requireActiveStaff(event);
 	const [
@@ -81,28 +85,32 @@ export const actions: Actions = {
 	qualify: async (event) => {
 		const { supabase } = await requireActiveStaff(event);
 		try {
-			const response = await supabase.rpc('transition_lead', {
+			const form = await event.request.formData();
+			const response = await supabase.rpc('start_lead_qualification', {
 				p_lead_id: event.params.id,
-				p_to_stage: 'QUALIFICATION',
-				p_lock_version: lockVersion(await event.request.formData())
+				p_lock_version: lockVersion(form),
+				p_qualification_notes: formText(form, 'qualification_notes') || undefined
 			});
-			if (response.error) return actionFailure(response.error, 'Could not qualify Lead');
+			if (response.error)
+				return actionFailure(response.error, 'Could not start Lead qualification');
 		} catch (actionError) {
-			return actionFailure(actionError, 'Could not qualify Lead');
+			return actionFailure(actionError, 'Could not start Lead qualification');
 		}
 		throw redirect(303, `/leads/${event.params.id}`);
 	},
 	proposal: async (event) => {
 		const { supabase } = await requireActiveStaff(event);
 		try {
-			const response = await supabase.rpc('transition_lead', {
+			const form = await event.request.formData();
+			const response = await supabase.rpc('ready_lead_for_quote', {
 				p_lead_id: event.params.id,
-				p_to_stage: 'PROPOSAL',
-				p_lock_version: lockVersion(await event.request.formData())
+				p_lock_version: lockVersion(form),
+				p_qualification_notes: formText(form, 'qualification_notes') || undefined
 			});
-			if (response.error) return actionFailure(response.error, 'Could not move Lead to proposal');
+			if (response.error)
+				return actionFailure(response.error, 'Could not make Lead ready for a Quote');
 		} catch (actionError) {
-			return actionFailure(actionError, 'Could not move Lead');
+			return actionFailure(actionError, 'Could not make Lead ready for a Quote');
 		}
 		throw redirect(303, `/leads/${event.params.id}`);
 	},
@@ -135,19 +143,6 @@ export const actions: Actions = {
 			await sendQuote(supabase, String(form.get('quote_id') ?? ''), lockVersion(form));
 		} catch (actionError) {
 			return actionFailure(actionError, 'Could not send Quote');
-		}
-		throw redirect(303, `/leads/${event.params.id}`);
-	},
-	win: async (event) => {
-		const { supabase } = await requireActiveStaff(event);
-		try {
-			const response = await supabase.rpc('convert_lead', {
-				p_lead_id: event.params.id,
-				p_lock_version: lockVersion(await event.request.formData())
-			});
-			if (response.error) return actionFailure(response.error, 'Could not win Lead');
-		} catch (actionError) {
-			return actionFailure(actionError, 'Could not win Lead');
 		}
 		throw redirect(303, `/leads/${event.params.id}`);
 	},

@@ -36,3 +36,36 @@ authenticated Task INSERT/PATCH/DELETE cannot bypass parent integrity,
 assignment, lifecycle, terminal immutability, or optimistic locking. The work
 queue projection exposes human business labels and links for Lead, Client, and
 Quote context.
+
+## v1.4.0 additive Fulfilment Tasks
+
+Tasks remain concrete next actions. A FulfilmentCase adds the nullable
+`fulfilment_case_id` parent and these task types:
+
+```text
+plan_fulfilment
+schedule_installation
+complete_installation
+dispatch_order
+confirm_delivery
+prepare_pickup
+confirm_collection
+payment_follow_up
+```
+
+The trusted `create_task` action derives the Task's Client and Lead lineage
+from the FulfilmentCase. It rejects any caller-provided parent IDs that do not
+match that case. Existing non-Fulfilment Tasks continue to require exactly one
+valid direct Lead or Client parent unless their existing Quote relationship
+derives the lineage.
+
+Payment follow-up is a Task concern. Creating or completing a
+`payment_follow_up` Task does not change `PaymentMilestone.status`; the
+milestone remains `awaiting` until a trusted user records `received` or marks
+it `not_required`. Duplicate equivalent open follow-up Tasks should be
+reused or rejected by a deterministic trusted boundary.
+
+FulfilmentCase creation, step planning, payment requests, payment recording,
+Task creation/completion, and terminal case transitions append Activity
+evidence transactionally. Won/Lost Sales cleanup remains separate from
+Fulfilment Task cleanup, so an accepted sale keeps its operational Tasks.

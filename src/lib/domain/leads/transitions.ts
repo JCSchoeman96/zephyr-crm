@@ -5,7 +5,7 @@ const legalTransitions: Record<LeadStage, readonly LeadStage[]> = {
 	NEW: ['QUALIFICATION', 'LOST'],
 	QUALIFICATION: ['PROPOSAL', 'LOST'],
 	PROPOSAL: ['DECISION', 'LOST'],
-	DECISION: ['PROPOSAL', 'WON', 'LOST'],
+	DECISION: ['PROPOSAL', 'LOST'],
 	WON: [],
 	LOST: []
 };

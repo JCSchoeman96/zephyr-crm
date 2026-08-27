@@ -6,9 +6,13 @@
 	import Button from '$lib/components/ui/Button.svelte';
 	import Card from '$lib/components/ui/Card.svelte';
 	import ErrorState from '$lib/components/ui/ErrorState.svelte';
+	import Input from '$lib/components/ui/Input.svelte';
 	import PageHeader from '$lib/components/ui/PageHeader.svelte';
 	import QuoteEditor from '$lib/components/quotes/QuoteEditor.svelte';
 	import RealtimeStatus from '$lib/realtime/RealtimeStatus.svelte';
+	import Select from '$lib/components/ui/Select.svelte';
+	import Textarea from '$lib/components/ui/Textarea.svelte';
+	import { activityEventLabel, quoteStatusLabel } from '$lib/domain/presentation/labels';
 
 	let { data, form }: { data: PageData; form: ActionData } = $props();
 	const editableStatuses = ['draft', 'ready'];
@@ -61,7 +65,7 @@
 	<PageHeader title={quoteNumber()} description={data.quote.subject}>
 		{#snippet actions()}
 			<RealtimeStatus scope={`quote-${data.quote.id}`} tables={['quotes']} />
-			<Badge tone={tone(data.quote.status)}>{data.quote.status}</Badge>
+			<Badge tone={tone(data.quote.status)}>{quoteStatusLabel(data.quote.status)}</Badge>
 		{/snippet}
 	</PageHeader>
 	{#if form?.message}<ErrorState
@@ -137,17 +141,39 @@
 					variant="secondary">Create revision</Button
 				>
 			</form>
-			<form method="POST" action="?/accept">
-				<input type="hidden" name="lock_version" value={data.quote.lock_version} /><Button
-					type="submit">Mark accepted</Button
-				>
-			</form>
-			<form method="POST" action="?/decline">
-				<input type="hidden" name="lock_version" value={data.quote.lock_version} /><Button
-					type="submit"
-					variant="danger">Mark declined</Button
-				>
-			</form>
+			<div class="decision-forms">
+				<form method="POST" action="?/accept" class="decision-form">
+					<input type="hidden" name="lock_version" value={data.quote.lock_version} />
+					<Input
+						id="acceptance-source"
+						name="acceptance_source"
+						label="Acceptance source"
+						placeholder="Email, phone call, or other source"
+						maxlength={120}
+						required
+					/>
+					<Textarea
+						id="acceptance-evidence"
+						name="acceptance_evidence"
+						label="Acceptance evidence"
+						rows={3}
+						maxlength={2000}
+						required
+					/>
+					<Button type="submit">Accept sale</Button>
+				</form>
+				<form method="POST" action="?/decline" class="decision-form">
+					<input type="hidden" name="lock_version" value={data.quote.lock_version} />
+					<Select id="quote-lost-reason" name="lost_reason_id" label="Lost reason" required>
+						<option value="">Select a reason</option>
+						{#each data.lostReasons as reason (reason.id)}
+							<option value={reason.id}>{reason.label}</option>
+						{/each}
+					</Select>
+					<Textarea id="quote-lost-notes" name="lost_notes" label="Lost notes" rows={3} />
+					<Button type="submit" variant="danger">Decline quote</Button>
+				</form>
+			</div>
 			<form method="POST" action="?/cancel">
 				<input type="hidden" name="lock_version" value={data.quote.lock_version} /><Button
 					type="submit"
@@ -169,7 +195,7 @@
 					</dd>
 				</div>
 				<div>
-					<dt>Lead</dt>
+					<dt>Enquiry</dt>
 					<dd><a href={resolve(`/leads/${data.lead.id}`)}>#{data.lead.lead_number}</a></dd>
 				</div>
 				<div>
@@ -177,24 +203,20 @@
 					<dd>{data.quote.valid_until ?? 'Not set'}</dd>
 				</div>
 				<div>
-					<dt>Lock version</dt>
-					<dd>{data.quote.lock_version}</dd>
-				</div>
-				<div>
 					<dt>Snapshot</dt>
 					<dd>{hasCompanySnapshot(data.quote.quote_snapshot) ? 'Captured' : 'Missing'}</dd>
 				</div>
 			</dl></Card
 		>
-		<Card title="Activity"
+		<Card title="History"
 			><ul class="activity-list">
 				{#if data.activities.length === 0}<li class="muted">
 						No quote activity yet.
 					</li>{:else}{#each data.activities as activity (activity.id)}<li>
 							<strong>{activity.summary}</strong><span
-								>{activity.event_type} · {new Date(activity.occurred_at).toLocaleString(
-									'en-ZA'
-								)}</span
+								>{activityEventLabel(activity.event_type)} · {new Date(
+									activity.occurred_at
+								).toLocaleString('en-ZA')}</span
 							>
 						</li>{/each}{/if}
 			</ul></Card
@@ -236,6 +258,23 @@
 	}
 	.quote-actions form {
 		display: inline-flex;
+	}
+	.decision-forms {
+		display: grid;
+		grid-template-columns: repeat(2, minmax(260px, 1fr));
+		gap: var(--space-md);
+		flex-basis: 100%;
+	}
+	.decision-form {
+		display: grid !important;
+		gap: var(--space-sm);
+		align-content: start;
+		padding: var(--space-md);
+		border: 1px solid var(--color-border-subtle);
+		border-radius: var(--radius-md);
+	}
+	.decision-form :global(.ui-button) {
+		justify-self: start;
 	}
 	.detail-grid {
 		display: grid;
@@ -320,6 +359,9 @@
 		font-size: var(--font-size-sm);
 	}
 	@media (max-width: 760px) {
+		.decision-forms {
+			grid-template-columns: 1fr;
+		}
 		.detail-grid {
 			grid-template-columns: 1fr;
 		}

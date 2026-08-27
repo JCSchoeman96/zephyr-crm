@@ -10,6 +10,12 @@
 	import Input from '$lib/components/ui/Input.svelte';
 	import PageHeader from '$lib/components/ui/PageHeader.svelte';
 	import Select from '$lib/components/ui/Select.svelte';
+	import {
+		leadStageLabel,
+		quoteStatusLabel,
+		taskStatusLabel,
+		taskTypeLabel
+	} from '$lib/domain/presentation/labels';
 	import RealtimeStatus from '$lib/realtime/RealtimeStatus.svelte';
 
 	let { data, form }: { data: PageData; form: ActionData } = $props();
@@ -34,45 +40,44 @@
 		}
 		if (task.client_id) {
 			const client = data.clients.find((item) => item.id === task.client_id);
-			return client ? `Client ${client.client_number} · ${client.display_name}` : 'Client context';
+			return client
+				? `Customer ${client.client_number} · ${client.display_name}`
+				: 'Customer context';
 		}
 		if (task.lead_id) {
 			const lead = data.leads.find((item) => item.id === task.lead_id);
 			return lead
-				? `Lead ${lead.lead_number ?? ''} · ${lead.first_name} ${lead.last_name}`
-				: 'Lead context';
+				? `Enquiry ${lead.lead_number ?? ''} · ${lead.first_name} ${lead.last_name}`
+				: 'Enquiry context';
 		}
 		return 'No context';
 	}
 </script>
 
 <svelte:head>
-	<title>Tasks | Zephyr CRM</title>
-	<meta name="description" content="Manage the next actions for active opportunities" />
+	<title>Follow-ups | Zephyr CRM</title>
+	<meta name="description" content="Keep track of what needs to happen next" />
 </svelte:head>
 
 <AppShell userEmail={data.auth.user?.email} userRole={data.auth.profile?.role}>
-	<PageHeader
-		title="Tasks"
-		description="Every open Task is an explicit next action; overdue is derived from its due time."
-	>
+	<PageHeader title="Follow-ups" description="Keep track of what needs to happen next.">
 		{#snippet actions()}<RealtimeStatus
 				scope="tasks"
 				tables={['tasks', 'leads', 'quotes']}
 			/>{/snippet}
 	</PageHeader>
-	{#if form?.message}<ErrorState title="Task action failed" message={form.message} />{/if}
+	{#if form?.message}<ErrorState title="Follow-up action failed" message={form.message} />{/if}
 
 	<Card class="filters-card">
-		<form method="GET" class="filters-form" aria-label="Filter Tasks">
-			<Select id="task-status" name="status" label="Status" value={data.filters.status}>
+		<form method="GET" class="filters-form" aria-label="Filter follow-ups">
+			<Select id="task-status" name="status" label="Action status" value={data.filters.status}>
 				<option value="open">Open</option><option value="completed">Completed</option><option
 					value="cancelled">Cancelled</option
 				>
 			</Select>
 			<label class="checkbox-label"
 				><input type="checkbox" name="overdue" value="true" checked={data.filters.overdue} /> Overdue
-				only</label
+				follow-ups only</label
 			>
 			<Button type="submit" size="sm">Apply filters</Button>
 		</form>
@@ -80,8 +85,8 @@
 
 	{#if canMutate}
 		<Card class="create-card">
-			<h2>Create Task</h2>
-			<p class="muted">Use a concrete next action; automated rules remain server-configured.</p>
+			<h2>Add follow-up action</h2>
+			<p class="muted">Write down the next action so nothing is forgotten.</p>
 			<form method="POST" action="?/create" class="create-form">
 				<Select
 					id="task-context-type"
@@ -89,64 +94,67 @@
 					label="Context type"
 					bind:value={contextType}
 				>
-					<option value="lead">Lead</option><option value="client">Client</option><option
+					<option value="lead">Enquiry</option><option value="client">Customer</option><option
 						value="quote">Quote</option
 					>
 				</Select>
 				{#if contextType === 'lead'}
-					<Select id="task-context-lead" name="context_id" label="Lead" required
-						><option value="">Select a Lead</option>{#each data.leads as lead (lead.id)}<option
+					<Select id="task-context-lead" name="context_id" label="Enquiry" required
+						><option value="">Select an enquiry</option>{#each data.leads as lead (lead.id)}<option
 								value={lead.id}
-								>Lead {lead.lead_number ?? ''} · {lead.first_name}
-								{lead.last_name} · {lead.pipeline_stage}</option
+								>Enquiry {lead.lead_number ?? ''} · {lead.first_name}
+								{lead.last_name} · {leadStageLabel(lead.pipeline_stage)}</option
 							>{/each}</Select
 					>
 				{:else if contextType === 'client'}
-					<Select id="task-context-client" name="context_id" label="Client" required
-						><option value="">Select a Client</option
+					<Select id="task-context-client" name="context_id" label="Customer" required
+						><option value="">Select a customer</option
 						>{#each data.clients as client (client.id)}<option value={client.id}
-								>Client {client.client_number} · {client.display_name}</option
+								>Customer {client.client_number} · {client.display_name}</option
 							>{/each}</Select
 					>
 				{:else}
 					<Select id="task-context-quote" name="context_id" label="Quote" required
-						><option value="">Select a Quote</option>{#each data.quotes as quote (quote.id)}<option
+						><option value="">Select a quote</option>{#each data.quotes as quote (quote.id)}<option
 								value={quote.id}
-								>{quote.quote_number ?? 'Quote'} · {quote.subject} · {quote.status}</option
+								>{quote.quote_number ?? 'Quote'} · {quote.subject} · {quoteStatusLabel(
+									quote.status
+								)}</option
 							>{/each}</Select
 					>
 				{/if}
-				<Select id="task-type" name="type" label="Type"
-					><option value="custom">Custom</option><option value="review_lead">Review lead</option
-					><option value="call_client">Call client</option><option value="prepare_quote"
+				<Select id="task-type" name="type" label="Action type"
+					><option value="custom">Other follow-up</option><option value="review_lead"
+						>Review enquiry</option
+					><option value="call_client">Call customer</option><option value="prepare_quote"
 						>Prepare quote</option
-					><option value="send_quote">Send quote</option><option value="follow_up">Follow-up</option
-					><option value="confirm_acceptance">Confirm acceptance</option></Select
+					><option value="send_quote">Send quote</option><option value="follow_up">Follow up</option
+					><option value="confirm_acceptance">Confirm customer</option></Select
 				>
-				<Input id="task-title" name="title" label="Title" required />
-				<Input id="task-description" name="description" label="Description" />
-				<Input id="task-due" name="due_at" label="Due at" type="datetime-local" />
-				<Select id="task-assignee" name="assigned_to" label="Owner"
+				<Input id="task-title" name="title" label="What needs to happen?" required />
+				<Input id="task-description" name="description" label="Notes (optional)" />
+				<Input id="task-due" name="due_at" label="Due date" type="datetime-local" />
+				<Select id="task-assignee" name="assigned_to" label="Person responsible"
 					><option value="">Unassigned</option>{#each data.staff as member (member.id)}<option
 							value={member.id}>{member.full_name || member.email}</option
 						>{/each}</Select
 				>
-				<Button type="submit" size="sm">Create Task</Button>
+				<Button type="submit" size="sm">Add follow-up action</Button>
 			</form>
 		</Card>
 	{/if}
 
 	{#if data.tasks.length === 0}
 		<EmptyState
-			title="No Tasks match this view"
+			title="No follow-ups match this view"
 			message="Schedule the next action or adjust the filters."
 		/>
 	{:else}
 		<Card class="tasks-card">
 			<div class="tasks-table-wrap">
 				<table class="tasks-table">
-					<caption class="sr-only">Task work queue</caption><thead
-						><tr><th>Task</th><th>Type</th><th>Due</th><th>Status</th><th>Actions</th></tr></thead
+					<caption class="sr-only">Follow-up action queue</caption><thead
+						><tr><th>Action</th><th>Type</th><th>Due</th><th>Status</th><th>Actions</th></tr></thead
 					><tbody>
 						{#each data.tasks as task (task.id)}
 							<tr>
@@ -166,8 +174,10 @@
 										>
 									{:else}<span>{contextLabel(task)}</span>{/if}
 								</td>
-								<td>{task.type}</td><td>{dateTime(task.due_at)}</td><td
-									><Badge tone={tone(task)}>{task.is_overdue ? 'overdue' : task.status}</Badge></td
+								<td>{taskTypeLabel(task.type ?? 'custom')}</td><td>{dateTime(task.due_at)}</td><td
+									><Badge tone={tone(task)}
+										>{task.is_overdue ? 'Overdue' : taskStatusLabel(task.status ?? 'open')}</Badge
+									></td
 								>
 								<td
 									>{#if canMutate && task.status === 'open'}<div class="task-actions">
@@ -197,7 +207,7 @@
 													value={task.lock_version}
 												/><Button type="submit" size="sm" variant="danger">Cancel</Button>
 											</form>
-										</div>{:else}<span class="muted">Read-only</span>{/if}</td
+										</div>{:else}<span class="muted">View only</span>{/if}</td
 								>
 							</tr>
 						{/each}

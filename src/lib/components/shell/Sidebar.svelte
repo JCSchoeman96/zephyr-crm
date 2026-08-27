@@ -25,11 +25,28 @@
 			id: 'sales',
 			label: 'Sales',
 			items: [
-				{ label: 'Leads', href: '/leads', icon: UserRound },
-				{ label: 'Quotes', href: '/quotes', icon: FileText },
-				{ label: 'Clients', href: '/clients', icon: Users },
-				{ label: 'Tasks', href: '/tasks', icon: CheckSquare }
+				{ label: 'New Enquiries', href: '/sales/enquiries', icon: UserRound },
+				{ label: 'Qualification', href: '/sales/qualification', icon: CheckSquare },
+				{ label: 'All enquiries', href: '/leads', icon: UserRound },
+				{ label: 'Quotes to Prepare', href: '/sales/proposals', icon: FileText },
+				{ label: 'Awaiting Feedback', href: '/sales/decisions', icon: Activity },
+				{ label: 'Quotes', href: '/quotes', icon: FileText }
 			]
+		},
+		{
+			id: 'fulfilment',
+			label: 'Fulfilment',
+			items: [{ label: 'Fulfilment', href: '/fulfilment', icon: Activity }]
+		},
+		{
+			id: 'customers',
+			label: 'Customers',
+			items: [{ label: 'Clients', href: '/clients', icon: Users }]
+		},
+		{
+			id: 'work',
+			label: 'Work',
+			items: [{ label: 'Tasks', href: '/tasks', icon: CheckSquare }]
 		},
 		{
 			id: 'administration',
