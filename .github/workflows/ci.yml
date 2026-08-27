@@ -40,8 +40,6 @@ jobs:
         run: bun run authority:v140:verify
       - name: Verify Bricks form-ID parity
         run: bun run test:bricks:parity
-      - name: Run v1.4 review hardening contract
-        run: bun run test:v140:review-hardening
       - name: Verify CI contract
         run: bun run ci:contract
       - name: Verify release evidence registry
@@ -90,6 +88,8 @@ jobs:
         run: bun run db:types:check
       - name: Run database security contract
         run: bun run db:security
+      - name: Run v1.4 review hardening contract
+        run: bun run test:v140:review-hardening
       - name: Run v1.3.1 security contract
         run: bun run test:v131:security
       - name: Run Auth integration

@@ -112,6 +112,17 @@ export function validateCiWorkflow(workflow) {
 	for (const job of ['browser-domain-e2e:', 'p14-release:', 'v140-release:', 'release-contract:']) {
 		if (!workflow.includes(job)) fail(`required protected job is missing: ${job}`);
 	}
+	const staticJob = workflow.split('  static:')[1]?.split('  database-domain-security:')[0] ?? '';
+	const databaseJob =
+		workflow.split('  database-domain-security:')[1]?.split('  browser-build:')[0] ?? '';
+	if (staticJob.includes('run: bun run test:v140:review-hardening')) {
+		fail('database-backed v1.4 hardening must not run in the static job');
+	}
+	const databaseReset = databaseJob.indexOf('run: bun run db:reset');
+	const reviewHardening = databaseJob.indexOf('run: bun run test:v140:review-hardening');
+	if (databaseReset < 0 || reviewHardening < databaseReset) {
+		fail('database-domain-security must run v1.4 hardening after the local database reset');
+	}
 	const v140Release = workflow.split('  v140-release:')[1]?.split('  release-contract:')[0] ?? '';
 	const releaseContract = workflow.split('  release-contract:')[1] ?? '';
 	if (!releaseContract.includes('browser-domain-e2e')) {
