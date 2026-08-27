@@ -23,7 +23,8 @@ async function convertedClient(user) {
 				first_name: 'Contact',
 				last_name: 'Owner',
 				email: `${prefix}-contact@example.test`,
-				phone: '+27 11 555 0201'
+				phone: '+27 11 555 0201',
+				message: 'Contact integrity fixture with meaningful enquiry information'
 			}
 		},
 		serviceRoleKey,
