@@ -1,7 +1,7 @@
 # Phase 22 — Product Catalogue Foundation
 
 **Roadmap Version:** 1.5.0
-**Status:** Planned
+**Status:** Complete
 **Required predecessor:** P21
 **Authority:** `docs/PRODUCT_CATALOGUE_QUOTE_DOCUMENT_ARCHITECTURE.md`
 

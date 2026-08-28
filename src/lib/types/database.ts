@@ -1214,45 +1214,79 @@ export type Database = {
 			};
 			quote_items: {
 				Row: {
+					catalogue_unit_price: number | null;
 					created_at: string;
 					description: string | null;
 					id: string;
 					line_subtotal: number;
 					name: string;
 					position: number;
+					product_code_snapshot: string | null;
+					product_id: string | null;
 					quantity: number;
 					quote_id: string;
+					source_product_reviewed_at: string | null;
+					source_product_reviewed_by: string | null;
+					source_product_reviewed_version: number | null;
+					source_product_version: number | null;
+					source_type: string;
 					taxable: boolean;
+					unit_label_snapshot: string | null;
 					unit_price: number;
 					updated_at: string;
 				};
 				Insert: {
+					catalogue_unit_price?: number | null;
 					created_at?: string;
 					description?: string | null;
 					id?: string;
 					line_subtotal: number;
 					name: string;
 					position: number;
+					product_code_snapshot?: string | null;
+					product_id?: string | null;
 					quantity: number;
 					quote_id: string;
+					source_product_reviewed_at?: string | null;
+					source_product_reviewed_by?: string | null;
+					source_product_reviewed_version?: number | null;
+					source_product_version?: number | null;
+					source_type?: string;
 					taxable?: boolean;
+					unit_label_snapshot?: string | null;
 					unit_price: number;
 					updated_at?: string;
 				};
 				Update: {
+					catalogue_unit_price?: number | null;
 					created_at?: string;
 					description?: string | null;
 					id?: string;
 					line_subtotal?: number;
 					name?: string;
 					position?: number;
+					product_code_snapshot?: string | null;
+					product_id?: string | null;
 					quantity?: number;
 					quote_id?: string;
+					source_product_reviewed_at?: string | null;
+					source_product_reviewed_by?: string | null;
+					source_product_reviewed_version?: number | null;
+					source_product_version?: number | null;
+					source_type?: string;
 					taxable?: boolean;
+					unit_label_snapshot?: string | null;
 					unit_price?: number;
 					updated_at?: string;
 				};
 				Relationships: [
+					{
+						foreignKeyName: 'quote_items_product_id_fkey';
+						columns: ['product_id'];
+						isOneToOne: false;
+						referencedRelation: 'products';
+						referencedColumns: ['id'];
+					},
 					{
 						foreignKeyName: 'quote_items_quote_id_fkey';
 						columns: ['quote_id'];
@@ -1265,6 +1299,13 @@ export type Database = {
 						columns: ['quote_id'];
 						isOneToOne: false;
 						referencedRelation: 'quotes';
+						referencedColumns: ['id'];
+					},
+					{
+						foreignKeyName: 'quote_items_source_product_reviewed_by_fkey';
+						columns: ['source_product_reviewed_by'];
+						isOneToOne: false;
+						referencedRelation: 'profiles';
 						referencedColumns: ['id'];
 					}
 				];
@@ -1885,6 +1926,16 @@ export type Database = {
 					p_quote_id?: string;
 					p_summary?: string;
 					p_task_id?: string;
+				};
+				Returns: Json;
+			};
+			add_product_quote_item: {
+				Args: {
+					p_product_id: string;
+					p_product_lock_version: number;
+					p_quantity?: number;
+					p_quote_id: string;
+					p_quote_lock_version: number;
 				};
 				Returns: Json;
 			};
