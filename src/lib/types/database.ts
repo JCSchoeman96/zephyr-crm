@@ -1868,6 +1868,14 @@ export type Database = {
 						};
 						Returns: Json;
 				  };
+			activate_product: {
+				Args: { p_lock_version: number; p_product_id: string };
+				Returns: Json;
+			};
+			activate_product_category: {
+				Args: { p_category_id: string; p_lock_version: number };
+				Returns: Json;
+			};
 			add_activity_note: {
 				Args: {
 					p_client_id?: string;
@@ -1878,6 +1886,10 @@ export type Database = {
 					p_summary?: string;
 					p_task_id?: string;
 				};
+				Returns: Json;
+			};
+			archive_product: {
+				Args: { p_lock_version: number; p_product_id: string; p_reason: string };
 				Returns: Json;
 			};
 			assign_lead: {
@@ -1915,6 +1927,15 @@ export type Database = {
 			};
 			cancel_task: {
 				Args: { p_lock_version: number; p_task_id: string };
+				Returns: Json;
+			};
+			change_product_price: {
+				Args: {
+					p_lock_version: number;
+					p_product_id: string;
+					p_reason?: string;
+					p_unit_price: number;
+				};
 				Returns: Json;
 			};
 			complete_fulfilment: {
@@ -1982,6 +2003,25 @@ export type Database = {
 					p_tax_rate?: number;
 					p_unit_price: number;
 				};
+				Returns: Json;
+			};
+			create_product: {
+				Args: {
+					p_category_id?: string;
+					p_currency?: string;
+					p_customer_description?: string;
+					p_internal_notes?: string;
+					p_kind?: string;
+					p_name: string;
+					p_product_code: string;
+					p_taxable?: boolean;
+					p_unit_label?: string;
+					p_unit_price?: number;
+				};
+				Returns: Json;
+			};
+			create_product_category: {
+				Args: { p_code: string; p_label: string; p_sort_order?: number };
 				Returns: Json;
 			};
 			create_task:
@@ -2063,6 +2103,22 @@ export type Database = {
 			};
 			fail_quote_send: {
 				Args: { p_error: string; p_outbound_message_id: string };
+				Returns: Json;
+			};
+			inactivate_product: {
+				Args: {
+					p_lock_version: number;
+					p_product_id: string;
+					p_reason?: string;
+				};
+				Returns: Json;
+			};
+			inactivate_product_category: {
+				Args: {
+					p_category_id: string;
+					p_lock_version: number;
+					p_reason?: string;
+				};
 				Returns: Json;
 			};
 			ingest_bricks_lead: {
@@ -2207,6 +2263,10 @@ export type Database = {
 			};
 			reschedule_task: {
 				Args: { p_due_at: string; p_lock_version: number; p_task_id: string };
+				Returns: Json;
+			};
+			restore_product: {
+				Args: { p_lock_version: number; p_product_id: string; p_reason: string };
 				Returns: Json;
 			};
 			resume_lead: {
@@ -2354,6 +2414,32 @@ export type Database = {
 					p_registration_number?: string;
 					p_tax_number?: string;
 					p_type: string;
+				};
+				Returns: Json;
+			};
+			update_product: {
+				Args: {
+					p_category_id?: string;
+					p_currency?: string;
+					p_customer_description?: string;
+					p_internal_notes?: string;
+					p_kind?: string;
+					p_lock_version: number;
+					p_name: string;
+					p_product_code: string;
+					p_product_id: string;
+					p_taxable?: boolean;
+					p_unit_label?: string;
+				};
+				Returns: Json;
+			};
+			update_product_category: {
+				Args: {
+					p_category_id: string;
+					p_code: string;
+					p_label: string;
+					p_lock_version: number;
+					p_sort_order?: number;
 				};
 				Returns: Json;
 			};
