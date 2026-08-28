@@ -1,7 +1,7 @@
 # Phase 26 — Delivery and Reconciliation
 
 **Roadmap Version:** 1.5.0
-**Status:** Planned
+**Status:** Complete
 **Required predecessor:** P25
 **Authority:** `docs/PRODUCT_CATALOGUE_QUOTE_DOCUMENT_ARCHITECTURE.md`
 

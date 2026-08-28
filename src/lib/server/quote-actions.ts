@@ -40,7 +40,9 @@ export async function sendQuote(
 ): Promise<JsonRecord> {
 	const currentQuote = await supabase
 		.from('quotes')
-		.select('lead_id,status,quote_number,subject,valid_until,currency,total,quote_snapshot')
+		.select(
+			'lead_id,status,quote_number,revision_number,subject,valid_until,currency,total,quote_snapshot'
+		)
 		.eq('id', quoteId)
 		.maybeSingle();
 	if (currentQuote.error) throw new Error(currentQuote.error.message);
@@ -54,35 +56,35 @@ export async function sendQuote(
 	// Validate all local configuration and customer-facing content before claiming
 	// the logical outbound message. Once the trusted action claims it, every
 	// failure must represent a real provider or persistence uncertainty.
-	const leadResponse = await supabase
-		.from('leads')
-		.select('email,first_name,last_name')
-		.eq('id', currentQuote.data.lead_id)
-		.maybeSingle();
-	if (leadResponse.error) throw new Error(leadResponse.error.message);
-	if (!leadResponse.data) throw new Error('Lead not found.');
-
 	const trusted = loadTrustedClientConfiguration();
 	const clientId = trusted.secrets.sendpulseClientId || env.SENDPULSE_CLIENT_ID?.trim();
 	const clientSecret = trusted.secrets.sendpulseClientSecret || env.SENDPULSE_CLIENT_SECRET?.trim();
 	if (!clientId || !clientSecret) throw new Error('SendPulse integration is not configured.');
 
-	const recipient = {
-		email: stringValue(leadResponse.data.email),
-		name: `${stringValue(leadResponse.data.first_name)} ${stringValue(leadResponse.data.last_name)}`.trim()
-	};
 	const snapshot = record(currentQuote.data.quote_snapshot);
 	const identity = record(snapshot.company_identity);
+	const recipientSnapshot = record(snapshot.recipient);
+	const recipient = {
+		email: stringValue(recipientSnapshot.email),
+		name: stringValue(recipientSnapshot.name)
+	};
+	const brandTokens = record(identity.brand_tokens);
 	buildQuoteEmail({
 		companyName: stringValue(identity.name || identity.company_name),
 		recipientName: recipient.name,
 		recipientEmail: recipient.email,
 		quoteNumber: stringValue(currentQuote.data.quote_number),
+		revision: Number(currentQuote.data.revision_number),
 		subject: stringValue(currentQuote.data.subject),
 		currency: stringValue(currentQuote.data.currency),
 		total: stringValue(currentQuote.data.total),
 		validUntil: stringValue(currentQuote.data.valid_until),
-		hasFrozenPdf: Boolean(document)
+		hasFrozenPdf: Boolean(document),
+		brand: {
+			primary: stringValue(brandTokens.primary),
+			primaryStrong: stringValue(brandTokens.primary_strong),
+			accent: stringValue(brandTokens.accent)
+		}
 	});
 	const usesFileConfiguration = Boolean(env.CLIENT_CONFIG_JSON?.trim());
 	const baseUrl = usesFileConfiguration
@@ -131,16 +133,29 @@ export async function sendQuote(
 		});
 		throw new Error('The claimed Quote recipient is missing.');
 	}
+	if (claimedRecipient.email !== recipient.email) {
+		await supabase.rpc('fail_quote_send', {
+			p_outbound_message_id: stringValue(prepared.outbound_message_id),
+			p_error: 'The claimed recipient does not match the frozen Quote recipient.'
+		});
+		throw new Error('The claimed recipient does not match the frozen Quote recipient.');
+	}
 	const claimedEmail = buildQuoteEmail({
 		companyName: stringValue(identity.name || identity.company_name),
 		recipientName: claimedRecipient.name,
 		recipientEmail: claimedRecipient.email,
 		quoteNumber: stringValue(currentQuote.data.quote_number),
+		revision: Number(currentQuote.data.revision_number),
 		subject: stringValue(currentQuote.data.subject),
 		currency: stringValue(currentQuote.data.currency),
 		total: stringValue(currentQuote.data.total),
 		validUntil: stringValue(currentQuote.data.valid_until),
-		hasFrozenPdf: Boolean(document)
+		hasFrozenPdf: Boolean(document),
+		brand: {
+			primary: stringValue(brandTokens.primary),
+			primaryStrong: stringValue(brandTokens.primary_strong),
+			accent: stringValue(brandTokens.accent)
+		}
 	});
 
 	let providerMessageId: string;
@@ -149,6 +164,7 @@ export async function sendQuote(
 			to: [claimedRecipient],
 			subject: claimedEmail.subject,
 			html: claimedEmail.html,
+			text: claimedEmail.text,
 			attachments: document
 				? [
 						{

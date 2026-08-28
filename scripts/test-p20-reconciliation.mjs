@@ -69,11 +69,6 @@ function assertStateHashes(state) {
 	for (const [path, expected] of Object.entries(state.authority_sha256 ?? {})) {
 		assert(expected === sha256(path), `authority hash is stale for ${path}`);
 	}
-	assert(
-		JSON.stringify(Object.keys(state.phase_authority_paths ?? {}).sort()) ===
-			JSON.stringify(phaseIds.sort()),
-		'phase authority path set is not P0-P20'
-	);
 	for (const phase of phaseIds) {
 		const path = state.phase_authority_paths[phase];
 		assert(
@@ -85,13 +80,24 @@ function assertStateHashes(state) {
 
 function assertStateProjection(state) {
 	assert(state.state_schema_version === 3, 'state schema version is not 3');
-	assert(state.roadmap_version === '1.4.0', 'state roadmap version is not 1.4.0');
-	assert(state.current_phase === 'P20', 'state current phase is not P20');
-	assert(state.completed_phases?.includes('P19'), 'P19 is not complete in local state');
+	const v140IsActive = state.roadmap_version === '1.4.0' && state.current_phase === 'P20';
+	const v150IsSuccessor =
+		state.roadmap_version === '1.5.0' &&
+		state.roadmap === 'CRM_IMPLEMENTATION_ROADMAP_v1.5.0.md' &&
+		state.architecture === 'docs/PRODUCT_CATALOGUE_QUOTE_DOCUMENT_ARCHITECTURE.md' &&
+		state.completed_phases?.includes('P20') &&
+		/^P(2[1-6])$/.test(state.current_phase ?? '');
 	assert(
-		state.current_subphase === 'P20-T01' || state.current_subphase === 'P20-T02',
-		'P20 subphase is invalid'
+		v140IsActive || v150IsSuccessor,
+		'state is neither active v1.4 nor a valid v1.5 successor'
 	);
+	if (v140IsActive) {
+		assert(state.completed_phases?.includes('P19'), 'P19 is not complete in local state');
+		assert(
+			state.current_subphase === 'P20-T01' || state.current_subphase === 'P20-T02',
+			'P20 subphase is invalid'
+		);
+	}
 }
 
 function assertAuthorityCoverage(state) {

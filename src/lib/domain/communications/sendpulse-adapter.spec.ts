@@ -25,13 +25,20 @@ describe('SendPulse adapter contract', () => {
 			await adapter.sendEmail({
 				to: [{ email: 'client@example.test', name: 'Client' }],
 				subject: 'Quote Q-1001',
-				html: '<p>Quote</p>'
+				html: '<p>Quote</p>',
+				text: 'Quote text',
+				attachments: [{ name: 'Q-1001.pdf', content: 'cGRm' }]
 			})
 		).toEqual({ providerMessageId: 'provider-message-123' });
 		expect(requests.map((request) => request.url)).toEqual([
 			'https://provider.test/oauth/access_token',
 			'https://provider.test/smtp/emails'
 		]);
+		const submission = JSON.parse(requests[1].body) as {
+			email: { text?: string; attachments?: Array<{ name: string; content: string }> };
+		};
+		expect(submission.email.text).toBe('Quote text');
+		expect(submission.email.attachments).toEqual([{ name: 'Q-1001.pdf', content: 'cGRm' }]);
 	});
 
 	it('does not convert a lost SMTP acknowledgement into a definitive failure', async () => {

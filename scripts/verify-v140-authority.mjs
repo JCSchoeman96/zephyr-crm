@@ -80,11 +80,14 @@ for (const path of requiredFiles) {
 const localStatePath = '.agent/goal-loop/STATE.json';
 if (existsSync(resolve(root, localStatePath))) {
 	const state = readJson(localStatePath);
-	assert(state.roadmap === 'CRM_IMPLEMENTATION_ROADMAP_v1.4.0.md', 'v1.4.0 roadmap is not active');
-	assert(
-		state.architecture === 'docs/FULFILMENT_ARCHITECTURE.md',
-		'v1.4.0 architecture is not active'
-	);
+	const v140IsActive =
+		state.roadmap === 'CRM_IMPLEMENTATION_ROADMAP_v1.4.0.md' &&
+		state.architecture === 'docs/FULFILMENT_ARCHITECTURE.md';
+	const v150IsSuccessor =
+		state.roadmap === 'CRM_IMPLEMENTATION_ROADMAP_v1.5.0.md' &&
+		state.architecture === 'docs/PRODUCT_CATALOGUE_QUOTE_DOCUMENT_ARCHITECTURE.md' &&
+		state.completed_phases?.includes('P20');
+	assert(v140IsActive || v150IsSuccessor, 'v1.4.0 state has no valid active or successor roadmap');
 	for (const path of requiredFiles) {
 		assert(
 			state.authority_sha256?.[path] === registry.files[path],

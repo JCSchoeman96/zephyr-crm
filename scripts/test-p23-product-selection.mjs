@@ -315,6 +315,27 @@ async function main() {
 			unchanged.source_product_version === itemSnapshot.version,
 		'Product price mutation changed the QuoteItem snapshot'
 	);
+	const currentProduct = await productById(product.id, owner);
+	const reviewed = await mustRpc(
+		'review_product_quote_item',
+		{
+			p_quote_id: quote.id,
+			p_quote_lock_version: quote.lock_version,
+			p_quote_item_id: catalogueItem.id,
+			p_product_lock_version: currentProduct.lock_version
+		},
+		anonKey,
+		await signIn(owner)
+	);
+	quote = await quoteById(quote.id, owner);
+	const reviewedItem = (await itemsByQuote(quote.id, owner)).find(
+		(item) => item.id === catalogueItem.id
+	);
+	assert(
+		reviewed.status === 'draft' &&
+			reviewedItem?.source_product_reviewed_version === currentProduct.lock_version,
+		'Product source change was not explicitly reviewed before finalization'
+	);
 
 	const ready = await mustRpc(
 		'mark_quote_ready',

@@ -411,6 +411,16 @@ try {
 	const firstLead = await createLead('delivery');
 	await reachDecision(firstLead, user);
 	const firstQuote = await createReadyQuote(firstLead, user, 'delivery');
+	const frozenRecipient = firstQuote.quote_snapshot?.recipient;
+	run('psql', [
+		dbUrl,
+		'-X',
+		'-v',
+		'ON_ERROR_STOP=1',
+		'-c',
+		`update public.leads set first_name = 'Redirected', last_name = 'Lead', email = '${prefix}-redirected@example.test', lock_version = lock_version + 1 where id = '${firstLead.id}';`
+	]);
+	assert(frozenRecipient?.email, 'Ready Quote did not capture a recipient snapshot');
 	await startProvider();
 	await startApp();
 	await loginApp(user);
@@ -484,6 +494,24 @@ try {
 	assert(
 		lastProviderBody?.email?.attachments?.[0]?.content,
 		'SendPulse request did not include the frozen PDF'
+	);
+	assert(
+		lastProviderBody.email.to?.[0]?.email === currentQuote.quote_snapshot?.recipient?.email,
+		'SendPulse recipient did not match the frozen current Quote revision'
+	);
+	assert(
+		lastProviderBody.email.text?.includes(`Revision ${currentQuote.revision_number}`),
+		'Branded Quote plain-text email was not submitted'
+	);
+	assert(
+		lastProviderBody.email.html?.includes('max-width:600px') &&
+			lastProviderBody.email.html?.includes(`Revision ${currentQuote.revision_number}`),
+		'Responsive branded Quote HTML was not submitted'
+	);
+	assert(
+		!JSON.stringify(lastProviderBody.email).includes('quote-documents') &&
+			!JSON.stringify(lastProviderBody.email).includes('internal_notes'),
+		'Quote email exposed private Storage or internal-note data'
 	);
 	assert(
 		currentQuote.document_path && currentQuote.document_hash && currentQuote.document_generated_at,

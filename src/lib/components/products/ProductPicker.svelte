@@ -2,22 +2,13 @@
 	import Button from '$lib/components/ui/Button.svelte';
 	import Input from '$lib/components/ui/Input.svelte';
 	import Select from '$lib/components/ui/Select.svelte';
+	import {
+		searchProducts,
+		type ProductOption,
+		type ProductSearchPagination as Pagination
+	} from '$lib/services/products';
 
 	type ProductCategory = { id: string; label: string };
-	type ProductOption = {
-		id: string;
-		product_code: string;
-		name: string;
-		customer_description: string | null;
-		kind: string;
-		category_id: string | null;
-		unit_label: string;
-		currency: string;
-		unit_price: number | string;
-		taxable: boolean;
-		lock_version: number;
-	};
-	type Pagination = { page: number; pageSize: number; total: number; totalPages: number };
 
 	let {
 		action,
@@ -70,31 +61,17 @@
 		const timer = setTimeout(async () => {
 			loading = true;
 			errorMessage = '';
-			const params = [
-				`currency=${encodeURIComponent(normalizedCurrency)}`,
-				`page=${currentPage}`,
-				'page_size=12',
-				...(normalizedQuery ? [`q=${encodeURIComponent(normalizedQuery)}`] : []),
-				...(normalizedCategory ? [`category_id=${encodeURIComponent(normalizedCategory)}`] : [])
-			].join('&');
 			try {
-				const response = await fetch(`/api/products/search?${params}`, {
-					signal: controller.signal,
-					headers: { accept: 'application/json' }
-				});
-				const payload = (await response.json()) as {
-					products?: ProductOption[];
-					pagination?: Pagination;
-					error?: string;
-				};
-				if (!response.ok) throw new Error(payload.error || 'Could not search the catalogue');
-				products = payload.products ?? [];
-				pagination = payload.pagination ?? {
+				const result = await searchProducts({
+					currency: normalizedCurrency,
 					page: currentPage,
 					pageSize: 12,
-					total: products.length,
-					totalPages: 1
-				};
+					query: normalizedQuery,
+					categoryId: normalizedCategory,
+					signal: controller.signal
+				});
+				products = result.products;
+				pagination = result.pagination;
 			} catch (cause) {
 				if (cause instanceof DOMException && cause.name === 'AbortError') return;
 				errorMessage = cause instanceof Error ? cause.message : 'Could not search the catalogue';

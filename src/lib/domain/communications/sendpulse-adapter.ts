@@ -4,6 +4,7 @@ export type SendPulseEmail = {
 	to: SendPulseRecipient[];
 	subject: string;
 	html: string;
+	text?: string;
 	fromEmail?: string;
 	fromName?: string;
 	attachments?: SendPulseAttachment[];
@@ -78,6 +79,7 @@ export class SendPulseAdapter {
 			},
 			to: input.to
 		};
+		if (input.text?.trim()) email.text = input.text;
 		if (input.attachments?.length) email.attachments = input.attachments;
 
 		let sendResponse: Response;

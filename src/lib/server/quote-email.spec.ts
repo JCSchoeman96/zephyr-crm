@@ -8,11 +8,17 @@ describe('quote email contract', () => {
 			recipientName: 'Ada Lovelace',
 			recipientEmail: 'ada@example.test',
 			quoteNumber: 'Q-2099-000001',
+			revision: 2,
 			subject: 'Website maintenance',
 			currency: 'ZAR',
 			total: '115.00',
 			validUntil: '2099-12-31',
-			hasFrozenPdf: true
+			hasFrozenPdf: true,
+			brand: {
+				primary: '#315cce',
+				primaryStrong: '#2649a8',
+				accent: '#d9773b'
+			}
 		});
 
 		expect(email.subject).toBe('Quote Q-2099-000001: Website maintenance');
@@ -24,6 +30,12 @@ describe('quote email contract', () => {
 		expect(email.html).toContain('frozen PDF');
 		expect(email.html).toContain('Example &lt;Client&gt;');
 		expect(email.html).not.toContain('Example <Client>');
+		expect(email.html).toContain('Revision 2');
+		expect(email.html).toContain('max-width:600px');
+		expect(email.html).toContain('role="presentation"');
+		expect(email.text).toContain('Revision 2');
+		expect(email.text).toContain('ZAR 115.00');
+		expect(email.text).not.toContain('quote-documents');
 	});
 
 	it('requires a frozen PDF and complete identity before creating a message', () => {

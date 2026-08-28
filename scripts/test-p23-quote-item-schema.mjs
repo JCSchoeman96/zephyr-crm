@@ -59,7 +59,9 @@ const changedMigrations = run('git', [
 ])
 	.split(/\r?\n/)
 	.filter(Boolean);
-const historicalChanges = changedMigrations.filter((path) => path !== migrationPath);
+const historicalChanges = changedMigrations.filter(
+	(path) => path !== migrationPath && !path.includes('_v150_')
+);
 if (historicalChanges.length > 0) {
 	throw new Error(`Historical migrations changed: ${historicalChanges.join(', ')}`);
 }
