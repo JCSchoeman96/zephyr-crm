@@ -17,7 +17,7 @@ export const GET: RequestHandler = async ({ locals, params }) => {
 		return json({ error: 'Quote document not found' }, { status: 404 });
 	}
 	try {
-		const bytes = await quoteDocumentDownload(quote.data.document_path);
+		const bytes = await quoteDocumentDownload(quote.data.document_path, quote.data.document_hash);
 		return new Response(bytes.slice().buffer as ArrayBuffer, {
 			status: 200,
 			headers: {

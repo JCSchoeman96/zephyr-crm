@@ -9,7 +9,7 @@ import { bytesToBase64, ensureQuoteDocument } from '$lib/server/quote-documents'
 import { loadTrustedClientConfiguration } from '$lib/server/client-config';
 import { recordOperationalEvent } from '$lib/server/operational-events';
 import { createTrustedSupabaseClient } from '$lib/server/trusted-supabase';
-import { buildQuoteEmail } from '$lib/server/quote-email';
+import { buildQuoteEmail, validateQuoteEmailInput } from '$lib/server/quote-email';
 
 type ServerSupabaseClient = SupabaseClient<Database>;
 type JsonRecord = Record<string, unknown>;
@@ -21,7 +21,7 @@ function record(value: unknown): JsonRecord {
 }
 
 function stringValue(value: unknown): string {
-	return typeof value === 'string' ? value : String(value ?? '');
+	return typeof value === 'string' ? value.trim() : String(value ?? '').trim();
 }
 
 function shouldInjectQuoteFinalizationFailure(): boolean {
@@ -48,14 +48,10 @@ export async function sendQuote(
 	if (currentQuote.error) throw new Error(currentQuote.error.message);
 	if (!currentQuote.data) throw new Error('Quote not found.');
 
-	let document: Awaited<ReturnType<typeof ensureQuoteDocument>> | null = null;
-	if (currentQuote.data.status === 'ready') {
-		document = await ensureQuoteDocument(supabase, quoteId, lockVersion);
-	}
-
 	// Validate all local configuration and customer-facing content before claiming
-	// the logical outbound message. Once the trusted action claims it, every
-	// failure must represent a real provider or persistence uncertainty.
+	// the logical outbound message or creating a PDF. Once the trusted action
+	// claims it, every failure must represent a real provider or persistence
+	// uncertainty.
 	const trusted = loadTrustedClientConfiguration();
 	const clientId = trusted.secrets.sendpulseClientId || env.SENDPULSE_CLIENT_ID?.trim();
 	const clientSecret = trusted.secrets.sendpulseClientSecret || env.SENDPULSE_CLIENT_SECRET?.trim();
@@ -69,7 +65,7 @@ export async function sendQuote(
 		name: stringValue(recipientSnapshot.name)
 	};
 	const brandTokens = record(identity.brand_tokens);
-	buildQuoteEmail({
+	const emailInput = {
 		companyName: stringValue(identity.name || identity.company_name),
 		recipientName: recipient.name,
 		recipientEmail: recipient.email,
@@ -79,13 +75,14 @@ export async function sendQuote(
 		currency: stringValue(currentQuote.data.currency),
 		total: stringValue(currentQuote.data.total),
 		validUntil: stringValue(currentQuote.data.valid_until),
-		hasFrozenPdf: Boolean(document),
+		hasFrozenPdf: false,
 		brand: {
 			primary: stringValue(brandTokens.primary),
 			primaryStrong: stringValue(brandTokens.primary_strong),
 			accent: stringValue(brandTokens.accent)
 		}
-	});
+	};
+	validateQuoteEmailInput(emailInput, { requireFrozenPdf: false });
 	const usesFileConfiguration = Boolean(env.CLIENT_CONFIG_JSON?.trim());
 	const baseUrl = usesFileConfiguration
 		? trusted.configuration.integrations.sendpulse.apiBaseUrl
@@ -99,6 +96,13 @@ export async function sendQuote(
 	if (!senderEmail || !senderName) {
 		throw new Error('A configured SendPulse sender email and name are required.');
 	}
+
+	let document: Awaited<ReturnType<typeof ensureQuoteDocument>> | null = null;
+	if (currentQuote.data.status === 'ready') {
+		document = await ensureQuoteDocument(supabase, quoteId, lockVersion);
+	}
+	buildQuoteEmail({ ...emailInput, hasFrozenPdf: Boolean(document) });
+
 	const adapter = new SendPulseAdapter({
 		clientId,
 		clientSecret,
@@ -141,21 +145,10 @@ export async function sendQuote(
 		throw new Error('The claimed recipient does not match the frozen Quote recipient.');
 	}
 	const claimedEmail = buildQuoteEmail({
-		companyName: stringValue(identity.name || identity.company_name),
+		...emailInput,
 		recipientName: claimedRecipient.name,
 		recipientEmail: claimedRecipient.email,
-		quoteNumber: stringValue(currentQuote.data.quote_number),
-		revision: Number(currentQuote.data.revision_number),
-		subject: stringValue(currentQuote.data.subject),
-		currency: stringValue(currentQuote.data.currency),
-		total: stringValue(currentQuote.data.total),
-		validUntil: stringValue(currentQuote.data.valid_until),
-		hasFrozenPdf: Boolean(document),
-		brand: {
-			primary: stringValue(brandTokens.primary),
-			primaryStrong: stringValue(brandTokens.primary_strong),
-			accent: stringValue(brandTokens.accent)
-		}
+		hasFrozenPdf: Boolean(document)
 	});
 
 	let providerMessageId: string;

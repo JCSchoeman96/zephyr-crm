@@ -1,4 +1,4 @@
-type QuoteEmailInput = {
+export type QuoteEmailInput = {
 	companyName: string;
 	recipientName?: string | null;
 	recipientEmail: string;
@@ -37,14 +37,21 @@ function value(input: unknown): string {
 
 function color(input: unknown, fallback: string): string {
 	const candidate = value(input);
-	return /^#[0-9a-f]{6}$/i.test(candidate) ? candidate : fallback;
+	const match = candidate.match(/^#([0-9a-f]{3}|[0-9a-f]{6}|[0-9a-f]{8})$/i);
+	if (!match) return fallback;
+	const hex = match[1];
+	const expanded = hex.length === 3 ? [...hex].map((digit) => digit + digit).join('') : hex;
+	return `#${expanded.slice(0, 6)}`;
 }
 
 function revisionValue(input: number | null | undefined): string | null {
 	return Number.isInteger(input) && Number(input) > 0 ? String(input) : null;
 }
 
-export function buildQuoteEmail(input: QuoteEmailInput): QuoteEmail {
+export function validateQuoteEmailInput(
+	input: QuoteEmailInput,
+	options: { requireFrozenPdf?: boolean } = {}
+): void {
 	const companyName = value(input.companyName);
 	const recipientEmail = value(input.recipientEmail);
 	const quoteNumber = value(input.quoteNumber);
@@ -55,7 +62,18 @@ export function buildQuoteEmail(input: QuoteEmailInput): QuoteEmail {
 			'A configured company identity and complete Quote snapshot are required for email.'
 		);
 	}
-	if (!input.hasFrozenPdf) throw new Error('A frozen PDF quote is required before sending email.');
+	if (options.requireFrozenPdf !== false && !input.hasFrozenPdf) {
+		throw new Error('A frozen PDF quote is required before sending email.');
+	}
+}
+
+export function buildQuoteEmail(input: QuoteEmailInput): QuoteEmail {
+	validateQuoteEmailInput(input);
+	const companyName = value(input.companyName);
+	const recipientEmail = value(input.recipientEmail);
+	const quoteNumber = value(input.quoteNumber);
+	const quoteSubject = value(input.subject);
+	const validUntil = value(input.validUntil);
 
 	const recipientName = value(input.recipientName) || recipientEmail;
 	const total = `${value(input.currency)} ${value(input.total)}`.trim();

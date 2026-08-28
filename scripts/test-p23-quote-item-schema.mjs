@@ -1,5 +1,5 @@
 import { execFileSync } from 'node:child_process';
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 
 const root = process.cwd();
 const migrationPath = 'supabase/migrations/20260828110000_v150_quote_item_snapshots.sql';
@@ -59,9 +59,19 @@ const changedMigrations = run('git', [
 ])
 	.split(/\r?\n/)
 	.filter(Boolean);
-const historicalChanges = changedMigrations.filter(
-	(path) => path !== migrationPath && !path.includes('_v150_')
-);
+const historicalChanges = changedMigrations.filter((path) => {
+	let baseline;
+	try {
+		baseline = execFileSync('git', ['show', `${baselineCommit}:${path}`], {
+			cwd: root,
+			encoding: 'utf8',
+			stdio: ['ignore', 'pipe', 'pipe']
+		});
+	} catch {
+		return false;
+	}
+	return !existsSync(path) || readFileSync(path, 'utf8') !== baseline;
+});
 if (historicalChanges.length > 0) {
 	throw new Error(`Historical migrations changed: ${historicalChanges.join(', ')}`);
 }

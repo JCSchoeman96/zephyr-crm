@@ -83,10 +83,33 @@ if (existsSync(resolve(root, localStatePath))) {
 	const v140IsActive =
 		state.roadmap === 'CRM_IMPLEMENTATION_ROADMAP_v1.4.0.md' &&
 		state.architecture === 'docs/FULFILMENT_ARCHITECTURE.md';
-	const v150IsSuccessor =
+	const v150Identity =
+		state.roadmap_version === '1.5.0' &&
 		state.roadmap === 'CRM_IMPLEMENTATION_ROADMAP_v1.5.0.md' &&
-		state.architecture === 'docs/PRODUCT_CATALOGUE_QUOTE_DOCUMENT_ARCHITECTURE.md' &&
-		state.completed_phases?.includes('P20');
+		state.architecture === 'docs/PRODUCT_CATALOGUE_QUOTE_DOCUMENT_ARCHITECTURE.md';
+	const v150PhaseLoopSuccessor =
+		v150Identity &&
+		state.execution_stage === 'PHASE_LOOP' &&
+		/^P(2[1-6])$/.test(state.current_phase ?? '') &&
+		Array.isArray(state.completed_phases) &&
+		Array.from({ length: 21 }, (_, index) => `P${index}`).every((phase) =>
+			state.completed_phases.includes(phase)
+		);
+	const v150TerminalSuccessor =
+		v150Identity &&
+		state.goal_status === 'COMPLETE' &&
+		state.execution_stage === 'COMPLETE' &&
+		state.current_phase === 'P26' &&
+		state.phase_status === 'COMPLETE' &&
+		state.local_build_status === 'LOCAL_BUILD_COMPLETE' &&
+		state.release_status === 'PILOT_READY' &&
+		state.pilot_status === 'NOT_STARTED' &&
+		state.production_status === 'NOT_LAUNCHED' &&
+		Array.isArray(state.completed_phases) &&
+		Array.from({ length: 27 }, (_, index) => `P${index}`).every((phase) =>
+			state.completed_phases.includes(phase)
+		);
+	const v150IsSuccessor = v150PhaseLoopSuccessor || v150TerminalSuccessor;
 	assert(v140IsActive || v150IsSuccessor, 'v1.4.0 state has no valid active or successor roadmap');
 	for (const path of requiredFiles) {
 		assert(

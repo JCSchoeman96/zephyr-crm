@@ -3,6 +3,9 @@ import { PDFDocument } from 'pdf-lib';
 import type { QuotePresentationModel } from './presentation-model';
 import { generateProfessionalQuoteDocument } from './pdf-v2';
 
+const onePixelPng =
+	'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=';
+
 function fixture(itemCount = 1): QuotePresentationModel {
 	return {
 		quoteIdentity: {
@@ -140,5 +143,18 @@ describe('professional Quote PDF Template v2', () => {
 				subject: 'Unsupported customer identity 💼'
 			})
 		).rejects.toThrow(/cannot be represented/i);
+	});
+
+	it('embeds a trusted PNG logo and falls back for unsupported logo assets', async () => {
+		const withLogo = structuredClone(fixture());
+		withLogo.brand.logoAsset = onePixelPng;
+		const embedded = await generateProfessionalQuoteDocument(withLogo);
+		const embeddedPdf = Buffer.from(embedded.bytes).toString('latin1');
+
+		expect(embeddedPdf).toContain('/Subtype /Image');
+
+		const fallback = await generateProfessionalQuoteDocument(fixture());
+		const fallbackPdf = Buffer.from(fallback.bytes).toString('latin1');
+		expect(fallbackPdf).not.toContain('/Subtype /Image');
 	});
 });

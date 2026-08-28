@@ -8,6 +8,7 @@ import { validateV140ReleaseEvidence } from './verify-v140-release-evidence.mjs'
 const root = process.cwd();
 const localStatePath = '.agent/goal-loop/STATE.json';
 const phaseIds = Array.from({ length: 21 }, (_, index) => `P${index}`);
+const v150PhaseIds = Array.from({ length: 27 }, (_, index) => `P${index}`);
 const coreAuthorities = [
 	'docs/ARCHITECTURE.md',
 	'docs/DOMAIN_MODEL.md',
@@ -81,12 +82,29 @@ function assertStateHashes(state) {
 function assertStateProjection(state) {
 	assert(state.state_schema_version === 3, 'state schema version is not 3');
 	const v140IsActive = state.roadmap_version === '1.4.0' && state.current_phase === 'P20';
-	const v150IsSuccessor =
+	const v150Identity =
 		state.roadmap_version === '1.5.0' &&
 		state.roadmap === 'CRM_IMPLEMENTATION_ROADMAP_v1.5.0.md' &&
-		state.architecture === 'docs/PRODUCT_CATALOGUE_QUOTE_DOCUMENT_ARCHITECTURE.md' &&
-		state.completed_phases?.includes('P20') &&
+		state.architecture === 'docs/PRODUCT_CATALOGUE_QUOTE_DOCUMENT_ARCHITECTURE.md';
+	const v150PhaseLoopSuccessor =
+		v150Identity &&
+		state.execution_stage === 'PHASE_LOOP' &&
+		Array.isArray(state.completed_phases) &&
+		phaseIds.every((phase) => state.completed_phases.includes(phase)) &&
 		/^P(2[1-6])$/.test(state.current_phase ?? '');
+	const v150TerminalSuccessor =
+		v150Identity &&
+		state.goal_status === 'COMPLETE' &&
+		state.execution_stage === 'COMPLETE' &&
+		state.current_phase === 'P26' &&
+		state.phase_status === 'COMPLETE' &&
+		state.local_build_status === 'LOCAL_BUILD_COMPLETE' &&
+		state.release_status === 'PILOT_READY' &&
+		state.pilot_status === 'NOT_STARTED' &&
+		state.production_status === 'NOT_LAUNCHED' &&
+		Array.isArray(state.completed_phases) &&
+		v150PhaseIds.every((phase) => state.completed_phases.includes(phase));
+	const v150IsSuccessor = v150PhaseLoopSuccessor || v150TerminalSuccessor;
 	assert(
 		v140IsActive || v150IsSuccessor,
 		'state is neither active v1.4 nor a valid v1.5 successor'

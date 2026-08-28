@@ -1,4 +1,11 @@
-import { PDFDocument, StandardFonts, rgb, type PDFFont, type PDFPage } from 'pdf-lib';
+import {
+	PDFDocument,
+	StandardFonts,
+	rgb,
+	type PDFImage,
+	type PDFFont,
+	type PDFPage
+} from 'pdf-lib';
 import type { QuotePresentationItem, QuotePresentationModel } from './presentation-model';
 import {
 	A4_PAGE,
@@ -121,9 +128,45 @@ const ITEM_LINE_HEIGHT = 10.5;
 const ITEM_TOP_PADDING = 8;
 const ITEM_BOTTOM_PADDING = 7;
 const TOTALS_HEIGHT = 92;
+const MAX_INLINE_LOGO_BYTES = 1024 * 1024;
+
+type LogoAsset = { kind: 'png' | 'jpeg'; bytes: Uint8Array };
 
 function text(value: unknown): string {
 	return typeof value === 'string' ? value.trim() : String(value ?? '').trim();
+}
+
+function decodeLogoAsset(value: string | null): LogoAsset | null {
+	const match = text(value).match(/^data:(image\/png|image\/jpeg);base64,([A-Za-z0-9+/]+={0,2})$/i);
+	const payload = match?.[2];
+	if (
+		!match ||
+		!payload ||
+		payload.length % 4 !== 0 ||
+		payload.length > MAX_INLINE_LOGO_BYTES * 4
+	) {
+		return null;
+	}
+	try {
+		const binary = atob(payload);
+		if (binary.length > MAX_INLINE_LOGO_BYTES) return null;
+		return {
+			kind: match[1].toLowerCase() === 'image/png' ? 'png' : 'jpeg',
+			bytes: Uint8Array.from(binary, (character) => character.charCodeAt(0))
+		};
+	} catch {
+		return null;
+	}
+}
+
+async function embedLogo(pdf: PDFDocument, value: string | null): Promise<PDFImage | null> {
+	const asset = decodeLogoAsset(value);
+	if (!asset) return null;
+	try {
+		return asset.kind === 'png' ? await pdf.embedPng(asset.bytes) : await pdf.embedJpg(asset.bytes);
+	} catch {
+		return null;
+	}
 }
 
 function normalizeNewlines(value: string): string {
@@ -863,6 +906,7 @@ function drawTotals(
 function drawHeader(
 	page: PDFPage,
 	model: QuotePresentationModel,
+	logo: PDFImage | null,
 	fonts: { regular: PDFFont; bold: PDFFont },
 	palette: Record<ColorName, PdfColor>
 ): void {
@@ -875,14 +919,27 @@ function drawHeader(
 		height: 30,
 		color: palette.primary
 	});
-	const monogram = companyMonogram(model.brand.companyName);
-	page.drawText(monogram, {
-		x: logoX + (30 - fonts.bold.widthOfTextAtSize(monogram, 9)) / 2,
-		y: logoY + 10,
-		size: 9,
-		font: fonts.bold,
-		color: palette.white
-	});
+	if (logo) {
+		const size = logo.size();
+		const scale = Math.min(26 / size.width, 26 / size.height);
+		const width = size.width * scale;
+		const height = size.height * scale;
+		page.drawImage(logo, {
+			x: logoX + (30 - width) / 2,
+			y: logoY + (30 - height) / 2,
+			width,
+			height
+		});
+	} else {
+		const monogram = companyMonogram(model.brand.companyName);
+		page.drawText(monogram, {
+			x: logoX + (30 - fonts.bold.widthOfTextAtSize(monogram, 9)) / 2,
+			y: logoY + 10,
+			size: 9,
+			font: fonts.bold,
+			color: palette.white
+		});
+	}
 	page.drawText(model.brand.companyName, {
 		x: logoX + 40,
 		y: A4_PAGE.height - DOCUMENT_MARGINS.top - 14,
@@ -954,12 +1011,13 @@ function drawPage(
 	page: PDFPage,
 	pageLayout: LayoutPage,
 	model: QuotePresentationModel,
+	logo: PDFImage | null,
 	pageNumber: number,
 	pageCount: number,
 	fonts: { regular: PDFFont; bold: PDFFont },
 	palette: Record<ColorName, PdfColor>
 ): void {
-	drawHeader(page, model, fonts, palette);
+	drawHeader(page, model, logo, fonts, palette);
 	for (const block of pageLayout.blocks) {
 		switch (block.kind) {
 			case 'text':
@@ -1025,11 +1083,21 @@ export async function generateProfessionalQuoteDocument(
 	const regular = await pdf.embedFont(StandardFonts.Helvetica);
 	const bold = await pdf.embedFont(StandardFonts.HelveticaBold);
 	validateGlyphs(model, regular, bold);
+	const logo = await embedLogo(pdf, model.brand.logoAsset);
 	const layout = layoutDocument(model, regular, bold);
 	const palette = colors(model);
 	for (const [index, pageLayout] of layout.pages.entries()) {
 		const page = pdf.addPage([A4_PAGE.width, A4_PAGE.height]);
-		drawPage(page, pageLayout, model, index + 1, layout.pages.length, { regular, bold }, palette);
+		drawPage(
+			page,
+			pageLayout,
+			model,
+			logo,
+			index + 1,
+			layout.pages.length,
+			{ regular, bold },
+			palette
+		);
 	}
 	const bytes = await pdf.save({
 		addDefaultPage: false,

@@ -36,9 +36,19 @@ function expectMigrationOnly() {
 		.trim()
 		.split(/\r?\n/)
 		.filter(Boolean);
-	const historicalChanges = changedMigrations.filter(
-		(path) => path !== migrationPath && !path.includes('_v150_')
-	);
+	const historicalChanges = changedMigrations.filter((path) => {
+		let baseline;
+		try {
+			baseline = execFileSync('git', ['show', `${baselineCommit}:${path}`], {
+				cwd: process.cwd(),
+				encoding: 'utf8',
+				stdio: ['ignore', 'pipe', 'pipe']
+			});
+		} catch {
+			return false;
+		}
+		return !existsSync(path) || readFileSync(path, 'utf8') !== baseline;
+	});
 	if (historicalChanges.length > 0) {
 		throw new Error('Historical migrations changed: ' + historicalChanges.join(', '));
 	}

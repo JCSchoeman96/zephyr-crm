@@ -23,8 +23,10 @@ export const DOCUMENT_CONTENT = {
 } as const;
 
 export function hexToRgb(value: string, fallback = '#315cce') {
-	const match = value.trim().match(/^#([0-9a-f]{6})$/i);
-	const hex = match?.[1] ?? fallback.slice(1);
+	const match = value.trim().match(/^#([0-9a-f]{3}|[0-9a-f]{6}|[0-9a-f]{8})$/i);
+	const rawHex = match?.[1] ?? fallback.slice(1);
+	const hex =
+		rawHex.length === 3 ? [...rawHex].map((digit) => digit + digit).join('') : rawHex.slice(0, 6);
 	const parsed = Number.parseInt(hex, 16);
 	return {
 		red: ((parsed >> 16) & 0xff) / 255,

@@ -419,7 +419,7 @@ async function testIndexes(leadId, clientId, readyQuoteId) {
 			)
 		],
 		[
-			['quotes_status_valid_until_idx', 'quotes_dashboard_current_actionable_idx'],
+			'quotes_status_valid_until_idx',
 			sql(
 				"set enable_seqscan=off; explain (costs off) select * from public.quotes where status = 'ready' and valid_until >= current_date order by valid_until"
 			)
