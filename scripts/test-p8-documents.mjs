@@ -508,8 +508,24 @@ try {
 		documentHash === currentQuote.document_hash,
 		'Stored document hash does not match the private artifact'
 	);
+	const attachmentBytes = Buffer.from(lastProviderBody.email.attachments[0].content, 'base64');
+	assert(
+		createHash('sha256').update(attachmentBytes).digest('hex') === currentQuote.document_hash,
+		'SendPulse received bytes that differ from the privately stored PDF'
+	);
+	assert(
+		currentQuote.document_mime_type === 'application/pdf' &&
+			currentQuote.document_template_version === 'professional-v2' &&
+			currentQuote.document_generator_version === 'quote-pdf-v2.1.0',
+		'New Quote document provenance is incomplete or does not identify Template v2'
+	);
+	assert(
+		Object.prototype.hasOwnProperty.call(currentQuote.quote_snapshot ?? {}, 'bank_details'),
+		'Ready Quote did not freeze bank details for document generation'
+	);
 	console.log('P8-T01 document determinism and stored hash passed');
 	console.log('P8-T02 private storage passed');
+	console.log('P25-T03 Template v2 private attachment provenance passed');
 	passed += 2;
 
 	const tampered = await request(

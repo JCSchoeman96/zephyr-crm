@@ -1,7 +1,7 @@
 # Phase 25 — Professional Quote Document
 
 **Roadmap Version:** 1.5.0
-**Status:** Planned
+**Status:** Complete
 **Required predecessor:** P24
 **Authority:** `docs/PRODUCT_CATALOGUE_QUOTE_DOCUMENT_ARCHITECTURE.md`
 

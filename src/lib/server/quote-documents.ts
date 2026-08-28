@@ -1,27 +1,28 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { Database } from '$lib/types/database';
-import {
-	generateQuoteDocument,
-	type QuoteDocumentInput,
-	type QuoteDocumentItem,
-	type QuoteDocumentQuote
-} from '$lib/domain/quotes/document';
+import { buildQuotePresentationModel } from '$lib/domain/quotes/documents/presentation-model';
+import type {
+	QuotePresentationItemInput,
+	QuotePresentationQuote
+} from '$lib/domain/quotes/documents/presentation-model';
+import { generateProfessionalQuoteDocument } from '$lib/domain/quotes/documents/pdf-v2';
 import { createTrustedSupabaseClient } from '$lib/server/trusted-supabase';
 
 type ServerSupabaseClient = SupabaseClient<Database>;
 
-type QuoteRow = QuoteDocumentQuote & {
+type QuoteRow = QuotePresentationQuote & {
 	id: string;
-	quote_number: string | null;
 	lock_version: number;
 	document_path: string | null;
 	document_hash: string | null;
+	document_mime_type: string | null;
 	document_generated_at: string | null;
 };
 
 type QuoteDocumentArtifact = {
 	path: string;
 	hash: string;
+	mimeType: string;
 	generatedAt: string | null;
 	lockVersion: number;
 	bytes: Uint8Array;
@@ -33,38 +34,14 @@ function record(value: unknown): Record<string, unknown> {
 		: {};
 }
 
-function quoteInput(quote: QuoteRow, items: QuoteDocumentItem[]): QuoteDocumentInput {
-	if (!quote.quote_number)
-		throw new Error('Quote number is not available for document generation.');
-	return {
-		quote: {
-			quote_number: quote.quote_number,
-			subject: quote.subject,
-			introduction: quote.introduction,
-			terms: quote.terms,
-			tax_label: quote.tax_label,
-			tax_rate: quote.tax_rate,
-			document_template_version: quote.document_template_version,
-			document_generator_version: quote.document_generator_version,
-			currency: quote.currency,
-			valid_until: quote.valid_until,
-			subtotal: quote.subtotal,
-			tax_amount: quote.tax_amount,
-			total: quote.total,
-			quote_snapshot: record(quote.quote_snapshot)
-		},
-		items
-	};
-}
-
 async function loadQuote(
 	supabase: ServerSupabaseClient,
 	quoteId: string
-): Promise<{ quote: QuoteRow; items: QuoteDocumentItem[] }> {
+): Promise<{ quote: QuoteRow; items: QuotePresentationItemInput[] }> {
 	const quoteResponse = await supabase
 		.from('quotes')
 		.select(
-			'id,quote_number,subject,introduction,terms,tax_label,tax_rate,currency,valid_until,subtotal,tax_amount,total,quote_snapshot,document_template_version,document_generator_version,lock_version,document_path,document_hash,document_generated_at,status'
+			'id,quote_number,base_quote_number,revision_number,created_at,subject,introduction,terms,tax_label,tax_rate,currency,valid_until,subtotal,tax_amount,total,quote_snapshot,document_template_version,document_generator_version,lock_version,document_path,document_hash,document_mime_type,document_generated_at,status'
 		)
 		.eq('id', quoteId)
 		.maybeSingle();
@@ -74,14 +51,37 @@ async function loadQuote(
 		throw new Error('Only a ready Quote can receive a document.');
 	const itemsResponse = await supabase
 		.from('quote_items')
-		.select('position,name,description,quantity,unit_price,taxable,line_subtotal')
+		.select(
+			'position,name,description,quantity,unit_price,taxable,line_subtotal,product_code_snapshot,unit_label_snapshot'
+		)
 		.eq('quote_id', quoteId)
 		.order('position');
 	if (itemsResponse.error) throw new Error(itemsResponse.error.message);
 	return {
 		quote: quoteResponse.data as unknown as QuoteRow,
-		items: (itemsResponse.data ?? []) as QuoteDocumentItem[]
+		items: (itemsResponse.data ?? []) as unknown as QuotePresentationItemInput[]
 	};
+}
+
+async function presentationModel(
+	supabase: ServerSupabaseClient,
+	quote: QuoteRow,
+	items: QuotePresentationItemInput[]
+) {
+	const settingsResponse = await supabase
+		.from('app_settings')
+		.select('setting_key,setting_value')
+		.in('setting_key', ['company_identity', 'quote_defaults']);
+	if (settingsResponse.error) throw new Error(settingsResponse.error.message);
+	const settings = new Map(
+		(settingsResponse.data ?? []).map((setting) => [setting.setting_key, setting.setting_value])
+	);
+	return buildQuotePresentationModel({
+		quote,
+		items,
+		companyIdentity: settings.get('company_identity'),
+		quoteDefaults: settings.get('quote_defaults')
+	});
 }
 
 async function bytesToBase64(bytes: Uint8Array): Promise<string> {
@@ -111,6 +111,7 @@ export async function ensureQuoteDocument(
 		return {
 			path: quote.document_path,
 			hash: quote.document_hash,
+			mimeType: quote.document_mime_type ?? 'application/pdf',
 			generatedAt: quote.document_generated_at,
 			lockVersion: quote.lock_version,
 			bytes: await downloadByPath(quote.document_path)
@@ -120,7 +121,9 @@ export async function ensureQuoteDocument(
 		throw new Error('Quote document metadata is incomplete.');
 	}
 
-	const generated = await generateQuoteDocument(quoteInput(quote, items));
+	const generated = await generateProfessionalQuoteDocument(
+		await presentationModel(supabase, quote, items)
+	);
 	const path = `quotes/${quote.id}/${quote.quote_number}.pdf`;
 	const storage = createTrustedSupabaseClient().storage.from('quote-documents');
 	const upload = await storage.upload(path, generated.bytes, {
@@ -144,7 +147,7 @@ export async function ensureQuoteDocument(
 			// the same; otherwise surface the conflict.
 			const current = await supabase
 				.from('quotes')
-				.select('document_path,document_hash,document_generated_at')
+				.select('document_path,document_hash,document_mime_type,document_generated_at')
 				.eq('id', quote.id)
 				.maybeSingle();
 			if (
@@ -155,6 +158,7 @@ export async function ensureQuoteDocument(
 				return {
 					path,
 					hash: generated.hash,
+					mimeType: current.data.document_mime_type ?? 'application/pdf',
 					generatedAt: current.data.document_generated_at,
 					lockVersion: quote.lock_version + 1,
 					bytes: generated.bytes
@@ -167,6 +171,7 @@ export async function ensureQuoteDocument(
 	return {
 		path,
 		hash: generated.hash,
+		mimeType: 'application/pdf',
 		generatedAt:
 			typeof attachedRecord.document_generated_at === 'string'
 				? attachedRecord.document_generated_at

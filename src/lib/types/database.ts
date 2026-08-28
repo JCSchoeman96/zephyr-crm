@@ -1326,6 +1326,7 @@ export type Database = {
 					document_generated_at: string | null;
 					document_generator_version: string | null;
 					document_hash: string | null;
+					document_mime_type: string | null;
 					document_path: string | null;
 					document_template_version: string | null;
 					expired_at: string | null;
@@ -1367,6 +1368,7 @@ export type Database = {
 					document_generated_at?: string | null;
 					document_generator_version?: string | null;
 					document_hash?: string | null;
+					document_mime_type?: string | null;
 					document_path?: string | null;
 					document_template_version?: string | null;
 					expired_at?: string | null;
@@ -1408,6 +1410,7 @@ export type Database = {
 					document_generated_at?: string | null;
 					document_generator_version?: string | null;
 					document_hash?: string | null;
+					document_mime_type?: string | null;
 					document_path?: string | null;
 					document_template_version?: string | null;
 					expired_at?: string | null;
