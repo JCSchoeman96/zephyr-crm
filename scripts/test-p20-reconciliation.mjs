@@ -89,9 +89,15 @@ function assertStateProjection(state) {
 	const v150PhaseLoopSuccessor =
 		v150Identity &&
 		state.execution_stage === 'PHASE_LOOP' &&
+		['PLANNING', 'IMPLEMENTING', 'VALIDATING', 'COMPLETE'].includes(state.phase_status) &&
 		Array.isArray(state.completed_phases) &&
-		phaseIds.every((phase) => state.completed_phases.includes(phase)) &&
-		/^P(2[1-6])$/.test(state.current_phase ?? '');
+		/^P(2[1-6])$/.test(state.current_phase ?? '') &&
+		(() => {
+			const currentPhase = Number(state.current_phase.slice(1));
+			return Array.from({ length: currentPhase }, (_, index) => `P${index}`).every((phase) =>
+				state.completed_phases.includes(phase)
+			);
+		})();
 	const v150TerminalSuccessor =
 		v150Identity &&
 		state.goal_status === 'COMPLETE' &&

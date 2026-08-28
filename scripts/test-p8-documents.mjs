@@ -688,6 +688,17 @@ try {
 			afterImmutableSave.document_hash === retryQuote.document_hash,
 		'Attached-document edit changed the Quote lifecycle or document metadata'
 	);
+	const frozenQuotePage = await appJson(`/quotes/${retryQuote.id}`);
+	assert(
+		frozenQuotePage.response.ok && typeof frozenQuotePage.body === 'string',
+		'Attached Quote page could not be loaded'
+	);
+	assert(
+		!frozenQuotePage.body.includes('Save draft') &&
+			!frozenQuotePage.body.includes('Add line item') &&
+			frozenQuotePage.body.includes('Download frozen PDF'),
+		'Attached ready Quote remained editable in the UI'
+	);
 	providerMode = 'success';
 	retryQuote = await serviceQuote(retryQuote.id);
 	const retry = await sendQuoteThroughApp(retryQuote);

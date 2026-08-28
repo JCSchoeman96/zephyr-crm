@@ -10,6 +10,14 @@ import { createTrustedSupabaseClient } from '$lib/server/trusted-supabase';
 
 type ServerSupabaseClient = SupabaseClient<Database>;
 
+type StaticAssetFetcher = {
+	fetch(input: RequestInfo | URL, init?: RequestInit): Promise<Response>;
+};
+
+type QuoteDocumentOptions = {
+	assets?: StaticAssetFetcher;
+};
+
 type QuoteRow = QuotePresentationQuote & {
 	id: string;
 	lock_version: number;
@@ -66,7 +74,8 @@ async function loadQuote(
 async function presentationModel(
 	supabase: ServerSupabaseClient,
 	quote: QuoteRow,
-	items: QuotePresentationItemInput[]
+	items: QuotePresentationItemInput[],
+	assets?: StaticAssetFetcher
 ) {
 	const settingsResponse = await supabase
 		.from('app_settings')
@@ -76,12 +85,19 @@ async function presentationModel(
 	const settings = new Map(
 		(settingsResponse.data ?? []).map((setting) => [setting.setting_key, setting.setting_value])
 	);
-	return buildQuotePresentationModel({
+	const model = buildQuotePresentationModel({
 		quote,
 		items,
 		companyIdentity: settings.get('company_identity'),
 		quoteDefaults: settings.get('quote_defaults')
 	});
+	return {
+		...model,
+		brand: {
+			...model.brand,
+			logoAsset: await resolveLogoAsset(model.brand.logoAsset, assets)
+		}
+	};
 }
 
 async function bytesToBase64(bytes: Uint8Array): Promise<string> {
@@ -91,6 +107,39 @@ async function bytesToBase64(bytes: Uint8Array): Promise<string> {
 		binary += String.fromCharCode(...bytes.subarray(index, index + chunkSize));
 	}
 	return btoa(binary);
+}
+
+const MAX_STATIC_LOGO_BYTES = 1024 * 1024;
+
+export async function resolveLogoAsset(
+	value: string | null,
+	assets: StaticAssetFetcher | undefined
+): Promise<string | null> {
+	const candidate = value?.trim() ?? '';
+	if (!candidate) return null;
+	if (/^data:image\/(?:png|jpeg);base64,[A-Za-z0-9+/]+={0,2}$/i.test(candidate)) {
+		return candidate;
+	}
+	if (!assets || !/^\/(?!\/)/.test(candidate)) return null;
+
+	try {
+		const response = await assets.fetch(
+			new Request(new URL(candidate, 'https://zephyr-crm.invalid'))
+		);
+		if (!response.ok) return null;
+		const contentType = (response.headers.get('content-type') ?? '')
+			.split(';', 1)[0]
+			.trim()
+			.toLowerCase();
+		if (contentType !== 'image/png' && contentType !== 'image/jpeg') return null;
+		const declaredLength = Number(response.headers.get('content-length'));
+		if (Number.isFinite(declaredLength) && declaredLength > MAX_STATIC_LOGO_BYTES) return null;
+		const bytes = new Uint8Array(await response.arrayBuffer());
+		if (bytes.length > MAX_STATIC_LOGO_BYTES) return null;
+		return `data:${contentType};base64,${await bytesToBase64(bytes)}`;
+	} catch {
+		return null;
+	}
 }
 
 async function sha256(bytes: Uint8Array): Promise<string> {
@@ -114,7 +163,8 @@ async function downloadByPath(path: string, expectedHash?: string): Promise<Uint
 export async function ensureQuoteDocument(
 	supabase: ServerSupabaseClient,
 	quoteId: string,
-	lockVersion: number
+	lockVersion: number,
+	options: QuoteDocumentOptions = {}
 ): Promise<QuoteDocumentArtifact> {
 	const { quote, items } = await loadQuote(supabase, quoteId);
 	if (quote.document_path && quote.document_hash && quote.document_generated_at) {
@@ -132,7 +182,7 @@ export async function ensureQuoteDocument(
 	}
 
 	const generated = await generateProfessionalQuoteDocument(
-		await presentationModel(supabase, quote, items)
+		await presentationModel(supabase, quote, items, options.assets)
 	);
 	const path = `quotes/${quote.id}/${quote.quote_number}.pdf`;
 	const storage = createTrustedSupabaseClient().storage.from('quote-documents');

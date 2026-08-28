@@ -36,7 +36,8 @@ function shouldInjectQuoteFinalizationFailure(): boolean {
 export async function sendQuote(
 	supabase: ServerSupabaseClient,
 	quoteId: string,
-	lockVersion: number
+	lockVersion: number,
+	platform?: App.Platform
 ): Promise<JsonRecord> {
 	const currentQuote = await supabase
 		.from('quotes')
@@ -99,7 +100,9 @@ export async function sendQuote(
 
 	let document: Awaited<ReturnType<typeof ensureQuoteDocument>> | null = null;
 	if (currentQuote.data.status === 'ready') {
-		document = await ensureQuoteDocument(supabase, quoteId, lockVersion);
+		document = await ensureQuoteDocument(supabase, quoteId, lockVersion, {
+			assets: platform?.env.ASSETS
+		});
 	}
 	buildQuoteEmail({ ...emailInput, hasFrozenPdf: Boolean(document) });
 

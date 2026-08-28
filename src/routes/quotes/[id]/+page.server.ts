@@ -313,7 +313,12 @@ export const actions: Actions = {
 	send: async (event) => {
 		const { supabase } = await requireActiveStaff(event);
 		try {
-			await sendQuote(supabase, event.params.id, lockVersion(await event.request.formData()));
+			await sendQuote(
+				supabase,
+				event.params.id,
+				lockVersion(await event.request.formData()),
+				event.platform
+			);
 		} catch (actionError) {
 			return actionFailure(actionError, 'Could not send Quote');
 		}

@@ -2,7 +2,7 @@ import { json } from '@sveltejs/kit';
 import { sendQuote } from '$lib/server/quote-actions';
 import type { RequestHandler } from './$types';
 
-export const POST: RequestHandler = async ({ locals, params, request }) => {
+export const POST: RequestHandler = async ({ locals, params, request, platform }) => {
 	const { profile } = await locals.getAuthState();
 	if (!locals.supabase || !profile || profile.status !== 'active') {
 		return json({ error: 'Authentication required' }, { status: 401 });
@@ -15,7 +15,7 @@ export const POST: RequestHandler = async ({ locals, params, request }) => {
 	}
 
 	try {
-		return json(await sendQuote(locals.supabase, params.id, lockVersion));
+		return json(await sendQuote(locals.supabase, params.id, lockVersion, platform));
 	} catch (error) {
 		return json(
 			{ error: error instanceof Error ? error.message : 'Quote send failed' },

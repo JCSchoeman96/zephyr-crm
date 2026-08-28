@@ -15,7 +15,18 @@
 	import { activityEventLabel, quoteStatusLabel } from '$lib/domain/presentation/labels';
 
 	let { data, form }: { data: PageData; form: ActionData } = $props();
-	const editableStatuses = ['draft', 'ready'];
+
+	function hasAttachedDocument() {
+		return Boolean(
+			data.quote.document_path || data.quote.document_hash || data.quote.document_generated_at
+		);
+	}
+
+	function canEditQuote() {
+		return (
+			data.quote.status === 'draft' || (data.quote.status === 'ready' && !hasAttachedDocument())
+		);
+	}
 
 	function quoteNumber() {
 		return data.quote.quote_number ?? `#${data.quote.base_quote_number}`;
@@ -94,7 +105,7 @@
 			message={form.message}
 		/>{/if}
 
-	{#if editableStatuses.includes(data.quote.status)}
+	{#if canEditQuote()}
 		<QuoteEditor
 			action="?/save"
 			quoteId={data.quote.id}
