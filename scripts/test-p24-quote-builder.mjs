@@ -67,7 +67,10 @@ async function productById(id, user) {
 }
 
 async function itemsByQuote(id, user) {
-	return serviceRows('/rest/v1/quote_items?quote_id=eq.' + id + '&select=*&order=position.asc', user);
+	return serviceRows(
+		'/rest/v1/quote_items?quote_id=eq.' + id + '&select=*&order=position.asc',
+		user
+	);
 }
 
 async function moveLeadToDecision(leadId, user) {

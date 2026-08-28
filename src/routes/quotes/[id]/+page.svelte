@@ -52,6 +52,27 @@
 			? 'Conflict — reload before saving'
 			: 'Quote action could not be completed';
 	}
+
+	function editorItem(item: PageData['items'][number]) {
+		const source = data.productSources.find((value) => value.quoteItemId === item.id);
+		return {
+			id: item.id,
+			name: item.name,
+			description: item.description ?? '',
+			quantity: String(item.quantity),
+			unit_price: String(item.unit_price),
+			taxable: item.taxable,
+			source_type: item.source_type,
+			product_id: item.product_id,
+			product_code_snapshot: item.product_code_snapshot,
+			unit_label_snapshot: item.unit_label_snapshot,
+			catalogue_unit_price: item.catalogue_unit_price,
+			source_product_version: item.source_product_version,
+			source_product_reviewed_version: item.source_product_reviewed_version,
+			current_product_lock_version: source?.currentLockVersion ?? null,
+			is_stale: source?.isStale ?? false
+		};
+	}
 </script>
 
 <svelte:head
@@ -87,13 +108,12 @@
 			validUntil={data.quote.valid_until ?? ''}
 			currency={data.quote.currency}
 			lockVersion={data.quote.lock_version}
-			initialItems={data.items.map((item) => ({
-				name: item.name,
-				description: item.description ?? '',
-				quantity: String(item.quantity),
-				unit_price: String(item.unit_price),
-				taxable: item.taxable
-			}))}
+			productCategories={data.productCategories}
+			productAction="?/addProduct"
+			refreshAction="?/refreshProduct"
+			reviewAction="?/reviewProduct"
+			presentationModel={data.presentationModel}
+			initialItems={data.items.map(editorItem)}
 			status={data.quote.status}
 		/>
 	{:else}
@@ -110,12 +130,9 @@
 			taxRate={String(data.quote.tax_rate)}
 			validUntil={data.quote.valid_until ?? ''}
 			currency={data.quote.currency}
+			presentationModel={data.presentationModel}
 			initialItems={data.items.map((item) => ({
-				name: item.name,
-				description: item.description ?? '',
-				quantity: String(item.quantity),
-				unit_price: String(item.unit_price),
-				taxable: item.taxable
+				...editorItem(item)
 			}))}
 			status={data.quote.status}
 		/>

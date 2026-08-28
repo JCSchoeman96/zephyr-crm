@@ -1,19 +1,31 @@
 <script lang="ts">
-	import { calculateQuoteTotals, type QuoteMoneyLine } from '$lib/domain/quotes/money';
 	import Button from '$lib/components/ui/Button.svelte';
 	import Card from '$lib/components/ui/Card.svelte';
 	import Input from '$lib/components/ui/Input.svelte';
 	import Select from '$lib/components/ui/Select.svelte';
 	import Textarea from '$lib/components/ui/Textarea.svelte';
+	import ProductPicker from '$lib/components/products/ProductPicker.svelte';
+	import QuoteDocumentPreview from '$lib/components/quotes/QuoteDocumentPreview.svelte';
+	import QuoteLineEditor from '$lib/components/quotes/QuoteLineEditor.svelte';
+	import type { QuotePresentationModel } from '$lib/domain/quotes/documents/presentation-model';
 	import { publicClientConfiguration } from '$lib/config/public-client-config';
-	import { quoteStatusLabel } from '$lib/domain/presentation/labels';
 
 	type EditorItem = {
+		id?: string;
 		name: string;
 		description: string;
 		quantity: string;
 		unit_price: string;
 		taxable: boolean;
+		source_type?: string;
+		product_id?: string | null;
+		product_code_snapshot?: string | null;
+		unit_label_snapshot?: string | null;
+		catalogue_unit_price?: string | number | null;
+		source_product_version?: number | null;
+		source_product_reviewed_version?: number | null;
+		current_product_lock_version?: number | null;
+		is_stale?: boolean;
 	};
 	type LeadOption = { id: string; label: string };
 
@@ -34,6 +46,11 @@
 		lockVersion = 1,
 		initialItems = [],
 		readonly = false,
+		presentationModel = null,
+		productCategories = [],
+		productAction = '?/addProduct',
+		refreshAction = '?/refreshProduct',
+		reviewAction = '?/reviewProduct',
 		quoteNumber = '',
 		status = 'draft'
 	}: {
@@ -54,6 +71,11 @@
 		initialItems?: Partial<EditorItem>[];
 		readonly?: boolean;
 		quoteNumber?: string;
+		presentationModel?: QuotePresentationModel | null;
+		productCategories?: { id: string; label: string }[];
+		productAction?: string;
+		refreshAction?: string;
+		reviewAction?: string;
 		status?: string;
 	} = $props();
 
@@ -66,34 +88,45 @@
 	function normalizeItems(source: Partial<EditorItem>[]) {
 		return source.length
 			? source.map((item) => ({
+					id: item.id,
 					name: String(item.name ?? ''),
 					description: String(item.description ?? ''),
 					quantity: String(item.quantity ?? '1'),
 					unit_price: String(item.unit_price ?? '0'),
-					taxable: item.taxable ?? true
+					taxable: item.taxable ?? true,
+					source_type: item.source_type ?? 'custom',
+					product_id: item.product_id ?? null,
+					product_code_snapshot: item.product_code_snapshot ?? null,
+					unit_label_snapshot: item.unit_label_snapshot ?? null,
+					catalogue_unit_price: item.catalogue_unit_price ?? null,
+					source_product_version: item.source_product_version ?? null,
+					source_product_reviewed_version: item.source_product_reviewed_version ?? null,
+					current_product_lock_version: item.current_product_lock_version ?? null,
+					is_stale: item.is_stale ?? false
 				}))
 			: [{ name: '', description: '', quantity: '1', unit_price: '0', taxable: true }];
 	}
 
-	function initialItemValues() {
-		return normalizeItems(initialItems);
-	}
-
-	let items = $state<EditorItem[]>(initialItemValues());
-
-	let serializedItems = $derived(JSON.stringify(items));
-	let previewTotals = $derived.by(() => {
-		try {
-			const lines: QuoteMoneyLine[] = items.map((item) => ({
-				quantity: item.quantity || '0',
-				unitPrice: item.unit_price || '0',
-				taxable: item.taxable
-			}));
-			return calculateQuoteTotals(lines, taxRate || '0');
-		} catch {
-			return null;
-		}
+	let items = $state<EditorItem[]>([]);
+	let itemsInitialized = false;
+	$effect(() => {
+		if (itemsInitialized) return;
+		items = normalizeItems(initialItems);
+		itemsInitialized = true;
 	});
+	let serializedItems = $derived(
+		JSON.stringify(
+			items.map((item) => ({
+				...(item.id ? { id: item.id } : {}),
+				name: item.name,
+				description: item.description,
+				quantity: item.quantity,
+				unit_price: item.unit_price,
+				taxable: item.taxable
+			}))
+		)
+	);
+	let reviewActions = $derived(!readonly && status === 'draft');
 
 	function addItem() {
 		items.push({ name: '', description: '', quantity: '1', unit_price: '0', taxable: true });
@@ -103,47 +136,17 @@
 		if (items.length > 1) items.splice(index, 1);
 	}
 
-	function money(value: string) {
-		return `${currency} ${value}`;
+	function moveItem(index: number, direction: -1 | 1) {
+		const target = index + direction;
+		if (target < 0 || target >= items.length) return;
+		[items[index], items[target]] = [items[target], items[index]];
 	}
 </script>
 
-<div class="quote-editor-layout">
+<div class="quote-editor-layout" data-quote-number={quoteNumber}>
 	{#if readonly}
 		<Card title="Quote preview" class="quote-preview-card">
-			<div class="preview-heading">
-				<div>
-					<span class="eyebrow">{quoteNumber || 'Quote'} · Revision</span>
-					<h2>{subject}</h2>
-				</div>
-				<strong>{quoteStatusLabel(status)}</strong>
-			</div>
-			{#if introduction}<p class="preview-copy">{introduction}</p>{/if}
-			<div class="preview-lines">
-				{#each items as item, index (index)}
-					<div class="preview-line">
-						<div>
-							<strong>{item.name}</strong>
-							{#if item.description}<span>{item.description}</span>{/if}
-						</div>
-						<span>{item.quantity} × {money(item.unit_price)}</span>
-					</div>
-				{/each}
-			</div>
-			{#if terms}<p class="preview-copy preview-terms">{terms}</p>{/if}
-			<div class="preview-totals">
-				<div>
-					<span>Subtotal</span><strong>{money(String(previewTotals?.subtotal ?? '—'))}</strong>
-				</div>
-				<div>
-					<span>{taxLabel || 'Tax'} ({taxRate}%)</span><strong
-						>{money(String(previewTotals?.taxAmount ?? '—'))}</strong
-					>
-				</div>
-				<div class="preview-total">
-					<span>Total</span><strong>{money(String(previewTotals?.total ?? '—'))}</strong>
-				</div>
-			</div>
+			<QuoteDocumentPreview model={presentationModel} />
 		</Card>
 	{:else}
 		<form method="POST" {action} class="quote-editor-form">
@@ -193,59 +196,27 @@
 				/>
 			</Card>
 
+			{#if quoteId && status === 'draft'}
+				<ProductPicker action={productAction} {quoteId} {currency} categories={productCategories} />
+			{/if}
+
 			<Card title="Line items" class="editor-card">
 				<div class="line-items" aria-label="Quote line items">
-					{#each items as item, index (index)}
-						<div class="line-item">
-							<div class="line-item-heading">
-								<strong>Item {index + 1}</strong><button
-									type="button"
-									class="remove-line"
-									onclick={() => removeItem(index)}
-									disabled={items.length === 1}>Remove</button
-								>
-							</div>
-							<div class="line-item-grid">
-								<div class="raw-field line-name">
-									<label for={`quote-item-name-${index}`}>Name</label><input
-										id={`quote-item-name-${index}`}
-										class="ui-field__control"
-										bind:value={item.name}
-										required
-									/>
-								</div>
-								<div class="raw-field">
-									<label for={`quote-item-quantity-${index}`}>Quantity</label><input
-										id={`quote-item-quantity-${index}`}
-										class="ui-field__control"
-										type="text"
-										inputmode="decimal"
-										bind:value={item.quantity}
-										required
-									/>
-								</div>
-								<div class="raw-field">
-									<label for={`quote-item-price-${index}`}>Unit price</label><input
-										id={`quote-item-price-${index}`}
-										class="ui-field__control"
-										type="text"
-										inputmode="decimal"
-										bind:value={item.unit_price}
-										required
-									/>
-								</div>
-							</div>
-							<div class="raw-field">
-								<label for={`quote-item-description-${index}`}>Description</label><input
-									id={`quote-item-description-${index}`}
-									class="ui-field__control"
-									bind:value={item.description}
-								/>
-							</div>
-							<label class="taxable-control"
-								><input type="checkbox" bind:checked={item.taxable} /> Taxable line</label
-							>
-						</div>
+					{#each items as item, index (item.id ?? `new-${index}`)}
+						<QuoteLineEditor
+							bind:item={items[index]}
+							{index}
+							{readonly}
+							removeDisabled={items.length === 1}
+							onRemove={() => removeItem(index)}
+							onMoveUp={() => moveItem(index, -1)}
+							onMoveDown={() => moveItem(index, 1)}
+							moveUpDisabled={index === 0}
+							moveDownDisabled={index === items.length - 1}
+							{reviewActions}
+							{refreshAction}
+							{reviewAction}
+						/>
 					{/each}
 				</div>
 				<Button type="button" variant="secondary" size="sm" onclick={addItem}>Add line item</Button>
@@ -273,46 +244,15 @@
 				<Textarea id="quote-terms" name="terms" label="Terms" rows={4} bind:value={terms} />
 			</Card>
 			<div class="editor-actions">
-				<Button type="submit">Save draft</Button><span
-					>Totals are recalculated by PostgreSQL when saved or marked ready.</span
-				>
+				<Button type="submit">Save draft</Button>
+				<span>Totals are recalculated by PostgreSQL when saved or marked ready.</span>
 			</div>
 		</form>
 	{/if}
 
 	{#if !readonly}
-		<Card title="Live preview" class="quote-preview-card">
-			<div class="preview-heading">
-				<div>
-					<span class="eyebrow">Preview · {currency}</span>
-					<h2>{subject || 'Untitled quote'}</h2>
-				</div>
-				<strong>{validUntil || 'Validity not set'}</strong>
-			</div>
-			{#if introduction}<p class="preview-copy">{introduction}</p>{/if}
-			<div class="preview-lines">
-				{#each items as item, index (index)}<div class="preview-line">
-						<div>
-							<strong>{item.name || `Line item ${index + 1}`}</strong>{#if item.description}<span
-									>{item.description}</span
-								>{/if}
-						</div>
-						<span>{item.quantity || '0'} × {money(item.unit_price || '0')}</span>
-					</div>{/each}
-			</div>
-			<div class="preview-totals">
-				<div>
-					<span>Subtotal</span><strong>{money(String(previewTotals?.subtotal ?? '—'))}</strong>
-				</div>
-				<div>
-					<span>{taxLabel || 'Tax'} ({taxRate || '0'}%)</span><strong
-						>{money(String(previewTotals?.taxAmount ?? '—'))}</strong
-					>
-				</div>
-				<div class="preview-total">
-					<span>Total</span><strong>{money(String(previewTotals?.total ?? '—'))}</strong>
-				</div>
-			</div>
+		<Card title="Customer preview" class="quote-preview-card">
+			<QuoteDocumentPreview model={presentationModel} />
 		</Card>
 	{/if}
 </div>
@@ -328,7 +268,8 @@
 		display: grid;
 		gap: var(--space-lg);
 	}
-	:global(.editor-card) {
+	:global(.editor-card),
+	:global(.quote-preview-card) {
 		min-width: 0;
 	}
 	.editor-grid {
@@ -340,50 +281,6 @@
 		display: grid;
 		gap: var(--space-md);
 		margin-bottom: var(--space-md);
-	}
-	.line-item {
-		display: grid;
-		gap: var(--space-sm);
-		padding: var(--space-md);
-		border: 1px solid var(--color-border-subtle);
-		border-radius: var(--radius-md);
-	}
-	.line-item-heading {
-		display: flex;
-		justify-content: space-between;
-		gap: var(--space-md);
-		align-items: center;
-	}
-	.line-item-grid {
-		display: grid;
-		grid-template-columns: minmax(0, 1.5fr) minmax(6rem, 0.6fr) minmax(7rem, 0.8fr);
-		gap: var(--space-sm);
-	}
-	.raw-field {
-		display: grid;
-		gap: var(--space-xs);
-	}
-	.raw-field label,
-	.taxable-control {
-		color: var(--color-text-muted);
-		font-size: var(--font-size-sm);
-	}
-	.taxable-control {
-		display: flex;
-		gap: var(--space-sm);
-		align-items: center;
-	}
-	.remove-line {
-		border: 0;
-		background: transparent;
-		color: var(--color-danger);
-		cursor: pointer;
-		font: inherit;
-		font-size: var(--font-size-xs);
-	}
-	.remove-line:disabled {
-		color: var(--color-text-subtle);
-		cursor: not-allowed;
 	}
 	.editor-actions {
 		display: flex;
@@ -398,82 +295,10 @@
 	:global(.quote-preview-card) {
 		position: sticky;
 		top: var(--space-lg);
+		min-width: 0;
 	}
-	.preview-heading {
-		display: flex;
-		justify-content: space-between;
-		gap: var(--space-md);
-		align-items: start;
-		padding-bottom: var(--space-md);
-		border-bottom: 1px solid var(--color-border-subtle);
-	}
-	.preview-heading h2 {
-		margin: var(--space-xs) 0 0;
-		font-size: var(--font-size-xl);
-	}
-	.preview-heading strong {
-		color: var(--color-brand-primary);
-		font-size: var(--font-size-sm);
-		text-transform: capitalize;
-	}
-	.eyebrow {
-		color: var(--color-text-muted);
-		font-size: var(--font-size-xs);
-		letter-spacing: 0.04em;
-		text-transform: uppercase;
-	}
-	.preview-copy {
-		margin: var(--space-md) 0;
-		color: var(--color-text-muted);
-		white-space: pre-wrap;
-	}
-	.preview-terms {
-		padding-top: var(--space-md);
-		border-top: 1px solid var(--color-border-subtle);
-		font-size: var(--font-size-sm);
-	}
-	.preview-lines {
-		display: grid;
-		gap: var(--space-sm);
-		margin: var(--space-lg) 0;
-	}
-	.preview-line {
-		display: flex;
-		justify-content: space-between;
-		gap: var(--space-md);
-		padding-bottom: var(--space-sm);
-		border-bottom: 1px solid var(--color-border-subtle);
-		color: var(--color-text-muted);
-		font-size: var(--font-size-sm);
-	}
-	.preview-line strong,
-	.preview-line span {
-		display: block;
-	}
-	.preview-line strong {
-		color: var(--color-text);
-	}
-	.preview-line div span {
-		margin-top: var(--space-xs);
-		color: var(--color-text-subtle);
-		font-size: var(--font-size-xs);
-	}
-	.preview-totals {
-		display: grid;
-		gap: var(--space-sm);
-	}
-	.preview-totals div {
-		display: flex;
-		justify-content: space-between;
-		gap: var(--space-md);
-		color: var(--color-text-muted);
-		font-size: var(--font-size-sm);
-	}
-	.preview-total {
-		padding-top: var(--space-sm);
-		border-top: 2px solid var(--color-border);
-		color: var(--color-text) !important;
-		font-size: var(--font-size-md) !important;
+	:global(.quote-preview-card .ui-card__body) {
+		padding: 0;
 	}
 	@media (max-width: 900px) {
 		.quote-editor-layout {
@@ -484,8 +309,7 @@
 		}
 	}
 	@media (max-width: 620px) {
-		.editor-grid,
-		.line-item-grid {
+		.editor-grid {
 			grid-template-columns: 1fr;
 		}
 	}

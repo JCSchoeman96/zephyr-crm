@@ -164,6 +164,13 @@ begin
 		if v_lock_version is null then raise exception using errcode = '40001', message = 'Stale quote lock_version'; end if;
 	end if;
 
+	-- The unique QuoteItem position constraint is immediate.  Move stored rows
+	-- out of the submitted range before applying a reordered list so swapping
+	-- two existing rows remains one atomic, valid draft save.
+	update public.quote_items
+	set position = position + 1000
+	where quote_id = v_quote_id;
+
 	v_position := 0;
 	for v_item in select value from jsonb_array_elements(v_items) loop
 		v_position := v_position + 1;
@@ -194,6 +201,11 @@ begin
 			for update;
 			if not found then
 				raise exception using errcode = '42501', message = format('Quote item %s does not belong to this Quote', v_position);
+			end if;
+			if v_existing_item.source_type = 'catalogue' then
+				-- Catalogue names are source snapshots.  Browser input can edit
+				-- commercial fields, but cannot rewrite Product-derived identity.
+				v_name := v_existing_item.name;
 			end if;
 			update public.quote_items
 			set position = v_position,
