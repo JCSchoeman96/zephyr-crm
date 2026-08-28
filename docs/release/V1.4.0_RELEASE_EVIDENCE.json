@@ -253,8 +253,8 @@
 	},
 	"execution": {
 		"runner": "scripts/run-release-evidence.mjs --v140",
-		"git_sha": "41bf32a95556f5309025b2dd777ba00e99a18258",
-		"generated_at_utc": "2026-08-27T11:32:11.617Z",
+		"git_sha": "9793a701e08d812fede7ad60975cdd4052245741",
+		"generated_at_utc": "2026-08-28T17:46:19.154Z",
 		"bun_version": "1.2.22",
 		"status": "PASS",
 		"commands": [
@@ -262,16 +262,16 @@
 				"command": "bun run authority:v140:verify",
 				"status": "PASS",
 				"exit_code": 0,
-				"duration_ms": 114,
-				"output_sha256": "9dcd06fe16d07734d5292d905138b32f097e0e5e1660a82145bc0733b6eba560",
-				"output_bytes": 95,
-				"output_excerpt": "v1.4.0 authority verification passed: 22 files, P15-P20 phase set, and tracked registry hashes."
+				"duration_ms": 107,
+				"output_sha256": "76e00ea8ae438b22c81975a56d66ceb3d013d2cc11ed883f78a0ebbc5df11eaa",
+				"output_bytes": 90,
+				"output_excerpt": "v1.4.0 authority verification passed: 22 files, P15-P20 phase set, and local state hashes."
 			},
 			{
 				"command": "bun run test:v140:review-hardening",
 				"status": "PASS",
 				"exit_code": 0,
-				"duration_ms": 3893,
+				"duration_ms": 3031,
 				"output_sha256": "c5f94e1bccb7869bb1161e2bf0b81e11f9540e50945a9e237e137273753173a2",
 				"output_bytes": 368,
 				"output_excerpt": "P1-01 compatibility conversion policy and audit passed\nP1-07 Realtime publication coverage passed\nv1.4 review hardening contract passed"
@@ -280,7 +280,7 @@
 				"command": "bun run test:p16:persistence",
 				"status": "PASS",
 				"exit_code": 0,
-				"duration_ms": 5037,
+				"duration_ms": 4948,
 				"output_sha256": "3d9886dc3ae1c931bf7d1d375ba6e33d6b2f576e7b4808fea3dbd1c778409fce",
 				"output_bytes": 76,
 				"output_excerpt": "P16-T01 additive schema, P16-T02 lineage, and P16-T03 trusted actions passed"
@@ -289,7 +289,7 @@
 				"command": "bun run test:p17:sales-fulfilment",
 				"status": "PASS",
 				"exit_code": 0,
-				"duration_ms": 2057,
+				"duration_ms": 1829,
 				"output_sha256": "89ddf33dad20123ac9c661dff472441dd910f4f115687ec9dd02bb76d24f9e57",
 				"output_bytes": 253,
 				"output_excerpt": "P17-T03 quote decline closure passed\nP17 acceptance authorization and current-revision guards passed\nP17 focused Sales-to-Fulfilment tests passed"
@@ -298,25 +298,25 @@
 				"command": "bun run test:unit -- --run src/lib/domain/sales/queues.spec.ts",
 				"status": "PASS",
 				"exit_code": 0,
-				"duration_ms": 2047,
-				"output_sha256": "8392e7f336ee9c7287de59403c6ae0ffcdeeff7e7d1946fdbab103f9adb77c2d",
-				"output_bytes": 267,
-				"output_excerpt": "      Tests  3 passed (3)\n   Start at  13:30:52\n   Duration  151ms (transform 22ms, setup 0ms, import 31ms, tests 10ms, environment 0ms)"
+				"duration_ms": 1900,
+				"output_sha256": "3bc8e628d565ba793b2e5995ae6cafc04125b3b8a1cac6ae08534c80de9f1b58",
+				"output_bytes": 259,
+				"output_excerpt": "      Tests  3 passed (3)\n   Start at  19:45:00\n   Duration  148ms (transform 21ms, setup 0ms, import 30ms, tests 9ms, environment 0ms)"
 			},
 			{
 				"command": "bun run test:p18:sales-queues",
 				"status": "PASS",
 				"exit_code": 0,
-				"duration_ms": 24176,
-				"output_sha256": "0ea78f731d8e38f7f52a6e93f53329d933319f58c99569e87a6a8ea389792f68",
+				"duration_ms": 24113,
+				"output_sha256": "5dfa877fc8258f5ec4bab2124cce79ee52e89330b3f769a557028ff585a559c3",
 				"output_bytes": 390,
-				"output_excerpt": "  ✓  2 tests/e2e/domain/p18-sales-queues.e2e.ts:270:2 › P18 Sales work queues › keeps queue layouts usable at mobile, tablet, and desktop widths (2.3s)\n\n  2 passed (22.5s)"
+				"output_excerpt": "  ✓  2 tests/e2e/domain/p18-sales-queues.e2e.ts:270:2 › P18 Sales work queues › keeps queue layouts usable at mobile, tablet, and desktop widths (2.4s)\n\n  2 passed (22.5s)"
 			},
 			{
 				"command": "bun run test:p19:fulfilment",
 				"status": "PASS",
 				"exit_code": 0,
-				"duration_ms": 4862,
+				"duration_ms": 4837,
 				"output_sha256": "f93149376cf03a6adb02739e8eb73fb50c722ba3ccc7e80b879571f74902b71d",
 				"output_bytes": 68,
 				"output_excerpt": "P19-T03 through P19-T06 trusted fulfilment workflow contracts passed"
@@ -325,16 +325,16 @@
 				"command": "bun run test:p19:browser",
 				"status": "PASS",
 				"exit_code": 0,
-				"duration_ms": 25414,
-				"output_sha256": "f98b5a89d744c6b1a0cddae84fdad2cb17311a74731007f455286e420e287213",
+				"duration_ms": 25513,
+				"output_sha256": "29fe156705e13a5296591702c56f6d96283397a477de65a6ff8e0b265ee476fa",
 				"output_bytes": 236,
-				"output_excerpt": "  ✓  1 tests/e2e/domain/p19-fulfilment.e2e.ts:23:2 › P19 Fulfilment work queues › renders the accepted-sale queues and drives canonical work, payment, and follow-up actions (5.7s)\n\n  1 passed (23.8s)"
+				"output_excerpt": "  ✓  1 tests/e2e/domain/p19-fulfilment.e2e.ts:23:2 › P19 Fulfilment work queues › renders the accepted-sale queues and drives canonical work, payment, and follow-up actions (5.7s)\n\n  1 passed (23.9s)"
 			},
 			{
 				"command": "bun run test:p20:metrics",
 				"status": "PASS",
 				"exit_code": 0,
-				"duration_ms": 3167,
+				"duration_ms": 2938,
 				"output_sha256": "4a9c49ca0e0d35a618f218874bf84d8a60da0cc4fa711648ebb630f634e9bb5b",
 				"output_bytes": 72,
 				"output_excerpt": "P20-T01 deterministic Sales and Fulfilment metrics reconciliation passed"
@@ -343,7 +343,7 @@
 				"command": "bun run test:p20:browser",
 				"status": "PASS",
 				"exit_code": 0,
-				"duration_ms": 21063,
+				"duration_ms": 20975,
 				"output_sha256": "a5d8660353dbbd479176df46e9d6f913f527763f8da20fef9f682a1e576bf31f",
 				"output_bytes": 194,
 				"output_excerpt": "  ✓  1 tests/e2e/domain/p20-metrics.e2e.ts:4:1 › renders the canonical Sales and Fulfilment metrics with payment evidence boundaries (1.5s)\n\n  1 passed (19.4s)"
@@ -352,7 +352,7 @@
 				"command": "bun run test:p20:reconciliation",
 				"status": "PASS",
 				"exit_code": 0,
-				"duration_ms": 121,
+				"duration_ms": 126,
 				"output_sha256": "9bc8b458c583e90770d5ed8edb0eba897b2d0cefe500a9c111b4bc493efa8193",
 				"output_bytes": 97,
 				"output_excerpt": "P20-T02 authority, generated-type, historical-registry, and v1.4.0 evidence reconciliation passed"
