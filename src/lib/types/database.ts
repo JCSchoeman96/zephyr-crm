@@ -2296,6 +2296,15 @@ export type Database = {
 				};
 				Returns: Json;
 			};
+			refresh_product_quote_item: {
+				Args: {
+					p_product_lock_version: number;
+					p_quote_id: string;
+					p_quote_item_id: string;
+					p_quote_lock_version: number;
+				};
+				Returns: Json;
+			};
 			reopen_lead: {
 				Args: { p_lead_id: string; p_lock_version: number; p_reason: string };
 				Returns: Json;
@@ -2322,6 +2331,15 @@ export type Database = {
 			};
 			resume_lead: {
 				Args: { p_lead_id: string; p_lock_version?: number };
+				Returns: Json;
+			};
+			review_product_quote_item: {
+				Args: {
+					p_product_lock_version: number;
+					p_quote_id: string;
+					p_quote_item_id: string;
+					p_quote_lock_version: number;
+				};
 				Returns: Json;
 			};
 			revise_quote: {
