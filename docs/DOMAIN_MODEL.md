@@ -399,3 +399,143 @@ The following invariants are additive:
 Fulfilment is still a CRM record of work and operator-entered evidence. It is
 not accounting, inventory, project management, or a logistics-provider
 integration.
+
+## v1.5.0 additive Product Catalogue and Quote Document authority
+
+This section extends the v1.4.0 resource model without changing existing Lead,
+Client, Quote, Task, Activity, money, or Fulfilment meanings except where the
+new QuoteItem source fields are explicitly named. The full contract is in
+`docs/PRODUCT_CATALOGUE_QUOTE_DOCUMENT_ARCHITECTURE.md`.
+
+### ProductCategory
+
+`ProductCategory` is a flat, isolated-stack grouping for Product search and
+picker filters. It has `id`, `code`, `label`, `status`, `sort_order`,
+`lock_version`, `created_at`, and `updated_at`. `status` is `active` or
+`inactive`. Codes are trimmed and unique case-insensitively. An inactive
+category cannot receive a new Product; historical Products retain their
+category. Categories are not nested.
+
+### Product
+
+`Product` is a reusable product or service catalogue record, not an inventory
+record. It has:
+
+```text
+id
+product_code
+name
+customer_description
+internal_notes
+kind
+category_id
+unit_label
+currency
+unit_price
+taxable
+status
+lock_version
+created_by
+created_at
+updated_at
+activated_at
+inactivated_at
+archived_at
+```
+
+`kind` is `product` or `service`. `unit_label` is bounded configurable text.
+`currency` is an uppercase ISO three-letter code. `unit_price` is a
+non-negative PostgreSQL numeric at the existing unit-price scale of 4.
+`status` is `draft`, `active`, `inactive`, or `archived`; only `active` may be
+selected into a new QuoteItem. Product codes use the named
+`products_product_code_lower_uidx` case-insensitive uniqueness index. The
+required query indexes are `products_status_name_idx`,
+`products_category_status_name_idx`, and `products_kind_status_idx`.
+
+Product changes are Owner/Admin trusted actions with optimistic locking and
+material Activity evidence. `internal_notes` is staff-only and is never
+copied to QuoteItem, Quote snapshots, preview, PDF, email, public config, or
+logs. Product has no stock, supplier, cost, variant, bundle, price-book, or
+exchange-rate responsibility.
+
+### QuoteItem Product source and snapshot
+
+`QuoteItem` retains its existing `name`, `description`, `quantity`,
+`unit_price`, `taxable`, and database-authoritative `line_subtotal` fields. It
+additionally has:
+
+```text
+source_type
+product_id
+product_code_snapshot
+unit_label_snapshot
+catalogue_unit_price
+source_product_version
+source_product_reviewed_version
+source_product_reviewed_at
+source_product_reviewed_by
+```
+
+Existing rows are valid `custom` lines. A catalogue line has
+`source_type = catalogue`, nullable historical `product_id`, copied code and
+unit, copied catalogue price, and the Product lock version used for its
+snapshot. `unit_price` is the quoted customer-facing price and may differ from
+`catalogue_unit_price` after an authorized draft negotiation. A custom line
+has `source_type = custom`, null Product lineage/snapshot fields, and remains
+available to all existing Quote workflows.
+
+Only a trusted draft-only Product selection action may create catalogue
+lineage. It requires an active Product, matching Quote currency, expected
+Quote/Product locks, and an active Owner/Admin/Sales Profile. The server copies
+the Product's customer-facing values and never trusts browser totals. Product
+edits, price changes, category changes, and lifecycle transitions never
+cascade to QuoteItems. Sent and terminal Quote commercial data remains
+immutable.
+
+If the current Product lock differs from the source version, the draft item is
+stale. Refresh explicitly copies the current customer-facing snapshot and
+records a new source version. Keep explicitly preserves all QuoteItem
+commercial values and records the reviewed source version, actor, time, and
+Activity evidence. Mark Ready rejects an unresolved stale source. No Product
+change silently refreshes a Quote.
+
+### v1.5.0 ownership and trusted actions
+
+PostgreSQL remains durable authority. The additive trusted action set is:
+
+```text
+create_product_category
+update_product_category
+activate_product_category
+inactivate_product_category
+create_product
+update_product
+change_product_price
+activate_product
+inactivate_product
+archive_product
+restore_product
+add_product_quote_item
+refresh_product_quote_item
+review_product_quote_item
+```
+
+The exact role, RLS, protected-field, and Activity boundary is defined in
+`docs/SECURITY_MODEL.md`. No generic Product archive hard-delete exists.
+
+### v1.5.0 domain invariants
+
+The following invariants are additive:
+
+22. Product codes are unique case-insensitively after trusted trimming.
+23. Only an active Product can be selected into a new QuoteItem, and its currency must match the Quote currency.
+24. Product mutations never cascade into QuoteItem snapshot or sent Quote commercial data.
+25. Catalogue QuoteItems preserve source code, unit, catalogue price, and Product version separately from negotiated quoted `unit_price`.
+26. Existing and newly created custom QuoteItems remain legal without Product lineage.
+27. An unresolved Product source-version mismatch prevents Quote readiness; Refresh and Keep are explicit draft-only actions with evidence.
+28. Product internal notes never enter customer-facing snapshots, presentation models, PDFs, emails, public configuration, or logs.
+29. Quote preview and PDF use one server-built QuotePresentationModel and do not independently calculate authoritative totals.
+30. One eligible Quote revision has one canonical private PDF artifact whose stored SHA-256 matches its bytes; historical artifacts are not regenerated in place.
+
+Product Catalogue is not inventory ownership, accounting, payment processing,
+an ERP, or a customer-facing portal.

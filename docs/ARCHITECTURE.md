@@ -217,3 +217,50 @@ are in `docs/FULFILMENT_ARCHITECTURE.md`. It explicitly supersedes the old
 "ends at Client" and "payments deferred" wording for this additive roadmap
 only. It does not add Redis, queues, microservices, inventory, logistics
 provider integrations, payment gateways, accounting, or multi-client tenancy.
+
+## v1.5.0 additive Product Catalogue and Quote Document boundary
+
+The v1.5.0 extension preserves the v1.4.0 Sales-to-Fulfilment boundary and
+adds one catalogue-to-quote preparation boundary:
+
+```text
+Product Catalogue
+      │ server-side selection while Quote is draft
+      ▼
+QuoteItem commercial snapshot
+      ▼
+ready Quote → canonical presentation model
+      ├── responsive browser preview
+      └── professional A4 PDF → private immutable Storage → SendPulse
+```
+
+Products are catalogue authority only. They are never live dependencies of a
+final Quote. Product price, description, taxable flag, category, kind, and
+lifecycle changes do not cascade into QuoteItems. A QuoteItem contains its own
+commercial snapshot, and existing custom Quote lines remain legal.
+
+The additive resources, fields, lifecycle, and snapshot contract are defined
+in `docs/PRODUCT_CATALOGUE_QUOTE_DOCUMENT_ARCHITECTURE.md` and
+`docs/DOMAIN_MODEL.md`. Product persistence and state changes remain
+PostgreSQL/trusted-action authority; SvelteKit only orchestrates authorized
+requests and projects server-owned data.
+
+The document boundary is also additive. The server builds one
+`QuotePresentationModel` from frozen Quote data, QuoteItems, seller/recipient
+snapshots, branding, terms, and bank details. `QuoteDocumentPreview.svelte`
+and the versioned `pdf-lib` Template v2 consume that same model. Neither the
+browser preview nor the renderer calculates authoritative money or reads
+current Product values. Internal Product notes, source-review metadata,
+private Storage paths, and secrets are excluded from the model.
+
+Template v2 is fixed A4 portrait with safe wrapping, repeated table headers,
+multi-page flow, Unicode-capable customer text, deterministic PDF bytes,
+explicit template/generator provenance, and a SHA-256 matching the private
+stored artifact. Existing stored PDFs are immutable and are never regenerated
+in place. SendPulse remains the only provider boundary and the attached PDF
+remains commercial authority.
+
+P21-P26 are the strict additive sequence defined by
+`CRM_IMPLEMENTATION_ROADMAP_v1.5.0.md`. v1.5.0 adds no inventory, ERP, price
+books, FX, Redis, Browser Rendering, public quote portal, electronic
+signature, online payment, or multi-company tenancy.
