@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { canManageProducts, normalizeProductInput } from './products';
+import { canManageProducts, normalizeProductInput, normalizeProductPrice } from './products';
 
 describe('Product server action boundary', () => {
 	it('permits catalogue mutations only to Owner and Admin roles', () => {
@@ -66,5 +66,8 @@ describe('Product server action boundary', () => {
 				taxable: true
 			})
 		).toThrow(/currency/i);
+		expect(normalizeProductPrice('125.5000')).toBe('125.5000');
+		expect(() => normalizeProductPrice('125.12345')).toThrow(/price/i);
+		expect(() => normalizeProductPrice('-1')).toThrow(/price/i);
 	});
 });

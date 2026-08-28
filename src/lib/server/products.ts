@@ -26,6 +26,14 @@ export type NormalizedProductInput = {
 	taxable: boolean;
 };
 
+export function normalizeProductPrice(value: string | number): string {
+	const unitPrice = String(value).trim();
+	if (!/^(?:0|[1-9]\d*)(?:\.\d{1,4})?$/.test(unitPrice)) {
+		throw new Error('Product unit price is invalid');
+	}
+	return unitPrice;
+}
+
 export function canManageProducts(role: string): boolean {
 	return role === 'owner' || role === 'admin';
 }
@@ -51,10 +59,7 @@ export function normalizeProductInput(input: ProductInput): NormalizedProductInp
 	const unitLabel = requiredText(input.unitLabel, 'Unit label', 80);
 	const currency = input.currency.trim().toUpperCase();
 	if (!/^[A-Z]{3}$/.test(currency)) throw new Error('Product currency is invalid');
-	const unitPrice = String(input.unitPrice).trim();
-	if (!/^(?:0|[1-9]\d*)(?:\.\d{1,4})?$/.test(unitPrice)) {
-		throw new Error('Product unit price is invalid');
-	}
+	const unitPrice = normalizeProductPrice(input.unitPrice);
 	return {
 		productCode,
 		name,
