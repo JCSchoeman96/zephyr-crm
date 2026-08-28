@@ -15,6 +15,8 @@ export type Database = {
 					metadata: Json;
 					occurred_at: string;
 					outbound_message_id: string | null;
+					product_category_id: string | null;
+					product_id: string | null;
 					quote_id: string | null;
 					summary: string;
 					task_id: string | null;
@@ -30,6 +32,8 @@ export type Database = {
 					metadata?: Json;
 					occurred_at?: string;
 					outbound_message_id?: string | null;
+					product_category_id?: string | null;
+					product_id?: string | null;
 					quote_id?: string | null;
 					summary: string;
 					task_id?: string | null;
@@ -45,6 +49,8 @@ export type Database = {
 					metadata?: Json;
 					occurred_at?: string;
 					outbound_message_id?: string | null;
+					product_category_id?: string | null;
+					product_id?: string | null;
 					quote_id?: string | null;
 					summary?: string;
 					task_id?: string | null;
@@ -90,6 +96,20 @@ export type Database = {
 						columns: ['outbound_message_id'];
 						isOneToOne: false;
 						referencedRelation: 'outbound_messages';
+						referencedColumns: ['id'];
+					},
+					{
+						foreignKeyName: 'activities_product_category_id_fkey';
+						columns: ['product_category_id'];
+						isOneToOne: false;
+						referencedRelation: 'product_categories';
+						referencedColumns: ['id'];
+					},
+					{
+						foreignKeyName: 'activities_product_id_fkey';
+						columns: ['product_id'];
+						isOneToOne: false;
+						referencedRelation: 'products';
 						referencedColumns: ['id'];
 					},
 					{
@@ -1039,6 +1059,120 @@ export type Database = {
 					{
 						foreignKeyName: 'payment_milestones_received_recorded_by_fkey';
 						columns: ['received_recorded_by'];
+						isOneToOne: false;
+						referencedRelation: 'profiles';
+						referencedColumns: ['id'];
+					}
+				];
+			};
+			product_categories: {
+				Row: {
+					code: string;
+					created_at: string;
+					id: string;
+					label: string;
+					lock_version: number;
+					sort_order: number;
+					status: string;
+					updated_at: string;
+				};
+				Insert: {
+					code: string;
+					created_at?: string;
+					id?: string;
+					label: string;
+					lock_version?: number;
+					sort_order?: number;
+					status?: string;
+					updated_at?: string;
+				};
+				Update: {
+					code?: string;
+					created_at?: string;
+					id?: string;
+					label?: string;
+					lock_version?: number;
+					sort_order?: number;
+					status?: string;
+					updated_at?: string;
+				};
+				Relationships: [];
+			};
+			products: {
+				Row: {
+					activated_at: string | null;
+					archived_at: string | null;
+					category_id: string | null;
+					created_at: string;
+					created_by: string;
+					currency: string;
+					customer_description: string | null;
+					id: string;
+					inactivated_at: string | null;
+					internal_notes: string | null;
+					kind: string;
+					lock_version: number;
+					name: string;
+					product_code: string;
+					status: string;
+					taxable: boolean;
+					unit_label: string;
+					unit_price: number;
+					updated_at: string;
+				};
+				Insert: {
+					activated_at?: string | null;
+					archived_at?: string | null;
+					category_id?: string | null;
+					created_at?: string;
+					created_by: string;
+					currency?: string;
+					customer_description?: string | null;
+					id?: string;
+					inactivated_at?: string | null;
+					internal_notes?: string | null;
+					kind: string;
+					lock_version?: number;
+					name: string;
+					product_code: string;
+					status?: string;
+					taxable?: boolean;
+					unit_label: string;
+					unit_price?: number;
+					updated_at?: string;
+				};
+				Update: {
+					activated_at?: string | null;
+					archived_at?: string | null;
+					category_id?: string | null;
+					created_at?: string;
+					created_by?: string;
+					currency?: string;
+					customer_description?: string | null;
+					id?: string;
+					inactivated_at?: string | null;
+					internal_notes?: string | null;
+					kind?: string;
+					lock_version?: number;
+					name?: string;
+					product_code?: string;
+					status?: string;
+					taxable?: boolean;
+					unit_label?: string;
+					unit_price?: number;
+					updated_at?: string;
+				};
+				Relationships: [
+					{
+						foreignKeyName: 'products_category_id_fkey';
+						columns: ['category_id'];
+						isOneToOne: false;
+						referencedRelation: 'product_categories';
+						referencedColumns: ['id'];
+					},
+					{
+						foreignKeyName: 'products_created_by_fkey';
+						columns: ['created_by'];
 						isOneToOne: false;
 						referencedRelation: 'profiles';
 						referencedColumns: ['id'];
