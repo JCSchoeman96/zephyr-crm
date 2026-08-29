@@ -99,7 +99,11 @@ awaiting send. Acceptance and decline require the Lead to be in `DECISION`,
 lock Quote and Lead in deterministic order, and check expected lock versions.
 Ordinary users cannot reach `WON` through a generic Lead transition. The
 existing `convert_lead` action remains an authorised migration/recovery path
-where policy permits it, not the normal decision button.
+where policy permits it, not the normal decision button. The v1.4 compatibility
+policy retains the frozen Owner/Admin/Sales surface, requires operators to
+record the case-specific rationale in the surrounding recovery record, and
+emits `lead_converted_compatibility` security-audit evidence with the `lead_won`
+Activity marked `legacy_compatibility_recovery`.
 
 Acceptance is idempotent. A repeated request after a committed acceptance
 returns the existing result and cannot create another Client, ClientContact,
@@ -250,6 +254,10 @@ payment_follow_up
 
 The trusted Task boundary derives Client and Lead lineage from the
 FulfilmentCase. Browser-supplied parent IDs that do not match are rejected.
+Every Fulfilment Task also inherits the case's accepted Quote when the trusted
+caller omits it; a supplied Quote must match the case. This keeps planning and
+payment follow-up work attached to the same accepted sale without requiring a
+browser to copy the commercial parent correctly.
 An open `payment_follow_up` Task records work owed. It never changes the
 PaymentMilestone status, and equivalent open follow-ups are reused or rejected
 deterministically.
@@ -351,6 +359,12 @@ The detail page has Overview, Work, Payments, Tasks, and Activity sections.
 It always shows the Client and accepted immutable Quote lineage. Commercial
 values are displayed from the accepted Quote and are not edited in
 Fulfilment.
+
+The Fulfilment queue and detail screens subscribe to the bounded invalidation
+set `quotes`, `tasks`, `fulfilment_cases`, `fulfilment_steps`,
+`payment_milestones`, and `activities`. PostgreSQL remains the source of truth;
+the subscription indicates that the current query should be refreshed and does
+not claim that every history row is present in the current detail page.
 
 ## Metrics
 

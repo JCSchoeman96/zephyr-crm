@@ -1,5 +1,6 @@
 import { error, fail, redirect } from '@sveltejs/kit';
 import type { Actions, PageServerLoad } from './$types';
+import { actionFailureDetails, logActionFailure } from '$lib/server/action-errors';
 import { requireActiveStaff } from '$lib/server/require-auth';
 
 function required(form: FormData, name: string): string {
@@ -60,24 +61,10 @@ function formValues(form: FormData): Record<string, string> {
 	);
 }
 
-function actionMessage(cause: unknown, fallback: string): string {
-	const message =
-		cause instanceof Error
-			? cause.message
-			: typeof cause === 'object' &&
-				  cause !== null &&
-				  'message' in cause &&
-				  typeof cause.message === 'string'
-				? cause.message
-				: '';
-	if (/stale|lock_version|changed during/i.test(message)) {
-		return 'This Client changed elsewhere. Reload the page before saving again.';
-	}
-	return message || fallback;
-}
-
 function failure(cause: unknown, fallback: string, values?: Record<string, string>) {
-	return fail(422, { message: actionMessage(cause, fallback), values });
+	const details = actionFailureDetails(cause, fallback);
+	logActionFailure(cause, details.code);
+	return fail(details.status, { message: details.message, code: details.code, values });
 }
 
 function canMutate(role: string): boolean {
@@ -214,7 +201,7 @@ export const actions: Actions = {
 				p_job_title: optional(form, 'job_title'),
 				p_is_primary: form.get('is_primary') === 'on'
 			});
-			if (response.error) return fail(422, { message: response.error.message });
+			if (response.error) return failure(response.error, 'Could not create Client contact');
 		} catch (actionError) {
 			return failure(actionError, 'Could not create Client contact');
 		}
@@ -236,7 +223,7 @@ export const actions: Actions = {
 				p_phone: optional(form, 'phone'),
 				p_job_title: optional(form, 'job_title')
 			});
-			if (response.error) return fail(422, { message: response.error.message });
+			if (response.error) return failure(response.error, 'Could not update Client contact');
 		} catch (actionError) {
 			return failure(actionError, 'Could not update Client contact');
 		}
@@ -251,7 +238,8 @@ export const actions: Actions = {
 				p_contact_id: uuid(form, 'contact_id'),
 				p_lock_version: contactLockVersion(form)
 			});
-			if (response.error) return fail(422, { message: response.error.message });
+			if (response.error)
+				return failure(response.error, 'Could not change the primary Client contact');
 		} catch (actionError) {
 			return failure(actionError, 'Could not change the primary Client contact');
 		}
@@ -270,7 +258,7 @@ export const actions: Actions = {
 				p_status: status,
 				p_reason: optional(form, 'reason')
 			});
-			if (response.error) return fail(422, { message: response.error.message });
+			if (response.error) return failure(response.error, 'Could not change Client contact status');
 		} catch (actionError) {
 			return failure(actionError, 'Could not change Client contact status');
 		}

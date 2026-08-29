@@ -29,7 +29,17 @@
 		description="Work starts when a quote is accepted and stays linked to the customer, quote, work, payments, and history."
 	>
 		{#snippet actions()}
-			<RealtimeStatus scope="fulfilment" tables={['tasks', 'quotes']} />
+			<RealtimeStatus
+				scope="fulfilment"
+				tables={[
+					'quotes',
+					'tasks',
+					'fulfilment_cases',
+					'fulfilment_steps',
+					'payment_milestones',
+					'activities'
+				]}
+			/>
 		{/snippet}
 	</PageHeader>
 

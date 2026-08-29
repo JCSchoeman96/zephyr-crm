@@ -239,6 +239,24 @@ migration/recovery boundary where policy permits it. Existing Lost transitions
 remain valid, but definitive Quote decline uses the atomic Quote-decline
 action described below.
 
+#### v1.4 compatibility decisions
+
+The v1.4 policy retains the two-argument `convert_lead` RPC for frozen v1.3.2
+callers and migration/recovery work. It is not a normal Sales decision button;
+ordinary `WON` is reached through `accept_quote`. The compatibility boundary
+retains the historical Owner/Admin/Sales grant so completed P0–P14 contracts
+do not break, writes a `lead_converted_compatibility` security-audit event, and
+marks the resulting `lead_won` Activity with `conversion_policy` evidence.
+Operators must supply any case-specific recovery rationale through the
+surrounding incident or migration record. A future strict policy amendment may
+retire this compatibility surface after those callers are migrated.
+
+`transition_lead` remains a compatibility workflow API for non-terminal Lead
+stages and `LOST`. It cannot reach `WON`; its `QUALIFICATION → PROPOSAL` path
+enforces the same usable-contact and meaningful-enquiry evidence required by
+`ready_lead_for_quote`. The dedicated evidence-bearing actions remain the
+preferred browser contract.
+
 ### Quote decision contract
 
 | Action | Quote result | Lead result | Attention | Cross-resource result |
@@ -322,3 +340,75 @@ follow-up evidence.
   event.
 - A case may not complete merely because all payment milestones are done; a
   successful operational step is required as well.
+
+## v1.5.0 additive Product and Quote source state authority
+
+The v1.5.0 Product and Quote source states are additive to the v1.4.0
+machines. The canonical field and document contract is in
+`docs/PRODUCT_CATALOGUE_QUOTE_DOCUMENT_ARCHITECTURE.md`.
+
+### ProductCategory lifecycle
+
+ProductCategory has only:
+
+```text
+active ↔ inactive
+```
+
+Inactivating a category prevents new Product assignment but does not hide or
+rewrite historical Products. Both transitions require Owner/Admin authority,
+the current `lock_version`, valid input, and a material Activity event.
+
+### Product lifecycle
+
+Product has these canonical lowercase states:
+
+```text
+draft ──activate──→ active ──inactivate──→ inactive
+  │                    ▲                     │
+  └────archive─────────┘                     └──activate──→ active
+                    inactive ──archive──→ archived
+```
+
+The legal transition matrix is:
+
+| From | To | Guard | Side effects |
+|---|---|---|---|
+| `draft` | `active` | Owner/Admin, current lock, valid code/name/kind/unit/ISO currency/non-negative price/taxable | set activation evidence, increment lock, append `product_activated` |
+| `active` | `inactive` | Owner/Admin, current lock | set inactivation evidence, increment lock, append `product_inactivated` |
+| `inactive` | `active` | Owner/Admin, current lock, still commercially valid | clear active-blocking state, increment lock, append `product_activated` |
+| `draft`/`inactive` | `archived` | Owner/Admin, current lock, non-blank reason | set archive evidence, increment lock, append `product_archived` |
+| `archived` | `inactive` | Owner/Admin, current lock, non-blank restore reason | preserve history, increment lock, append `product_restored` |
+
+Archived is terminal for ordinary actions and is never hard-deleted when
+referenced. No transition changes an existing QuoteItem. Product create,
+ordinary update, and explicit price change also require active Profile,
+protected-field validation, and append the appropriate Activity; a price
+change includes old/new price, currency, actor, time, and bounded reason.
+
+### QuoteItem source behavior
+
+`source_type` is `custom` or `catalogue`. A catalogue QuoteItem can be created
+only while its Quote is `draft`, its Product is `active`, its Quote and Product
+locks are current, and their currencies match. The trusted action copies
+Product code, name, customer description, unit, current catalogue price,
+taxable flag, and source version. Product internal notes are never copied.
+
+Product source review is a draft-only state decision rather than a silent
+refresh:
+
+```text
+current source version == Product lock_version → reviewed/current
+current source version != Product lock_version → stale/unresolved
+stale + explicit Refresh → new snapshot/source version
+stale + explicit Keep → original snapshot + reviewed current version
+```
+
+Refresh and Keep require the current Quote lock and active authorized Profile.
+Refresh copies customer-facing Product values and catalogue price; Keep
+preserves the QuoteItem's name, description, quantity, quoted price, taxable
+flag, catalogue price, and source lineage values while recording review
+evidence. Mark Ready rejects any stale line without an explicit review.
+
+Product source state is not a new Quote lifecycle. Existing Quote lifecycle
+and immutable sent/terminal behavior remain authoritative.

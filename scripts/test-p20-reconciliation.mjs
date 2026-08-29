@@ -6,7 +6,9 @@ import { validateEvidenceRegistry } from './verify-test-evidence.mjs';
 import { validateV140ReleaseEvidence } from './verify-v140-release-evidence.mjs';
 
 const root = process.cwd();
+const localStatePath = '.agent/goal-loop/STATE.json';
 const phaseIds = Array.from({ length: 21 }, (_, index) => `P${index}`);
+const v150PhaseIds = Array.from({ length: 27 }, (_, index) => `P${index}`);
 const coreAuthorities = [
 	'docs/ARCHITECTURE.md',
 	'docs/DOMAIN_MODEL.md',
@@ -68,11 +70,6 @@ function assertStateHashes(state) {
 	for (const [path, expected] of Object.entries(state.authority_sha256 ?? {})) {
 		assert(expected === sha256(path), `authority hash is stale for ${path}`);
 	}
-	assert(
-		JSON.stringify(Object.keys(state.phase_authority_paths ?? {}).sort()) ===
-			JSON.stringify(phaseIds.sort()),
-		'phase authority path set is not P0-P20'
-	);
 	for (const phase of phaseIds) {
 		const path = state.phase_authority_paths[phase];
 		assert(
@@ -84,13 +81,47 @@ function assertStateHashes(state) {
 
 function assertStateProjection(state) {
 	assert(state.state_schema_version === 3, 'state schema version is not 3');
-	assert(state.roadmap_version === '1.4.0', 'state roadmap version is not 1.4.0');
-	assert(state.current_phase === 'P20', 'state current phase is not P20');
-	assert(state.completed_phases?.includes('P19'), 'P19 is not complete in local state');
+	const v140IsActive = state.roadmap_version === '1.4.0' && state.current_phase === 'P20';
+	const v150Identity =
+		state.roadmap_version === '1.5.0' &&
+		state.roadmap === 'CRM_IMPLEMENTATION_ROADMAP_v1.5.0.md' &&
+		state.architecture === 'docs/PRODUCT_CATALOGUE_QUOTE_DOCUMENT_ARCHITECTURE.md';
+	const v150PhaseLoopSuccessor =
+		v150Identity &&
+		state.execution_stage === 'PHASE_LOOP' &&
+		['PLANNING', 'IMPLEMENTING', 'VALIDATING', 'COMPLETE'].includes(state.phase_status) &&
+		Array.isArray(state.completed_phases) &&
+		/^P(2[1-6])$/.test(state.current_phase ?? '') &&
+		(() => {
+			const currentPhase = Number(state.current_phase.slice(1));
+			return Array.from({ length: currentPhase }, (_, index) => `P${index}`).every((phase) =>
+				state.completed_phases.includes(phase)
+			);
+		})();
+	const v150TerminalSuccessor =
+		v150Identity &&
+		state.goal_status === 'COMPLETE' &&
+		state.execution_stage === 'COMPLETE' &&
+		state.current_phase === 'P26' &&
+		state.phase_status === 'COMPLETE' &&
+		state.local_build_status === 'LOCAL_BUILD_COMPLETE' &&
+		state.release_status === 'PILOT_READY' &&
+		state.pilot_status === 'NOT_STARTED' &&
+		state.production_status === 'NOT_LAUNCHED' &&
+		Array.isArray(state.completed_phases) &&
+		v150PhaseIds.every((phase) => state.completed_phases.includes(phase));
+	const v150IsSuccessor = v150PhaseLoopSuccessor || v150TerminalSuccessor;
 	assert(
-		state.current_subphase === 'P20-T01' || state.current_subphase === 'P20-T02',
-		'P20 subphase is invalid'
+		v140IsActive || v150IsSuccessor,
+		'state is neither active v1.4 nor a valid v1.5 successor'
 	);
+	if (v140IsActive) {
+		assert(state.completed_phases?.includes('P19'), 'P19 is not complete in local state');
+		assert(
+			state.current_subphase === 'P20-T01' || state.current_subphase === 'P20-T02',
+			'P20 subphase is invalid'
+		);
+	}
 }
 
 function assertAuthorityCoverage(state) {
@@ -102,6 +133,15 @@ function assertAuthorityCoverage(state) {
 	const phaseAuthorityFiles = Object.values(state.phase_authority_paths);
 	for (const path of phaseAuthorityFiles)
 		assert(existsSync(resolve(root, path)), `missing phase authority ${path}`);
+}
+
+function assertTrackedAuthorityRegistry() {
+	const registry = readJson('docs/AUTHORITY_HASHES_V1.4.0.json');
+	assert(registry.version === '1.4.0', 'tracked v1.4 authority registry version is invalid');
+	for (const [path, expected] of Object.entries(registry.files ?? {})) {
+		assert(existsSync(resolve(root, path)), `missing tracked v1.4 authority file ${path}`);
+		assert(expected === sha256(path), `tracked v1.4 authority hash is stale for ${path}`);
+	}
 }
 
 function assertCanonicalContracts() {
@@ -140,10 +180,14 @@ function assertCanonicalContracts() {
 }
 
 function main() {
-	const state = readJson('.agent/goal-loop/STATE.json');
-	assertStateProjection(state);
-	assertStateHashes(state);
-	assertAuthorityCoverage(state);
+	if (existsSync(resolve(root, localStatePath))) {
+		const state = readJson(localStatePath);
+		assertStateProjection(state);
+		assertStateHashes(state);
+		assertAuthorityCoverage(state);
+	} else {
+		assertTrackedAuthorityRegistry();
+	}
 	assertCanonicalContracts();
 	const historical = readJson('docs/release/TEST_EVIDENCE.json');
 	const historicalValidation = validateEvidenceRegistry(historical, { root });

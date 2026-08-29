@@ -1,15 +1,17 @@
 import { error, fail, redirect } from '@sveltejs/kit';
 import type { Actions, PageServerLoad } from './$types';
-import { actionFailureStatus, userFacingActionMessage } from '$lib/server/action-errors';
+import { actionFailureDetails, logActionFailure } from '$lib/server/action-errors';
 import { loadFulfilmentDetail } from '$lib/server/fulfilment';
+import { loadTrustedClientConfiguration } from '$lib/server/client-config';
+import { localDateTimeToIso } from '$lib/time/zoned-datetime';
 import { requireActiveStaff } from '$lib/server/require-auth';
 
 const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 function actionFailure(cause: unknown, fallback: string) {
-	return fail(actionFailureStatus(cause), {
-		message: userFacingActionMessage(cause, fallback)
-	});
+	const details = actionFailureDetails(cause, fallback);
+	logActionFailure(cause, details.code);
+	return fail(details.status, { message: details.message, code: details.code });
 }
 
 function formUuid(form: FormData, name: string, label: string) {
@@ -37,9 +39,8 @@ function optionalText(form: FormData, name: string) {
 function formDateTime(form: FormData, name: string) {
 	const value = formText(form, name);
 	if (!value) throw new Error('A scheduled time is required');
-	const date = new Date(value);
-	if (Number.isNaN(date.getTime())) throw new Error('A valid scheduled time is required');
-	return date.toISOString();
+	const { configuration } = loadTrustedClientConfiguration();
+	return localDateTimeToIso(value, configuration.locale.timezone);
 }
 
 function caseId(event: Parameters<NonNullable<Actions['createStep']>>[0]) {
@@ -212,7 +213,7 @@ export const actions: Actions = {
 				p_title: title,
 				p_description: optionalText(form, 'description'),
 				...(dueAt ? { p_due_at: formDateTime(form, 'due_at') } : {})
-			} as never);
+			});
 		}),
 	completeCase: async (event) =>
 		runMutation(event, 'Could not complete Fulfilment case', async (form, id) => {

@@ -6,6 +6,7 @@
 		FileText,
 		LayoutDashboard,
 		Activity,
+		Package,
 		Users,
 		UserRound
 	} from '@lucide/svelte';
@@ -51,7 +52,10 @@
 		{
 			id: 'administration',
 			label: 'Administration',
-			items: [{ label: 'Operations', href: '/operations', icon: Activity, adminOnly: true }]
+			items: [
+				{ label: 'Products', href: '/products', icon: Package },
+				{ label: 'Operations', href: '/operations', icon: Activity, adminOnly: true }
+			]
 		}
 	];
 

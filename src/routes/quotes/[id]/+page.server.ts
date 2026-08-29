@@ -2,13 +2,14 @@ import { error, fail, redirect } from '@sveltejs/kit';
 import type { Actions, PageServerLoad } from './$types';
 import { quoteFormValues } from '$lib/server/quote-form';
 import { sendQuote } from '$lib/server/quote-actions';
-import { actionFailureStatus, userFacingActionMessage } from '$lib/server/action-errors';
+import { actionFailureDetails, logActionFailure } from '$lib/server/action-errors';
 import { requireActiveStaff } from '$lib/server/require-auth';
+import { buildQuotePresentationModel } from '$lib/domain/quotes/documents/presentation-model';
 
 function actionFailure(errorValue: unknown, fallback = 'Could not complete Quote action') {
-	return fail(actionFailureStatus(errorValue), {
-		message: userFacingActionMessage(errorValue, fallback)
-	});
+	const details = actionFailureDetails(errorValue, fallback);
+	logActionFailure(errorValue, details.code);
+	return fail(details.status, { message: details.message, code: details.code });
 }
 
 function lockVersion(form: FormData) {
@@ -22,6 +23,61 @@ function record(value: unknown) {
 	return value && typeof value === 'object' && !Array.isArray(value)
 		? (value as Record<string, unknown>)
 		: {};
+}
+
+const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+function productLockVersion(form: FormData) {
+	const value = Number(form.get('product_lock_version'));
+	if (!Number.isInteger(value) || value < 1)
+		throw new Error('A valid Product lock version is required');
+	return value;
+}
+
+function productId(form: FormData) {
+	const value = String(form.get('product_id') ?? '').trim();
+	if (!uuidPattern.test(value)) throw new Error('A valid Product is required');
+	return value;
+}
+
+function quoteItemId(form: FormData) {
+	const value = String(form.get('quote_item_id') ?? '').trim();
+	if (!uuidPattern.test(value)) throw new Error('A valid Quote line is required');
+	return value;
+}
+
+function text(value: unknown) {
+	return typeof value === 'string' ? value.trim() : String(value ?? '').trim();
+}
+
+function recipientFrom(lead: Record<string, unknown>, client: Record<string, unknown> | null) {
+	if (client) {
+		const address = [
+			client.billing_address_line_1,
+			client.billing_address_line_2,
+			client.billing_city,
+			client.billing_region,
+			client.billing_postal_code,
+			client.billing_country
+		]
+			.map(text)
+			.filter(Boolean)
+			.join('\n');
+		return {
+			name: text(client.display_name),
+			company: text(client.company_name) || null,
+			address,
+			email: text(client.email) || null,
+			phone: text(client.phone) || null
+		};
+	}
+	return {
+		name: `${text(lead.first_name)} ${text(lead.last_name)}`.trim(),
+		company: text(lead.company) || null,
+		address: '',
+		email: text(lead.email) || null,
+		phone: text(lead.phone) || null
+	};
 }
 
 export const load: PageServerLoad = async (event) => {
@@ -39,7 +95,8 @@ export const load: PageServerLoad = async (event) => {
 		clientResponse,
 		activityResponse,
 		outboundResponse,
-		reasonsResponse
+		reasonsResponse,
+		categoriesResponse
 	] = await Promise.all([
 		supabase
 			.from('quote_items')
@@ -68,6 +125,13 @@ export const load: PageServerLoad = async (event) => {
 			.select('id,code,label')
 			.eq('active', true)
 			.order('sort_order')
+			.limit(100),
+		supabase
+			.from('product_categories')
+			.select('id,label')
+			.eq('status', 'active')
+			.order('sort_order', { ascending: true })
+			.order('label', { ascending: true })
 			.limit(100)
 	]);
 	if (
@@ -76,10 +140,72 @@ export const load: PageServerLoad = async (event) => {
 		clientResponse.error ||
 		activityResponse.error ||
 		outboundResponse.error ||
-		reasonsResponse.error
+		reasonsResponse.error ||
+		categoriesResponse.error
 	)
 		throw error(500, 'Could not load quote details');
 	if (!leadResponse.data) throw error(500, 'Quote lead could not be loaded');
+	const catalogueItemIds = (itemsResponse.data ?? [])
+		.filter((item) => item.source_type === 'catalogue' && item.product_id)
+		.map((item) => item.product_id as string);
+	const [productsResponse, settingsResponse] = await Promise.all([
+		catalogueItemIds.length
+			? supabase
+					.from('products')
+					.select(
+						'id,product_code,name,customer_description,kind,category_id,unit_label,currency,unit_price,taxable,status,lock_version'
+					)
+					.in('id', catalogueItemIds)
+			: Promise.resolve({ data: [], error: null }),
+		supabase
+			.from('app_settings')
+			.select('setting_key,setting_value')
+			.in('setting_key', ['company_identity', 'quote_defaults'])
+	]);
+	if (productsResponse.error || settingsResponse.error)
+		throw error(500, 'Could not load Quote catalogue details');
+	const productsById = new Map(
+		(productsResponse.data ?? []).map((product) => [product.id, product])
+	);
+	const productSources = (itemsResponse.data ?? [])
+		.filter((item) => item.source_type === 'catalogue' && item.product_id)
+		.map((item) => {
+			const product = productsById.get(item.product_id as string);
+			const reviewedVersion = item.source_product_reviewed_version;
+			const isStale = Boolean(
+				product &&
+				product.lock_version !== item.source_product_version &&
+				(reviewedVersion === null || product.lock_version > reviewedVersion)
+			);
+			return {
+				quoteItemId: item.id,
+				productId: item.product_id,
+				productCode: item.product_code_snapshot,
+				name: item.name,
+				customerDescription: item.description,
+				unitLabel: item.unit_label_snapshot,
+				currency: product?.currency ?? quoteResponse.data?.currency ?? '',
+				catalogueUnitPrice: item.catalogue_unit_price,
+				status: product?.status ?? 'missing',
+				currentLockVersion: product?.lock_version ?? null,
+				sourceProductVersion: item.source_product_version,
+				sourceProductReviewedVersion: reviewedVersion,
+				isStale
+			};
+		});
+	const settings = new Map(
+		(settingsResponse.data ?? []).map((setting) => [setting.setting_key, setting.setting_value])
+	);
+	const presentationModel = buildQuotePresentationModel({
+		quote: quoteResponse.data,
+		items: itemsResponse.data ?? [],
+		recipient: recipientFrom(
+			record(leadResponse.data),
+			clientResponse.data ? record(clientResponse.data) : null
+		),
+		companyIdentity: settings.get('company_identity'),
+		quoteDefaults: settings.get('quote_defaults')
+	});
 	return {
 		quote: quoteResponse.data,
 		items: itemsResponse.data ?? [],
@@ -88,6 +214,9 @@ export const load: PageServerLoad = async (event) => {
 		activities: activityResponse.data ?? [],
 		outboundMessages: outboundResponse.data ?? [],
 		lostReasons: reasonsResponse.data ?? [],
+		productCategories: categoriesResponse.data ?? [],
+		productSources,
+		presentationModel,
 		profile
 	};
 };
@@ -114,16 +243,82 @@ export const actions: Actions = {
 				p_quote_id: event.params.id,
 				p_lock_version: lockVersion(await event.request.formData())
 			});
-			if (response.error) return actionFailure(response.error, 'Could not mark Quote ready');
+			if (response.error) {
+				if (
+					response.error.code === '23514' &&
+					response.error.message.includes('unresolved Product source changes')
+				) {
+					return fail(422, {
+						message: 'Quote has unresolved Product source changes',
+						code: 'VALIDATION'
+					});
+				}
+				return actionFailure(response.error, 'Could not mark Quote ready');
+			}
 		} catch (actionError) {
 			return actionFailure(actionError, 'Could not mark Quote ready');
+		}
+		throw redirect(303, `/quotes/${event.params.id}`);
+	},
+	addProduct: async (event) => {
+		const { supabase } = await requireActiveStaff(event);
+		const form = await event.request.formData();
+		try {
+			const quantity = String(form.get('quantity') ?? '1').trim() || '1';
+			const response = await supabase.rpc('add_product_quote_item', {
+				p_quote_id: event.params.id,
+				p_quote_lock_version: lockVersion(form),
+				p_product_id: productId(form),
+				p_product_lock_version: productLockVersion(form),
+				p_quantity: quantity
+			} as never);
+			if (response.error) return actionFailure(response.error, 'Could not add Product to Quote');
+		} catch (actionError) {
+			return actionFailure(actionError, 'Could not add Product to Quote');
+		}
+		throw redirect(303, `/quotes/${event.params.id}`);
+	},
+	refreshProduct: async (event) => {
+		const { supabase } = await requireActiveStaff(event);
+		const form = await event.request.formData();
+		try {
+			const response = await supabase.rpc('refresh_product_quote_item', {
+				p_quote_id: event.params.id,
+				p_quote_lock_version: lockVersion(form),
+				p_quote_item_id: quoteItemId(form),
+				p_product_lock_version: productLockVersion(form)
+			} as never);
+			if (response.error) return actionFailure(response.error, 'Could not refresh Product values');
+		} catch (actionError) {
+			return actionFailure(actionError, 'Could not refresh Product values');
+		}
+		throw redirect(303, `/quotes/${event.params.id}`);
+	},
+	reviewProduct: async (event) => {
+		const { supabase } = await requireActiveStaff(event);
+		const form = await event.request.formData();
+		try {
+			const response = await supabase.rpc('review_product_quote_item', {
+				p_quote_id: event.params.id,
+				p_quote_lock_version: lockVersion(form),
+				p_quote_item_id: quoteItemId(form),
+				p_product_lock_version: productLockVersion(form)
+			} as never);
+			if (response.error) return actionFailure(response.error, 'Could not review Product changes');
+		} catch (actionError) {
+			return actionFailure(actionError, 'Could not review Product changes');
 		}
 		throw redirect(303, `/quotes/${event.params.id}`);
 	},
 	send: async (event) => {
 		const { supabase } = await requireActiveStaff(event);
 		try {
-			await sendQuote(supabase, event.params.id, lockVersion(await event.request.formData()));
+			await sendQuote(
+				supabase,
+				event.params.id,
+				lockVersion(await event.request.formData()),
+				event.platform
+			);
 		} catch (actionError) {
 			return actionFailure(actionError, 'Could not send Quote');
 		}

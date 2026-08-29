@@ -93,3 +93,32 @@ The frozen P14 hardening authority
 (`docs/hardening/ZEPHYR_CRM_P14_HARDENING_AND_IMPROVEMENT_AUTHORITY_v1.0.0.md`)
 adds ZH-001 through ZH-018 and P14-T22 through P14-T35. P14 closes before the
 global final gate; only the global gate may persist `PILOT_READY`.
+
+## v1.5.0 additive Product Catalogue and Quote Document extension
+
+`CRM_IMPLEMENTATION_ROADMAP_v1.5.0.md` is the next additive roadmap after the
+completed v1.4.0/P20 local release reconciliation. It preserves P0-P20 and
+adds P21-P26 in strict order:
+
+```text
+P21 Product/Quote Document architecture
+  → P22 Product Catalogue persistence and management
+  → P23 Product-to-Quote snapshot tracer
+  → P24 Quote Builder and responsive preview
+  → P25 professional PDF Template v2
+  → P26 branded delivery and final reconciliation
+```
+
+The v1.5.0 architecture authority is
+`docs/PRODUCT_CATALOGUE_QUOTE_DOCUMENT_ARCHITECTURE.md`. It freezes Product,
+ProductCategory, Product lifecycle and permissions, QuoteItem source/snapshot
+rules, currency matching, stale-source review, custom lines, the canonical
+QuotePresentationModel, professional A4 PDF behavior, private artifact/hash
+ownership, and the SendPulse boundary. P21 is documentation only. P22-P26
+must not weaken the completed v1.4.0 Sales-to-Fulfilment, money, revision,
+security, storage, or release contracts.
+
+v1.5.0 explicitly excludes inventory/ERP, variants, price books, customer or
+scheduled pricing, FX, payment processing, public quote portals, electronic
+signatures, online payment, Redis, Browser Rendering, remote deployment,
+pilot execution, and production launch.

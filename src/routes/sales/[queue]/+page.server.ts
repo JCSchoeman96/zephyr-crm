@@ -1,7 +1,7 @@
 import { error, fail, redirect } from '@sveltejs/kit';
 import type { Actions, PageServerLoad } from './$types';
 import { salesQueueKeys, type SalesQueueKey } from '$lib/domain/sales/queues';
-import { actionFailureStatus, userFacingActionMessage } from '$lib/server/action-errors';
+import { actionFailureDetails, logActionFailure } from '$lib/server/action-errors';
 import { loadSalesQueue } from '$lib/server/sales-queue';
 import { requireActiveStaff } from '$lib/server/require-auth';
 
@@ -13,9 +13,9 @@ function queueKey(value: string): SalesQueueKey {
 }
 
 function actionFailure(errorValue: unknown, fallback: string) {
-	return fail(actionFailureStatus(errorValue), {
-		message: userFacingActionMessage(errorValue, fallback)
-	});
+	const details = actionFailureDetails(errorValue, fallback);
+	logActionFailure(errorValue, details.code);
+	return fail(details.status, { message: details.message, code: details.code });
 }
 
 function formUuid(form: FormData, name: string, label: string) {

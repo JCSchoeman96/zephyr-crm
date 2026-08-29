@@ -1,14 +1,15 @@
 import { expect, test } from '@playwright/test';
 import { randomUUID } from 'node:crypto';
 import {
-	apiUrl,
 	authenticatedRpc,
+	cleanupLeadData,
 	cleanupUser,
 	createStaff,
+	gotoAndWaitForHeading,
 	ingestLead,
 	readLead,
 	readQuotesForLead,
-	serviceRoleKey,
+	runCleanup,
 	signIn,
 	type StaffUser
 } from './helpers';
@@ -163,22 +164,13 @@ async function createFixture(): Promise<Fixture> {
 }
 
 async function cleanupFixture(fixture: Fixture): Promise<void> {
-	const paths = Object.values(fixture.leads).flatMap((lead) => [
-		`/rest/v1/inbound_submissions?lead_id=eq.${lead.id}`,
-		`/rest/v1/tasks?lead_id=eq.${lead.id}`,
-		`/rest/v1/activities?lead_id=eq.${lead.id}`,
-		`/rest/v1/outbound_messages?lead_id=eq.${lead.id}`,
-		`/rest/v1/quotes?lead_id=eq.${lead.id}`,
-		`/rest/v1/clients?source_lead_id=eq.${lead.id}`,
-		`/rest/v1/leads?id=eq.${lead.id}`
+	await runCleanup([
+		...Object.values(fixture.leads).map((lead) => ({
+			label: `Lead ${lead.id}`,
+			run: () => cleanupLeadData(lead.id)
+		})),
+		{ label: `auth user ${fixture.user.id}`, run: () => cleanupUser(fixture.user.id) }
 	]);
-	for (const path of paths) {
-		await fetch(`${apiUrl}${path}`, {
-			method: 'DELETE',
-			headers: { apikey: serviceRoleKey, Authorization: `Bearer ${serviceRoleKey}` }
-		}).catch(() => {});
-	}
-	await cleanupUser(fixture.user.id);
 }
 
 async function submitFormButton(button: import('@playwright/test').Locator) {
@@ -205,8 +197,7 @@ test.describe('P18 Sales work queues', () => {
 			await expect(navigation.getByRole('link', { name: 'Clients' })).toBeVisible();
 			await expect(navigation.getByRole('link', { name: 'Tasks' })).toBeVisible();
 
-			await page.goto('/sales/enquiries', { waitUntil: 'networkidle' });
-			await expect(page.getByRole('heading', { name: 'New Enquiries' })).toBeVisible();
+			await gotoAndWaitForHeading(page, '/sales/enquiries', 'New Enquiries');
 			await expect(page.getByText(fixture.leads.enquiry.company)).toBeVisible();
 			await expect(page.getByText(fixture.leads.qualification.company)).toHaveCount(0);
 			const enquiryRow = page.getByRole('row').filter({ hasText: fixture.leads.enquiry.company });
@@ -215,8 +206,7 @@ test.describe('P18 Sales work queues', () => {
 			await expect(page).toHaveURL(/\/sales\/enquiries$/);
 			await expect(page.getByText(fixture.leads.enquiry.company)).toHaveCount(0);
 
-			await page.goto('/sales/qualification', { waitUntil: 'networkidle' });
-			await expect(page.getByRole('heading', { name: 'Qualification' })).toBeVisible();
+			await gotoAndWaitForHeading(page, '/sales/qualification', 'Qualification');
 			await expect(page.getByText(fixture.leads.qualification.company)).toBeVisible();
 			const qualificationRow = page
 				.getByRole('row')
@@ -233,8 +223,7 @@ test.describe('P18 Sales work queues', () => {
 				'Confirmed budget and delivery requirements.'
 			);
 
-			await page.goto('/sales/proposals', { waitUntil: 'networkidle' });
-			await expect(page.getByRole('heading', { name: 'Quotes to Prepare' })).toBeVisible();
+			await gotoAndWaitForHeading(page, '/sales/proposals', 'Quotes to Prepare');
 			await expect(page.getByText(fixture.leads.proposalNotStarted.company)).toBeVisible();
 			await expect(page.getByText(fixture.leads.proposalDraft.company)).toBeVisible();
 			await expect(page.getByText(fixture.leads.proposalReady.company)).toBeVisible();
@@ -262,8 +251,7 @@ test.describe('P18 Sales work queues', () => {
 			await page.waitForURL(/\/quotes\/new\?lead_id=/);
 			await expect(page.getByLabel('Enquiry')).toHaveValue(fixture.leads.proposalNotStarted.id);
 
-			await page.goto('/sales/decisions', { waitUntil: 'networkidle' });
-			await expect(page.getByRole('heading', { name: 'Awaiting Feedback' })).toBeVisible();
+			await gotoAndWaitForHeading(page, '/sales/decisions', 'Awaiting Feedback');
 			await expect(page.getByText(fixture.leads.decisionCurrent.company)).toBeVisible();
 			await expect(page.getByText(fixture.leads.decisionStale.company)).toHaveCount(0);
 			const decisionRow = page
@@ -290,18 +278,17 @@ test.describe('P18 Sales work queues', () => {
 				{ width: 1280, height: 900 }
 			]) {
 				await page.setViewportSize(viewport);
-				for (const path of [
-					'/sales/enquiries',
-					'/sales/qualification',
-					'/sales/proposals',
-					'/sales/decisions'
+				for (const queue of [
+					{ path: '/sales/enquiries', heading: 'New Enquiries' },
+					{ path: '/sales/qualification', heading: 'Qualification' },
+					{ path: '/sales/proposals', heading: 'Quotes to Prepare' },
+					{ path: '/sales/decisions', heading: 'Awaiting Feedback' }
 				]) {
-					await page.goto(path, { waitUntil: 'networkidle' });
-					await expect(page.locator('h1')).toBeVisible();
+					await gotoAndWaitForHeading(page, queue.path, queue.heading);
 					const fitsViewport = await page.evaluate(
 						() => document.documentElement.scrollWidth <= window.innerWidth + 1
 					);
-					expect(fitsViewport, `${path} overflows at ${viewport.width}px`).toBe(true);
+					expect(fitsViewport, `${queue.path} overflows at ${viewport.width}px`).toBe(true);
 				}
 			}
 		} finally {

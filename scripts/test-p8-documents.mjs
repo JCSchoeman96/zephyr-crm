@@ -237,6 +237,23 @@ async function serviceQuote(id) {
 	return rows[0];
 }
 
+async function quoteItems(id) {
+	return serviceRest(
+		`/rest/v1/quote_items?quote_id=eq.${id}&select=id,name,description,quantity,unit_price,taxable&order=position.asc`
+	);
+}
+
+async function storageObject(path, init = {}) {
+	return fetch(`${apiUrl}/storage/v1/object/quote-documents/${path}`, {
+		...init,
+		headers: {
+			apikey: serviceRoleKey,
+			Authorization: `Bearer ${serviceRoleKey}`,
+			...(init.headers ?? {})
+		}
+	});
+}
+
 async function appJson(path, init = {}) {
 	const response = await fetch(`${appUrl}${path}`, {
 		...init,
@@ -411,6 +428,16 @@ try {
 	const firstLead = await createLead('delivery');
 	await reachDecision(firstLead, user);
 	const firstQuote = await createReadyQuote(firstLead, user, 'delivery');
+	const frozenRecipient = firstQuote.quote_snapshot?.recipient;
+	run('psql', [
+		dbUrl,
+		'-X',
+		'-v',
+		'ON_ERROR_STOP=1',
+		'-c',
+		`update public.leads set first_name = 'Redirected', last_name = 'Lead', email = '${prefix}-redirected@example.test', lock_version = lock_version + 1 where id = '${firstLead.id}';`
+	]);
+	assert(frozenRecipient?.email, 'Ready Quote did not capture a recipient snapshot');
 	await startProvider();
 	await startApp();
 	await loginApp(user);
@@ -419,7 +446,7 @@ try {
 	assert(
 		!finalizationFailure.response.ok &&
 			String(finalizationFailure.body?.error).toLowerCase().includes('reconciliation'),
-		'Provider success followed by quote finalization failure was not reported as reconciliation-required'
+		`Provider success followed by quote finalization failure was not reported as reconciliation-required: ${JSON.stringify(finalizationFailure.body)}`
 	);
 	let finalizationMessages = await messagesFor(finalizationQuote.id);
 	assert(
@@ -486,6 +513,24 @@ try {
 		'SendPulse request did not include the frozen PDF'
 	);
 	assert(
+		lastProviderBody.email.to?.[0]?.email === currentQuote.quote_snapshot?.recipient?.email,
+		'SendPulse recipient did not match the frozen current Quote revision'
+	);
+	assert(
+		lastProviderBody.email.text?.includes(`Revision ${currentQuote.revision_number}`),
+		'Branded Quote plain-text email was not submitted'
+	);
+	assert(
+		lastProviderBody.email.html?.includes('max-width:600px') &&
+			lastProviderBody.email.html?.includes(`Revision ${currentQuote.revision_number}`),
+		'Responsive branded Quote HTML was not submitted'
+	);
+	assert(
+		!JSON.stringify(lastProviderBody.email).includes('quote-documents') &&
+			!JSON.stringify(lastProviderBody.email).includes('internal_notes'),
+		'Quote email exposed private Storage or internal-note data'
+	);
+	assert(
 		currentQuote.document_path && currentQuote.document_hash && currentQuote.document_generated_at,
 		'Document metadata is incomplete'
 	);
@@ -508,8 +553,49 @@ try {
 		documentHash === currentQuote.document_hash,
 		'Stored document hash does not match the private artifact'
 	);
+	const attachmentBytes = Buffer.from(lastProviderBody.email.attachments[0].content, 'base64');
+	assert(
+		createHash('sha256').update(attachmentBytes).digest('hex') === currentQuote.document_hash,
+		'SendPulse received bytes that differ from the privately stored PDF'
+	);
+	const corruptedDownload = await storageObject(currentQuote.document_path, {
+		method: 'POST',
+		headers: { 'content-type': 'application/pdf', 'x-upsert': 'true' },
+		body: new TextEncoder().encode('%PDF-1.7\n% corrupted download fixture\n')
+	});
+	assert(
+		corruptedDownload.ok,
+		`Could not corrupt download PDF fixture (${corruptedDownload.status})`
+	);
+	const rejectedCorruptedDownload = await fetch(`${appUrl}/api/quotes/${firstQuote.id}/document`, {
+		headers: { cookie: appCookie }
+	});
+	assert(
+		rejectedCorruptedDownload.status === 404,
+		'Authorized document download returned bytes that failed the stored hash check'
+	);
+	const restoredDownload = await storageObject(currentQuote.document_path, {
+		method: 'POST',
+		headers: { 'content-type': 'application/pdf', 'x-upsert': 'true' },
+		body: documentBytes
+	});
+	assert(
+		restoredDownload.ok,
+		`Could not restore download PDF fixture (${restoredDownload.status})`
+	);
+	assert(
+		currentQuote.document_mime_type === 'application/pdf' &&
+			currentQuote.document_template_version === 'professional-v2' &&
+			currentQuote.document_generator_version === 'quote-pdf-v2.1.0',
+		'New Quote document provenance is incomplete or does not identify Template v2'
+	);
+	assert(
+		Object.prototype.hasOwnProperty.call(currentQuote.quote_snapshot ?? {}, 'bank_details'),
+		'Ready Quote did not freeze bank details for document generation'
+	);
 	console.log('P8-T01 document determinism and stored hash passed');
 	console.log('P8-T02 private storage passed');
+	console.log('P25-T03 Template v2 private attachment provenance passed');
 	passed += 2;
 
 	const tampered = await request(
@@ -544,10 +630,83 @@ try {
 		(await serviceQuote(retryQuote.id)).status === 'ready',
 		'Failed send falsely marked the Quote sent'
 	);
+	retryQuote = await serviceQuote(retryQuote.id);
+	assert(
+		retryQuote.document_path && retryQuote.document_hash,
+		'Failed send did not retain the frozen document needed for a safe retry'
+	);
+	documentPaths.push(retryQuote.document_path);
+	const failedAttemptAttachment = lastProviderBody?.email?.attachments?.[0]?.content;
+	assert(failedAttemptAttachment, 'Failed provider attempt did not receive the generated PDF');
+	const retryArtifact = await storageObject(retryQuote.document_path);
+	assert(retryArtifact.ok, 'Could not read the retry PDF fixture from private Storage');
+	const originalRetryArtifact = new Uint8Array(await retryArtifact.arrayBuffer());
+	const corruptedRetryArtifact = new TextEncoder().encode('%PDF-1.7\n% corrupted retry fixture\n');
+	const corruptRetry = await storageObject(retryQuote.document_path, {
+		method: 'POST',
+		headers: { 'content-type': 'application/pdf', 'x-upsert': 'true' },
+		body: corruptedRetryArtifact
+	});
+	assert(corruptRetry.ok, `Could not corrupt retry PDF fixture (${corruptRetry.status})`);
+	const providerCallsBeforeCorruptRetry = providerAttempt;
+	const corruptRetryResult = await sendQuoteThroughApp(retryQuote);
+	assert(
+		!corruptRetryResult.response.ok && providerAttempt === providerCallsBeforeCorruptRetry,
+		'Hash-mismatched stored PDF was sent to the provider'
+	);
+	const restoreRetry = await storageObject(retryQuote.document_path, {
+		method: 'POST',
+		headers: { 'content-type': 'application/pdf', 'x-upsert': 'true' },
+		body: originalRetryArtifact
+	});
+	assert(restoreRetry.ok, `Could not restore retry PDF fixture (${restoreRetry.status})`);
+	const retryItems = await quoteItems(retryQuote.id);
+	const immutableSave = await rpc(
+		'save_quote_draft',
+		{
+			p_quote_id: retryQuote.id,
+			p_lock_version: retryQuote.lock_version,
+			p_lead_id: retryQuote.lead_id,
+			p_client_id: retryQuote.client_id,
+			p_subject: retryQuote.subject,
+			p_introduction: retryQuote.introduction,
+			p_terms: retryQuote.terms,
+			p_tax_label: retryQuote.tax_label,
+			p_tax_rate: String(retryQuote.tax_rate),
+			p_valid_until: retryQuote.valid_until,
+			p_currency: retryQuote.currency,
+			p_items: retryItems
+		},
+		anonKey,
+		await signIn(user)
+	);
+	assert(!immutableSave.response.ok, 'A Quote with an attached PDF was editable as a draft');
+	const afterImmutableSave = await serviceQuote(retryQuote.id);
+	assert(
+		afterImmutableSave.status === 'ready' &&
+			afterImmutableSave.document_path === retryQuote.document_path &&
+			afterImmutableSave.document_hash === retryQuote.document_hash,
+		'Attached-document edit changed the Quote lifecycle or document metadata'
+	);
+	const frozenQuotePage = await appJson(`/quotes/${retryQuote.id}`);
+	assert(
+		frozenQuotePage.response.ok && typeof frozenQuotePage.body === 'string',
+		'Attached Quote page could not be loaded'
+	);
+	assert(
+		!frozenQuotePage.body.includes('Save draft') &&
+			!frozenQuotePage.body.includes('Add line item') &&
+			frozenQuotePage.body.includes('Download frozen PDF'),
+		'Attached ready Quote remained editable in the UI'
+	);
 	providerMode = 'success';
 	retryQuote = await serviceQuote(retryQuote.id);
 	const retry = await sendQuoteThroughApp(retryQuote);
 	assert(retry.response.ok, `Failed-send retry did not succeed (${retry.response.status})`);
+	assert(
+		lastProviderBody?.email?.attachments?.[0]?.content === failedAttemptAttachment,
+		'Failed-send retry regenerated different PDF bytes instead of reusing the frozen artifact'
+	);
 	retryMessages = await messagesFor(retryQuote.id);
 	assert(
 		retryMessages.length === 1 && retryMessages[0].attempt_count === 2,

@@ -704,6 +704,8 @@ try {
 
 	const quoteStatuses = {};
 	const expiryDate = new Date().toISOString().slice(0, 10);
+	const declineReason = (await serviceRows('/rest/v1/lost_reasons?code=eq.price&select=id'))[0];
+	assert(declineReason?.id, 'Quote expiry fixtures require an active decline reason');
 	for (const [label, terminal] of [
 		['eligible', null],
 		['accepted', 'accept_quote'],
@@ -717,12 +719,16 @@ try {
 		await sendQuote(id, sales);
 		if (terminal) {
 			const current = (await serviceRows(`/rest/v1/quotes?id=eq.${id}&select=lock_version`))[0];
-			await mustRpc(
-				terminal,
-				{ p_quote_id: id, p_lock_version: current.lock_version },
-				anonKey,
-				await signIn(sales)
-			);
+			const terminalArgs =
+				terminal === 'decline_quote'
+					? {
+							p_quote_id: id,
+							p_lock_version: current.lock_version,
+							p_lost_reason_id: declineReason.id,
+							p_lost_notes: 'P9 expiry fixture decline'
+						}
+					: { p_quote_id: id, p_lock_version: current.lock_version };
+			await mustRpc(terminal, terminalArgs, anonKey, await signIn(sales));
 		}
 		quoteStatuses[label] = id;
 	}

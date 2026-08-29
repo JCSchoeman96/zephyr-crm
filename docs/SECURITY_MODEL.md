@@ -73,6 +73,23 @@ RLS is enabled on every exposed business table, including Profiles, configuratio
 
 Policies use database-derived identity and role from the authenticated JWT/profile relationship. User-controlled metadata, URL parameters, form fields, or browser state cannot grant authority.
 
+### v1.4 compatibility policy decisions
+
+The normal v1.4 decision path is the evidence-bearing `accept_quote` action;
+generic `transition_lead` cannot produce `WON`. The historical two-argument
+`convert_lead` surface remains executable by Owner/Admin/Sales only as a frozen
+v1.3.2 migration/recovery compatibility boundary. It is not rendered as a
+normal browser decision action. Each non-idempotent compatibility conversion
+records `lead_converted_compatibility` in `security_audit_events` and marks
+the `lead_won` Activity with `conversion_policy = legacy_compatibility_recovery`.
+The operation is retained until its frozen callers are migrated; removing the
+grant requires a separate authority amendment and regression update.
+
+`transition_lead` is likewise retained for compatibility on non-terminal
+workflow stages and `LOST`. The database rejects `WON` and enforces usable
+contact plus meaningful enquiry evidence for `QUALIFICATION → PROPOSAL`, so it
+cannot manufacture qualification completion through the generic endpoint.
+
 ## Protected-field/action mutation matrix
 
 RLS controls which rows a role can see and which ordinary fields it may edit;
@@ -266,3 +283,73 @@ qualification/decision fields, or Fulfilment Activity must not bypass these
 checks. Unique constraints, deterministic lock order, optimistic versions,
 append-only Activity, and idempotent acceptance protect retries and concurrent
 requests.
+
+## v1.5.0 additive Product and Quote security
+
+The v1.5.0 Product Catalogue uses the existing four-role model and isolated
+stack. Every Product and ProductCategory table has RLS. Anonymous and
+suspended access is denied; an authenticated active Profile is required for
+all reads and trusted mutations.
+
+| Action | Owner | Admin | Sales | Viewer |
+|---|---:|---:|---:|---:|
+| Read Products/Categories | yes | yes | yes | yes |
+| Use active Product in a draft Quote | yes | yes | yes | no |
+| Create/edit Product or Category | yes | yes | no | no |
+| Change Product price | yes | yes | no | no |
+| Activate/inactivate Product | yes | yes | no | no |
+| Archive/restore Product or inactivate Category | yes | yes | no | no |
+
+Product lifecycle, price, code, category, `created_by`, timestamps,
+`lock_version`, and protected source fields cannot be manufactured by ordinary
+RLS CRUD. Trusted actions validate role, active Profile, bounded input,
+current state, expected lock, and reason where required. Product code
+uniqueness is database-enforced case-insensitively. Archived Products are
+historical records, not delete candidates.
+
+The protected QuoteItem boundary includes `source_type`, `product_id`, all
+catalogue/source/review snapshots, server-calculated `line_subtotal`, Quote
+associations, and sent/terminal immutability. Raw authenticated INSERT/PATCH/
+DELETE cannot use a Product row to write current catalogue values into an
+existing or sent Quote. Adding, refreshing, or reviewing a Product line is a
+trusted draft-only action with Quote/Product lock checks and matching currency.
+Custom lines remain legal.
+
+`Product.internal_notes` is staff-only data. It is excluded from all
+QuoteItem/customer snapshots, the canonical QuotePresentationModel, responsive
+preview, PDF bytes, email bodies/attachments, public configuration, and logs.
+The Product picker and management screens may expose it only to authorized
+catalogue administrators where needed for internal maintenance.
+
+The canonical v1.5.0 Product trusted actions are:
+
+```text
+create_product_category
+update_product_category
+activate_product_category
+inactivate_product_category
+create_product
+update_product
+change_product_price
+activate_product
+inactivate_product
+archive_product
+restore_product
+add_product_quote_item
+refresh_product_quote_item
+review_product_quote_item
+```
+
+The canonical presentation model is built server-side from authorized frozen
+Quote data. It may contain customer-facing Product snapshots but never current
+Product joins, internal notes, private Storage paths, service-role values,
+provider credentials, or browser-controlled totals. Template v2 remains a
+private A4 artifact with database metadata and byte-matching SHA-256; existing
+historical PDFs are not regenerated. Quote email delivery still requires the
+current frozen PDF and never exposes its private path.
+
+v1.5.0 security gates must prove role/RLS denial, stale-lock rejection,
+case-insensitive code uniqueness, active-only selection, currency mismatch
+rejection, source immutability after Product mutation, internal-note leakage
+absence, sent Quote immutability, private document access, deterministic hash,
+and SendPulse attachment preconditions.

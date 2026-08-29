@@ -66,6 +66,12 @@ BRICKS_WEBHOOK_SECRET. Real values are supplied through ignored local files or
 the hosting/Edge Function secret store and are never committed or projected to
 the browser.
 
+The committed Worker configuration is the local deployment reference for the
+Bricks form identifier. Keep `wrangler.jsonc`, `config/client.example.json`,
+and the Playwright fixture on the same value; `bun run test:bricks:parity`
+enforces that relationship. A live-site form identifier still requires an
+approved deployment/configuration check and is not claimed by local tests.
+
 ## Local reset contract
 
 Phase 3 owns the first canonical business migration. `bun run db:reset` recreates the isolated local database from zero, applies the identity/RLS schema, and loads deterministic lead sources, lost reasons, and non-secret app settings from `supabase/seed.sql`. No production or shared Supabase project is addressed by these commands.

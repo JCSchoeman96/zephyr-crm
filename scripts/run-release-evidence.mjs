@@ -1,30 +1,75 @@
+import { createHash } from 'node:crypto';
 import { execFileSync } from 'node:child_process';
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { validateEvidenceRegistry } from './verify-test-evidence.mjs';
 import { validateReleaseManifest } from './verify-release-manifest.mjs';
+import { validateV140ReleaseEvidence } from './verify-v140-release-evidence.mjs';
 
 const root = process.cwd();
 const registryPath = 'docs/release/TEST_EVIDENCE.json';
 const manifestPath = 'docs/release/RELEASE_MANIFEST.json';
+const v140EvidencePath = 'docs/release/V1.4.0_RELEASE_EVIDENCE.json';
+const v140Commands = [
+	'bun run authority:v140:verify',
+	'bun run test:v140:review-hardening',
+	'bun run test:p16:persistence',
+	'bun run test:p17:sales-fulfilment',
+	'bun run test:unit -- --run src/lib/domain/sales/queues.spec.ts',
+	'bun run test:p18:sales-queues',
+	'bun run test:p19:fulfilment',
+	'bun run test:p19:browser',
+	'bun run test:p20:metrics',
+	'bun run test:p20:browser',
+	'bun run test:p20:reconciliation'
+];
+
+function sha256(value) {
+	return createHash('sha256').update(value).digest('hex');
+}
+
+function outputProof(stdout = '', stderr = '') {
+	const output = [stdout, stderr].filter(Boolean).join('\n').trim();
+	const safeExcerpt = (output || '(command produced no output)')
+		.split('\n')
+		.slice(-3)
+		.join('\n')
+		.replace(
+			/(password|secret|token|service[_-]?role|authorization)\s*[:=]\s*[^\s,]+/gi,
+			'$1=[redacted]'
+		)
+		.slice(-2000);
+	return {
+		output_sha256: sha256(output),
+		output_bytes: Buffer.byteLength(output),
+		output_excerpt: safeExcerpt
+	};
+}
 
 function run(command) {
 	const startedAt = Date.now();
 	try {
-		execFileSync('bash', ['-lc', command], {
+		const stdout = execFileSync('bash', ['-lc', command], {
 			cwd: root,
 			stdio: ['ignore', 'pipe', 'pipe'],
 			encoding: 'utf8',
 			maxBuffer: 64 * 1024 * 1024,
 			env: { ...process.env, NO_COLOR: '1' }
 		});
-		return { command, status: 'PASS', exit_code: 0, duration_ms: Date.now() - startedAt };
+		return {
+			command,
+			status: 'PASS',
+			exit_code: 0,
+			duration_ms: Date.now() - startedAt,
+			...outputProof(stdout)
+		};
 	} catch (error) {
 		return {
 			command,
 			status: 'FAIL',
 			exit_code: typeof error.status === 'number' ? error.status : 1,
-			duration_ms: Date.now() - startedAt
+			duration_ms: Date.now() - startedAt,
+			...outputProof(error.stdout?.toString(), error.stderr?.toString())
 		};
 	}
 }
@@ -39,7 +84,45 @@ function metadata() {
 	};
 }
 
+function runV140() {
+	const evidence = JSON.parse(readFileSync(resolve(root, v140EvidencePath), 'utf8'));
+	validateV140ReleaseEvidence(evidence, { root });
+	const commands = v140Commands.map(run);
+	const resultByCommand = new Map(commands.map((result) => [result.command, result]));
+	const phaseEvidence = evidence.phase_evidence.map((entry) => {
+		const result = resultByCommand.get(entry.command);
+		return {
+			...entry,
+			status: result?.status ?? 'FAIL'
+		};
+	});
+	const executionStatus = commands.every(
+		(result) => result.status === 'PASS' && result.exit_code === 0
+	)
+		? 'PASS'
+		: 'FAIL';
+	const generated = {
+		...evidence,
+		generated_from: 'P15-P20 executed by scripts/run-release-evidence.mjs',
+		phase_evidence: phaseEvidence,
+		execution: {
+			runner: 'scripts/run-release-evidence.mjs --v140',
+			...metadata(),
+			status: executionStatus,
+			commands
+		}
+	};
+	writeFileSync(resolve(root, v140EvidencePath), `${JSON.stringify(generated, null, '\t')}\n`);
+	if (executionStatus !== 'PASS')
+		throw new Error(`v1.4 release evidence execution failed; see ${v140EvidencePath}`);
+	console.log(`v1.4 release evidence execution passed for ${commands.length} commands.`);
+}
+
 const args = new Set(process.argv.slice(2));
+if (args.has('--v140')) {
+	runV140();
+	process.exit(0);
+}
 const outputArgument = process.argv.find((argument) => argument.startsWith('--output='));
 const outputPath =
 	outputArgument?.slice('--output='.length) ?? '.agent/goal-loop/RELEASE_EVIDENCE.json';

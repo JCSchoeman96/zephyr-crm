@@ -1,4 +1,5 @@
 export type QuoteFormItem = {
+	id?: string;
 	name: string;
 	description?: string;
 	quantity: string;
@@ -9,6 +10,7 @@ export type QuoteFormItem = {
 const quantityPattern = /^(?:0|[1-9]\d*)(?:\.\d{1,4})?$/;
 const pricePattern = /^(?:0|[1-9]\d*)(?:\.\d{1,4})?$/;
 const taxPattern = /^(?:0|[1-9]\d*)(?:\.\d{1,6})?$/;
+const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 function textValue(form: FormData, name: string) {
 	return String(form.get(name) ?? '').trim();
@@ -48,6 +50,9 @@ export function parseQuoteItems(form: FormData): QuoteFormItem[] {
 	return value.map((item, index) => {
 		if (!item || typeof item !== 'object') throw new Error(`Quote line ${index + 1} is invalid`);
 		const record = item as Record<string, unknown>;
+		const id = record.id === undefined || record.id === null ? undefined : String(record.id).trim();
+		if (id && !uuidPattern.test(id))
+			throw new Error(`Quote line ${index + 1} identifier is invalid`);
 		const name = String(record.name ?? '').trim();
 		const quantity = String(record.quantity ?? '');
 		const unitPrice = String(record.unit_price ?? '');
@@ -59,6 +64,7 @@ export function parseQuoteItems(form: FormData): QuoteFormItem[] {
 		if (typeof record.taxable !== 'boolean')
 			throw new Error(`Quote line ${index + 1} tax flag is invalid`);
 		return {
+			...(id ? { id } : {}),
 			name,
 			description: String(record.description ?? '').trim(),
 			quantity,

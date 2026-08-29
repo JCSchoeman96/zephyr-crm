@@ -15,6 +15,8 @@ export type Database = {
 					metadata: Json;
 					occurred_at: string;
 					outbound_message_id: string | null;
+					product_category_id: string | null;
+					product_id: string | null;
 					quote_id: string | null;
 					summary: string;
 					task_id: string | null;
@@ -30,6 +32,8 @@ export type Database = {
 					metadata?: Json;
 					occurred_at?: string;
 					outbound_message_id?: string | null;
+					product_category_id?: string | null;
+					product_id?: string | null;
 					quote_id?: string | null;
 					summary: string;
 					task_id?: string | null;
@@ -45,6 +49,8 @@ export type Database = {
 					metadata?: Json;
 					occurred_at?: string;
 					outbound_message_id?: string | null;
+					product_category_id?: string | null;
+					product_id?: string | null;
 					quote_id?: string | null;
 					summary?: string;
 					task_id?: string | null;
@@ -90,6 +96,20 @@ export type Database = {
 						columns: ['outbound_message_id'];
 						isOneToOne: false;
 						referencedRelation: 'outbound_messages';
+						referencedColumns: ['id'];
+					},
+					{
+						foreignKeyName: 'activities_product_category_id_fkey';
+						columns: ['product_category_id'];
+						isOneToOne: false;
+						referencedRelation: 'product_categories';
+						referencedColumns: ['id'];
+					},
+					{
+						foreignKeyName: 'activities_product_id_fkey';
+						columns: ['product_id'];
+						isOneToOne: false;
+						referencedRelation: 'products';
 						referencedColumns: ['id'];
 					},
 					{
@@ -1045,6 +1065,120 @@ export type Database = {
 					}
 				];
 			};
+			product_categories: {
+				Row: {
+					code: string;
+					created_at: string;
+					id: string;
+					label: string;
+					lock_version: number;
+					sort_order: number;
+					status: string;
+					updated_at: string;
+				};
+				Insert: {
+					code: string;
+					created_at?: string;
+					id?: string;
+					label: string;
+					lock_version?: number;
+					sort_order?: number;
+					status?: string;
+					updated_at?: string;
+				};
+				Update: {
+					code?: string;
+					created_at?: string;
+					id?: string;
+					label?: string;
+					lock_version?: number;
+					sort_order?: number;
+					status?: string;
+					updated_at?: string;
+				};
+				Relationships: [];
+			};
+			products: {
+				Row: {
+					activated_at: string | null;
+					archived_at: string | null;
+					category_id: string | null;
+					created_at: string;
+					created_by: string;
+					currency: string;
+					customer_description: string | null;
+					id: string;
+					inactivated_at: string | null;
+					internal_notes: string | null;
+					kind: string;
+					lock_version: number;
+					name: string;
+					product_code: string;
+					status: string;
+					taxable: boolean;
+					unit_label: string;
+					unit_price: number;
+					updated_at: string;
+				};
+				Insert: {
+					activated_at?: string | null;
+					archived_at?: string | null;
+					category_id?: string | null;
+					created_at?: string;
+					created_by: string;
+					currency?: string;
+					customer_description?: string | null;
+					id?: string;
+					inactivated_at?: string | null;
+					internal_notes?: string | null;
+					kind: string;
+					lock_version?: number;
+					name: string;
+					product_code: string;
+					status?: string;
+					taxable?: boolean;
+					unit_label: string;
+					unit_price?: number;
+					updated_at?: string;
+				};
+				Update: {
+					activated_at?: string | null;
+					archived_at?: string | null;
+					category_id?: string | null;
+					created_at?: string;
+					created_by?: string;
+					currency?: string;
+					customer_description?: string | null;
+					id?: string;
+					inactivated_at?: string | null;
+					internal_notes?: string | null;
+					kind?: string;
+					lock_version?: number;
+					name?: string;
+					product_code?: string;
+					status?: string;
+					taxable?: boolean;
+					unit_label?: string;
+					unit_price?: number;
+					updated_at?: string;
+				};
+				Relationships: [
+					{
+						foreignKeyName: 'products_category_id_fkey';
+						columns: ['category_id'];
+						isOneToOne: false;
+						referencedRelation: 'product_categories';
+						referencedColumns: ['id'];
+					},
+					{
+						foreignKeyName: 'products_created_by_fkey';
+						columns: ['created_by'];
+						isOneToOne: false;
+						referencedRelation: 'profiles';
+						referencedColumns: ['id'];
+					}
+				];
+			};
 			profiles: {
 				Row: {
 					created_at: string;
@@ -1080,45 +1214,79 @@ export type Database = {
 			};
 			quote_items: {
 				Row: {
+					catalogue_unit_price: number | null;
 					created_at: string;
 					description: string | null;
 					id: string;
 					line_subtotal: number;
 					name: string;
 					position: number;
+					product_code_snapshot: string | null;
+					product_id: string | null;
 					quantity: number;
 					quote_id: string;
+					source_product_reviewed_at: string | null;
+					source_product_reviewed_by: string | null;
+					source_product_reviewed_version: number | null;
+					source_product_version: number | null;
+					source_type: string;
 					taxable: boolean;
+					unit_label_snapshot: string | null;
 					unit_price: number;
 					updated_at: string;
 				};
 				Insert: {
+					catalogue_unit_price?: number | null;
 					created_at?: string;
 					description?: string | null;
 					id?: string;
 					line_subtotal: number;
 					name: string;
 					position: number;
+					product_code_snapshot?: string | null;
+					product_id?: string | null;
 					quantity: number;
 					quote_id: string;
+					source_product_reviewed_at?: string | null;
+					source_product_reviewed_by?: string | null;
+					source_product_reviewed_version?: number | null;
+					source_product_version?: number | null;
+					source_type?: string;
 					taxable?: boolean;
+					unit_label_snapshot?: string | null;
 					unit_price: number;
 					updated_at?: string;
 				};
 				Update: {
+					catalogue_unit_price?: number | null;
 					created_at?: string;
 					description?: string | null;
 					id?: string;
 					line_subtotal?: number;
 					name?: string;
 					position?: number;
+					product_code_snapshot?: string | null;
+					product_id?: string | null;
 					quantity?: number;
 					quote_id?: string;
+					source_product_reviewed_at?: string | null;
+					source_product_reviewed_by?: string | null;
+					source_product_reviewed_version?: number | null;
+					source_product_version?: number | null;
+					source_type?: string;
 					taxable?: boolean;
+					unit_label_snapshot?: string | null;
 					unit_price?: number;
 					updated_at?: string;
 				};
 				Relationships: [
+					{
+						foreignKeyName: 'quote_items_product_id_fkey';
+						columns: ['product_id'];
+						isOneToOne: false;
+						referencedRelation: 'products';
+						referencedColumns: ['id'];
+					},
 					{
 						foreignKeyName: 'quote_items_quote_id_fkey';
 						columns: ['quote_id'];
@@ -1131,6 +1299,13 @@ export type Database = {
 						columns: ['quote_id'];
 						isOneToOne: false;
 						referencedRelation: 'quotes';
+						referencedColumns: ['id'];
+					},
+					{
+						foreignKeyName: 'quote_items_source_product_reviewed_by_fkey';
+						columns: ['source_product_reviewed_by'];
+						isOneToOne: false;
+						referencedRelation: 'profiles';
 						referencedColumns: ['id'];
 					}
 				];
@@ -1151,6 +1326,7 @@ export type Database = {
 					document_generated_at: string | null;
 					document_generator_version: string | null;
 					document_hash: string | null;
+					document_mime_type: string | null;
 					document_path: string | null;
 					document_template_version: string | null;
 					expired_at: string | null;
@@ -1192,6 +1368,7 @@ export type Database = {
 					document_generated_at?: string | null;
 					document_generator_version?: string | null;
 					document_hash?: string | null;
+					document_mime_type?: string | null;
 					document_path?: string | null;
 					document_template_version?: string | null;
 					expired_at?: string | null;
@@ -1233,6 +1410,7 @@ export type Database = {
 					document_generated_at?: string | null;
 					document_generator_version?: string | null;
 					document_hash?: string | null;
+					document_mime_type?: string | null;
 					document_path?: string | null;
 					document_template_version?: string | null;
 					expired_at?: string | null;
@@ -1734,6 +1912,14 @@ export type Database = {
 						};
 						Returns: Json;
 				  };
+			activate_product: {
+				Args: { p_lock_version: number; p_product_id: string };
+				Returns: Json;
+			};
+			activate_product_category: {
+				Args: { p_category_id: string; p_lock_version: number };
+				Returns: Json;
+			};
 			add_activity_note: {
 				Args: {
 					p_client_id?: string;
@@ -1744,6 +1930,20 @@ export type Database = {
 					p_summary?: string;
 					p_task_id?: string;
 				};
+				Returns: Json;
+			};
+			add_product_quote_item: {
+				Args: {
+					p_product_id: string;
+					p_product_lock_version: number;
+					p_quantity?: number;
+					p_quote_id: string;
+					p_quote_lock_version: number;
+				};
+				Returns: Json;
+			};
+			archive_product: {
+				Args: { p_lock_version: number; p_product_id: string; p_reason: string };
 				Returns: Json;
 			};
 			assign_lead: {
@@ -1781,6 +1981,15 @@ export type Database = {
 			};
 			cancel_task: {
 				Args: { p_lock_version: number; p_task_id: string };
+				Returns: Json;
+			};
+			change_product_price: {
+				Args: {
+					p_lock_version: number;
+					p_product_id: string;
+					p_reason?: string;
+					p_unit_price: number;
+				};
 				Returns: Json;
 			};
 			complete_fulfilment: {
@@ -1848,6 +2057,25 @@ export type Database = {
 					p_tax_rate?: number;
 					p_unit_price: number;
 				};
+				Returns: Json;
+			};
+			create_product: {
+				Args: {
+					p_category_id?: string;
+					p_currency?: string;
+					p_customer_description?: string;
+					p_internal_notes?: string;
+					p_kind?: string;
+					p_name: string;
+					p_product_code: string;
+					p_taxable?: boolean;
+					p_unit_label?: string;
+					p_unit_price?: number;
+				};
+				Returns: Json;
+			};
+			create_product_category: {
+				Args: { p_code: string; p_label: string; p_sort_order?: number };
 				Returns: Json;
 			};
 			create_task:
@@ -1929,6 +2157,22 @@ export type Database = {
 			};
 			fail_quote_send: {
 				Args: { p_error: string; p_outbound_message_id: string };
+				Returns: Json;
+			};
+			inactivate_product: {
+				Args: {
+					p_lock_version: number;
+					p_product_id: string;
+					p_reason?: string;
+				};
+				Returns: Json;
+			};
+			inactivate_product_category: {
+				Args: {
+					p_category_id: string;
+					p_lock_version: number;
+					p_reason?: string;
+				};
 				Returns: Json;
 			};
 			ingest_bricks_lead: {
@@ -2055,6 +2299,15 @@ export type Database = {
 				};
 				Returns: Json;
 			};
+			refresh_product_quote_item: {
+				Args: {
+					p_product_lock_version: number;
+					p_quote_id: string;
+					p_quote_item_id: string;
+					p_quote_lock_version: number;
+				};
+				Returns: Json;
+			};
 			reopen_lead: {
 				Args: { p_lead_id: string; p_lock_version: number; p_reason: string };
 				Returns: Json;
@@ -2075,8 +2328,21 @@ export type Database = {
 				Args: { p_due_at: string; p_lock_version: number; p_task_id: string };
 				Returns: Json;
 			};
+			restore_product: {
+				Args: { p_lock_version: number; p_product_id: string; p_reason: string };
+				Returns: Json;
+			};
 			resume_lead: {
 				Args: { p_lead_id: string; p_lock_version?: number };
+				Returns: Json;
+			};
+			review_product_quote_item: {
+				Args: {
+					p_product_lock_version: number;
+					p_quote_id: string;
+					p_quote_item_id: string;
+					p_quote_lock_version: number;
+				};
 				Returns: Json;
 			};
 			revise_quote: {
@@ -2220,6 +2486,32 @@ export type Database = {
 					p_registration_number?: string;
 					p_tax_number?: string;
 					p_type: string;
+				};
+				Returns: Json;
+			};
+			update_product: {
+				Args: {
+					p_category_id?: string;
+					p_currency?: string;
+					p_customer_description?: string;
+					p_internal_notes?: string;
+					p_kind?: string;
+					p_lock_version: number;
+					p_name: string;
+					p_product_code: string;
+					p_product_id: string;
+					p_taxable?: boolean;
+					p_unit_label?: string;
+				};
+				Returns: Json;
+			};
+			update_product_category: {
+				Args: {
+					p_category_id: string;
+					p_code: string;
+					p_label: string;
+					p_lock_version: number;
+					p_sort_order?: number;
 				};
 				Returns: Json;
 			};

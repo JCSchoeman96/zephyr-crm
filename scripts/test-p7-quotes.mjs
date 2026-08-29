@@ -396,10 +396,10 @@ async function postStaleBrowserSave(lead, quote, staleLock) {
 		body
 	});
 	const html = await response.text();
-	if (response.status !== 422 || !html.includes('Stale quote lock_version')) {
-		const marker = html.indexOf('Stale');
+	if (response.status !== 409 || !html.includes('changed elsewhere')) {
+		const marker = html.indexOf('changed elsewhere');
 		throw new Error(
-			`Browser stale edit did not show a visible conflict (status ${response.status}, marker ${marker}, excerpt ${html.slice(Math.max(0, marker - 180), marker + 240)})`
+			`Browser stale edit did not show the safe conflict message (status ${response.status}, marker ${marker}, excerpt ${html.slice(Math.max(0, marker - 180), marker + 240)})`
 		);
 	}
 }
@@ -566,13 +566,18 @@ async function main() {
 		await signIn(sales),
 		'Terminal state transition'
 	);
+	// The v1.4 acceptance contract completes the Lead-to-Client/Fulfilment
+	// handoff, so terminal-state branches and later quote-edit checks use a
+	// fresh decision Lead rather than trying to quote against a WON Lead.
 	for (const [suffix, action, expected] of [
 		['declined', 'decline_quote', 'declined'],
 		['cancelled', 'cancel_quote', 'cancelled'],
 		['expired', 'expire_quote', 'expired']
 	]) {
+		const branchLead = await createLead(`post-acceptance-${suffix}`, sales);
+		await reachDecision(branchLead, sales);
 		const branchDraft = await saveDraft(
-			lead,
+			branchLead,
 			sales,
 			`${prefix} ${suffix}`,
 			[{ name: `${suffix} line`, quantity: '1', unit_price: '25.00', taxable: true }],
@@ -580,17 +585,26 @@ async function main() {
 		);
 		await readyQuote(branchDraft.quote_id, branchDraft.lock_version, sales);
 		const branchSent = await sendQuote(branchDraft.quote_id, sales);
-		const branchResult = await mustRpc(
-			action,
-			{ p_quote_id: branchSent.id, p_lock_version: branchSent.lock_version },
-			anonKey,
-			await signIn(sales)
-		);
+		const branchArgs =
+			action === 'decline_quote'
+				? {
+						p_quote_id: branchSent.id,
+						p_lock_version: branchSent.lock_version,
+						p_lost_reason_id: (
+							await serviceRest('/rest/v1/lost_reasons?code=eq.price&select=id&limit=1')
+						)[0].id,
+						p_lost_notes: 'P7 canonical decline fixture'
+					}
+				: { p_quote_id: branchSent.id, p_lock_version: branchSent.lock_version };
+		const branchResult = await mustRpc(action, branchArgs, anonKey, await signIn(sales));
 		assert(branchResult.status === expected, `Allowed ${expected} transition failed`);
 	}
 	console.log('P7-T04 state matrix passed');
 
-	const empty = await saveDraft(lead, sales, `${prefix} empty`, [], { validUntil: null });
+	const quoteLead = await createLead('post-acceptance-validation', sales);
+	await reachDecision(quoteLead, sales);
+
+	const empty = await saveDraft(quoteLead, sales, `${prefix} empty`, [], { validUntil: null });
 	await expectRpcFailure(
 		'mark_quote_ready',
 		{ p_quote_id: empty.quote_id, p_lock_version: empty.lock_version },
@@ -599,7 +613,7 @@ async function main() {
 		'Ready quote without items'
 	);
 	const past = await saveDraft(
-		lead,
+		quoteLead,
 		sales,
 		`${prefix} past`,
 		[{ name: 'Past', quantity: '1', unit_price: '10.00', taxable: true }],
@@ -615,7 +629,7 @@ async function main() {
 	console.log('P7-T05 ready validation passed');
 
 	const revisionSource = await saveDraft(
-		lead,
+		quoteLead,
 		sales,
 		`${prefix} revision source`,
 		[
@@ -659,7 +673,7 @@ async function main() {
 		{
 			p_quote_id: sentSource.id,
 			p_lock_version: sentSource.lock_version,
-			p_lead_id: lead.id,
+			p_lead_id: quoteLead.id,
 			p_client_id: null,
 			p_subject: 'No',
 			p_introduction: null,
@@ -734,14 +748,14 @@ async function main() {
 	console.log('P7-T07 revision cloning passed');
 
 	const conflict = await saveDraft(
-		lead,
+		quoteLead,
 		sales,
 		`${prefix} conflict`,
 		[{ name: 'Conflict', quantity: '1', unit_price: '10.00', taxable: true }],
 		{ taxRate: '0' }
 	);
 	const conflictFirst = await saveDraft(
-		lead,
+		quoteLead,
 		sales,
 		`${prefix} conflict updated`,
 		[{ name: 'Conflict', quantity: '1', unit_price: '11.00', taxable: true }],
@@ -752,7 +766,7 @@ async function main() {
 		{
 			p_quote_id: conflict.quote_id,
 			p_lock_version: conflict.lock_version,
-			p_lead_id: lead.id,
+			p_lead_id: quoteLead.id,
 			p_client_id: null,
 			p_subject: `${prefix} stale`,
 			p_introduction: null,
@@ -773,7 +787,7 @@ async function main() {
 	);
 	await startApp();
 	await loginApp(sales);
-	await postStaleBrowserSave(lead, await quoteById(conflict.quote_id), conflict.lock_version);
+	await postStaleBrowserSave(quoteLead, await quoteById(conflict.quote_id), conflict.lock_version);
 	await stopApp();
 	console.log('P7-T09 optimistic conflict passed');
 
@@ -783,7 +797,7 @@ async function main() {
 	assert(indexReady.length === 6, 'Index fixtures did not become ready');
 	await readyQuote(exact.quote_id, exact.lock_version, sales);
 	const indexQuote = await quoteById(exact.quote_id);
-	await testIndexes(lead.id, clientId, indexQuote.id);
+	await testIndexes(quoteLead.id, clientId, indexQuote.id);
 	console.log('P7-T10 quote indexes passed');
 	console.log('P7-T11 project quality gate delegated to bun run quality');
 }

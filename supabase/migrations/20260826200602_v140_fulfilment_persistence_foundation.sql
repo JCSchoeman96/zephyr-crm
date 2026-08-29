@@ -428,10 +428,6 @@ create trigger payment_milestones_lock_version
 before update on public.payment_milestones
 for each row execute function private.enforce_lock_version();
 
-commit;
-
-begin;
-
 create or replace function public.start_lead_qualification(
 	p_lead_id uuid,
 	p_lock_version bigint,

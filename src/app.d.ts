@@ -4,6 +4,14 @@ import type { SupabaseClient, User } from '@supabase/supabase-js';
 import type { Database } from '$lib/types/database';
 
 declare global {
+	namespace Cloudflare {
+		interface Env {
+			ASSETS: {
+				fetch(input: RequestInfo | URL, init?: RequestInit): Promise<Response>;
+			};
+		}
+	}
+
 	namespace App {
 		type Profile = Database['public']['Tables']['profiles']['Row'];
 		interface Locals {

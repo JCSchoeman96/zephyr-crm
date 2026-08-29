@@ -45,7 +45,28 @@ const requiredCommands = [
 	'bun run test:p11:hardening',
 	'bun run test:p12:hardening',
 	'bun run test:p13:template',
-	'bun run diff:check'
+	'bun run diff:check',
+	'bun run authority:v140:verify',
+	'bun run test:bricks:parity',
+	'bun run test:v140:review-hardening',
+	'bun run release:evidence:v140:verify',
+	'bun run test:release:v140:contract',
+	'bun run release:evidence:v140:run',
+	'bun run release:evidence:v140:verify:complete',
+	'bun run test:p20:reconciliation:complete'
+];
+const v140RunnerCommands = [
+	'bun run authority:v140:verify',
+	'bun run test:v140:review-hardening',
+	'bun run test:p16:persistence',
+	'bun run test:p17:sales-fulfilment',
+	'bun run test:unit -- --run src/lib/domain/sales/queues.spec.ts',
+	'bun run test:p18:sales-queues',
+	'bun run test:p19:fulfilment',
+	'bun run test:p19:browser',
+	'bun run test:p20:metrics',
+	'bun run test:p20:browser',
+	'bun run test:p20:reconciliation'
 ];
 
 function fail(message) {
@@ -58,6 +79,11 @@ export function validateCiWorkflow(workflow) {
 	}
 	for (const command of requiredCommands) {
 		if (!workflow.includes(`run: ${command}`)) fail(`missing required command ${command}`);
+	}
+	const releaseEvidenceRunner = readFileSync('scripts/run-release-evidence.mjs', 'utf8');
+	for (const command of v140RunnerCommands) {
+		if (!releaseEvidenceRunner.includes(`'${command}'`))
+			fail(`v1.4 evidence runner is missing ${command}`);
 	}
 	if (workflow.includes('run: bun run quality')) {
 		fail('workflow must enumerate gates instead of calling the aggregate quality loop');
@@ -83,11 +109,30 @@ export function validateCiWorkflow(workflow) {
 		fail(
 			'static, database, browser smoke, browser domain, and release jobs need explicit timeouts'
 		);
-	for (const job of ['browser-domain-e2e:', 'p14-release:', 'release-contract:']) {
+	for (const job of ['browser-domain-e2e:', 'p14-release:', 'v140-release:', 'release-contract:']) {
 		if (!workflow.includes(job)) fail(`required protected job is missing: ${job}`);
 	}
-	if (!/release-contract:[\s\S]*needs: \[[^\]]*browser-domain-e2e/.test(workflow)) {
+	const staticJob = workflow.split('  static:')[1]?.split('  database-domain-security:')[0] ?? '';
+	const databaseJob =
+		workflow.split('  database-domain-security:')[1]?.split('  browser-build:')[0] ?? '';
+	if (staticJob.includes('run: bun run test:v140:review-hardening')) {
+		fail('database-backed v1.4 hardening must not run in the static job');
+	}
+	const databaseReset = databaseJob.indexOf('run: bun run db:reset');
+	const reviewHardening = databaseJob.indexOf('run: bun run test:v140:review-hardening');
+	if (databaseReset < 0 || reviewHardening < databaseReset) {
+		fail('database-domain-security must run v1.4 hardening after the local database reset');
+	}
+	const v140Release = workflow.split('  v140-release:')[1]?.split('  release-contract:')[0] ?? '';
+	const releaseContract = workflow.split('  release-contract:')[1] ?? '';
+	if (!releaseContract.includes('browser-domain-e2e')) {
 		fail('release-contract must depend on browser-domain-e2e');
+	}
+	if (!v140Release.includes('p14-release')) {
+		fail('v140-release must depend on the frozen P14 release gate');
+	}
+	if (!releaseContract.includes('v140-release')) {
+		fail('release-contract must depend on v140-release');
 	}
 	const unpinnedActions = [...workflow.matchAll(/^\s+- uses:\s+([^\s]+)$/gm)]
 		.map((match) => match[1])

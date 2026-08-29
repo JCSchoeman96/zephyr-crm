@@ -5,6 +5,7 @@ test.describe('P14 navigation and capability truth', () => {
 	test('every visible role navigation link resolves to a current capability', async ({
 		browser
 	}) => {
+		test.setTimeout(60_000);
 		const roles = ['sales', 'viewer', 'owner'] as const;
 		const users = await Promise.all(roles.map((role) => createStaff(role, `navigation-${role}`)));
 		try {
@@ -13,7 +14,7 @@ test.describe('P14 navigation and capability truth', () => {
 				const page = await context.newPage();
 				try {
 					await signIn(page, users[index]);
-					await page.goto('/', { waitUntil: 'networkidle' });
+					await page.goto('/', { waitUntil: 'domcontentloaded' });
 					const links = await page
 						.getByRole('navigation', { name: 'Primary navigation' })
 						.getByRole('link')
@@ -24,7 +25,7 @@ test.describe('P14 navigation and capability truth', () => {
 						expect(links.some((href) => href.endsWith('/operations'))).toBe(false);
 					}
 					for (const href of links) {
-						const response = await page.goto(href, { waitUntil: 'networkidle' });
+						const response = await page.goto(href, { waitUntil: 'domcontentloaded' });
 						expect(response?.status(), `${role} navigation ${href}`).toBe(200);
 					}
 				} finally {

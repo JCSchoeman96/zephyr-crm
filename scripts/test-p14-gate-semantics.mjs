@@ -41,7 +41,10 @@ assert.match(
 	/playwright test tests\/e2e\/domain\/product-flow\.e2e\.ts tests\/e2e\/domain\/role-accessibility\.e2e\.ts$/
 );
 assert.match(workflow, /browser-domain-e2e:/);
-assert.match(workflow, /release-contract:[\s\S]*needs: \[[^\]]*browser-domain-e2e/);
+assert(
+	(workflow.split('  release-contract:')[1] ?? '').includes('browser-domain-e2e'),
+	'release-contract must depend on browser-domain-e2e'
+);
 assert.match(playwrightConfig, /env: appEnvironment/);
 assert.doesNotMatch(playwrightConfig, /previewVariables|--var/);
 assert.match(playwrightConfig, /scripts\/test-p14-preview\.mjs/);

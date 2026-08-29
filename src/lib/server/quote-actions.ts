@@ -9,7 +9,7 @@ import { bytesToBase64, ensureQuoteDocument } from '$lib/server/quote-documents'
 import { loadTrustedClientConfiguration } from '$lib/server/client-config';
 import { recordOperationalEvent } from '$lib/server/operational-events';
 import { createTrustedSupabaseClient } from '$lib/server/trusted-supabase';
-import { buildQuoteEmail } from '$lib/server/quote-email';
+import { buildQuoteEmail, validateQuoteEmailInput } from '$lib/server/quote-email';
 
 type ServerSupabaseClient = SupabaseClient<Database>;
 type JsonRecord = Record<string, unknown>;
@@ -21,7 +21,7 @@ function record(value: unknown): JsonRecord {
 }
 
 function stringValue(value: unknown): string {
-	return typeof value === 'string' ? value : String(value ?? '');
+	return typeof value === 'string' ? value.trim() : String(value ?? '').trim();
 }
 
 function shouldInjectQuoteFinalizationFailure(): boolean {
@@ -36,54 +36,54 @@ function shouldInjectQuoteFinalizationFailure(): boolean {
 export async function sendQuote(
 	supabase: ServerSupabaseClient,
 	quoteId: string,
-	lockVersion: number
+	lockVersion: number,
+	platform?: App.Platform
 ): Promise<JsonRecord> {
 	const currentQuote = await supabase
 		.from('quotes')
-		.select('lead_id,status,quote_number,subject,valid_until,currency,total,quote_snapshot')
+		.select(
+			'lead_id,status,quote_number,revision_number,subject,valid_until,currency,total,quote_snapshot'
+		)
 		.eq('id', quoteId)
 		.maybeSingle();
 	if (currentQuote.error) throw new Error(currentQuote.error.message);
 	if (!currentQuote.data) throw new Error('Quote not found.');
 
-	let document: Awaited<ReturnType<typeof ensureQuoteDocument>> | null = null;
-	if (currentQuote.data.status === 'ready') {
-		document = await ensureQuoteDocument(supabase, quoteId, lockVersion);
-	}
-
 	// Validate all local configuration and customer-facing content before claiming
-	// the logical outbound message. Once the trusted action claims it, every
-	// failure must represent a real provider or persistence uncertainty.
-	const leadResponse = await supabase
-		.from('leads')
-		.select('email,first_name,last_name')
-		.eq('id', currentQuote.data.lead_id)
-		.maybeSingle();
-	if (leadResponse.error) throw new Error(leadResponse.error.message);
-	if (!leadResponse.data) throw new Error('Lead not found.');
-
+	// the logical outbound message or creating a PDF. Once the trusted action
+	// claims it, every failure must represent a real provider or persistence
+	// uncertainty.
 	const trusted = loadTrustedClientConfiguration();
 	const clientId = trusted.secrets.sendpulseClientId || env.SENDPULSE_CLIENT_ID?.trim();
 	const clientSecret = trusted.secrets.sendpulseClientSecret || env.SENDPULSE_CLIENT_SECRET?.trim();
 	if (!clientId || !clientSecret) throw new Error('SendPulse integration is not configured.');
 
-	const recipient = {
-		email: stringValue(leadResponse.data.email),
-		name: `${stringValue(leadResponse.data.first_name)} ${stringValue(leadResponse.data.last_name)}`.trim()
-	};
 	const snapshot = record(currentQuote.data.quote_snapshot);
 	const identity = record(snapshot.company_identity);
-	buildQuoteEmail({
+	const recipientSnapshot = record(snapshot.recipient);
+	const recipient = {
+		email: stringValue(recipientSnapshot.email),
+		name: stringValue(recipientSnapshot.name)
+	};
+	const brandTokens = record(identity.brand_tokens);
+	const emailInput = {
 		companyName: stringValue(identity.name || identity.company_name),
 		recipientName: recipient.name,
 		recipientEmail: recipient.email,
 		quoteNumber: stringValue(currentQuote.data.quote_number),
+		revision: Number(currentQuote.data.revision_number),
 		subject: stringValue(currentQuote.data.subject),
 		currency: stringValue(currentQuote.data.currency),
 		total: stringValue(currentQuote.data.total),
 		validUntil: stringValue(currentQuote.data.valid_until),
-		hasFrozenPdf: Boolean(document)
-	});
+		hasFrozenPdf: false,
+		brand: {
+			primary: stringValue(brandTokens.primary),
+			primaryStrong: stringValue(brandTokens.primary_strong),
+			accent: stringValue(brandTokens.accent)
+		}
+	};
+	validateQuoteEmailInput(emailInput, { requireFrozenPdf: false });
 	const usesFileConfiguration = Boolean(env.CLIENT_CONFIG_JSON?.trim());
 	const baseUrl = usesFileConfiguration
 		? trusted.configuration.integrations.sendpulse.apiBaseUrl
@@ -97,6 +97,15 @@ export async function sendQuote(
 	if (!senderEmail || !senderName) {
 		throw new Error('A configured SendPulse sender email and name are required.');
 	}
+
+	let document: Awaited<ReturnType<typeof ensureQuoteDocument>> | null = null;
+	if (currentQuote.data.status === 'ready') {
+		document = await ensureQuoteDocument(supabase, quoteId, lockVersion, {
+			assets: platform?.env.ASSETS
+		});
+	}
+	buildQuoteEmail({ ...emailInput, hasFrozenPdf: Boolean(document) });
+
 	const adapter = new SendPulseAdapter({
 		clientId,
 		clientSecret,
@@ -131,15 +140,17 @@ export async function sendQuote(
 		});
 		throw new Error('The claimed Quote recipient is missing.');
 	}
+	if (claimedRecipient.email !== recipient.email) {
+		await supabase.rpc('fail_quote_send', {
+			p_outbound_message_id: stringValue(prepared.outbound_message_id),
+			p_error: 'The claimed recipient does not match the frozen Quote recipient.'
+		});
+		throw new Error('The claimed recipient does not match the frozen Quote recipient.');
+	}
 	const claimedEmail = buildQuoteEmail({
-		companyName: stringValue(identity.name || identity.company_name),
+		...emailInput,
 		recipientName: claimedRecipient.name,
 		recipientEmail: claimedRecipient.email,
-		quoteNumber: stringValue(currentQuote.data.quote_number),
-		subject: stringValue(currentQuote.data.subject),
-		currency: stringValue(currentQuote.data.currency),
-		total: stringValue(currentQuote.data.total),
-		validUntil: stringValue(currentQuote.data.valid_until),
 		hasFrozenPdf: Boolean(document)
 	});
 
@@ -149,6 +160,7 @@ export async function sendQuote(
 			to: [claimedRecipient],
 			subject: claimedEmail.subject,
 			html: claimedEmail.html,
+			text: claimedEmail.text,
 			attachments: document
 				? [
 						{

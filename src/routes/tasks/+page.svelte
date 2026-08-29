@@ -16,21 +16,41 @@
 		taskStatusLabel,
 		taskTypeLabel
 	} from '$lib/domain/presentation/labels';
+	import { publicClientConfiguration } from '$lib/config/public-client-config';
 	import RealtimeStatus from '$lib/realtime/RealtimeStatus.svelte';
+	import { utcIsoToLocalLabel } from '$lib/time/zoned-datetime';
 
 	let { data, form }: { data: PageData; form: ActionData } = $props();
 	const canMutate = $derived(data.profile.role !== 'viewer');
 	let contextType = $state('lead');
 
 	function dateTime(value: string | null) {
-		return value ? new Date(value).toLocaleString('en-ZA') : 'No due date';
+		return value
+			? utcIsoToLocalLabel(
+					value,
+					publicClientConfiguration.locale.timezone,
+					publicClientConfiguration.locale.language
+				)
+			: 'No due date';
 	}
+
+	const dateTimeHint = `Times use ${publicClientConfiguration.locale.timezone}`;
 
 	function tone(task: PageData['tasks'][number]) {
 		if (task.status === 'completed') return 'success';
 		if (task.status === 'cancelled') return 'neutral';
 		if (task.is_overdue) return 'danger';
 		return 'info';
+	}
+
+	function pageUrl(page: number) {
+		const params = [
+			['status', data.filters.status],
+			...(data.filters.overdue ? [['overdue', 'true']] : []),
+			...(data.filters.search ? [['search', data.filters.search]] : []),
+			...(page > 1 ? [['page', String(page)]] : [])
+		];
+		return `?${params.map(([key, value]) => `${encodeURIComponent(key)}=${encodeURIComponent(value)}`).join('&')}`;
 	}
 
 	function contextLabel(task: PageData['tasks'][number]) {
@@ -70,6 +90,7 @@
 
 	<Card class="filters-card">
 		<form method="GET" class="filters-form" aria-label="Filter follow-ups">
+			<Input id="task-search" name="search" label="Search actions" value={data.filters.search} />
 			<Select id="task-status" name="status" label="Action status" value={data.filters.status}>
 				<option value="open">Open</option><option value="completed">Completed</option><option
 					value="cancelled">Cancelled</option
@@ -133,7 +154,13 @@
 				>
 				<Input id="task-title" name="title" label="What needs to happen?" required />
 				<Input id="task-description" name="description" label="Notes (optional)" />
-				<Input id="task-due" name="due_at" label="Due date" type="datetime-local" />
+				<Input
+					id="task-due"
+					name="due_at"
+					label="Due date"
+					type="datetime-local"
+					hint={dateTimeHint}
+				/>
 				<Select id="task-assignee" name="assigned_to" label="Person responsible"
 					><option value="">Unassigned</option>{#each data.staff as member (member.id)}<option
 							value={member.id}>{member.full_name || member.email}</option
@@ -198,6 +225,7 @@
 													name="due_at"
 													label="New due date"
 													type="datetime-local"
+													hint={dateTimeHint}
 												/><Button type="submit" size="sm" variant="secondary">Reschedule</Button>
 											</form>
 											<form method="POST" action="?/cancel">
@@ -216,6 +244,21 @@
 			</div>
 		</Card>
 	{/if}
+	{#if data.pagination.page > 1 || data.pagination.hasMore}
+		<nav class="pagination" aria-label="Follow-up pages">
+			{#if data.pagination.page > 1}
+				<a href={resolve(`/tasks${pageUrl(data.pagination.page - 1)}` as `/tasks?${string}`)}
+					>← Previous</a
+				>
+			{/if}
+			<span>Page {data.pagination.page}</span>
+			{#if data.pagination.hasMore}
+				<a href={resolve(`/tasks${pageUrl(data.pagination.page + 1)}` as `/tasks?${string}`)}
+					>Next →</a
+				>
+			{/if}
+		</nav>
+	{/if}
 </AppShell>
 
 <style>
@@ -229,6 +272,19 @@
 		align-items: end;
 		flex-wrap: wrap;
 		gap: var(--space-md);
+	}
+	.pagination {
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		gap: var(--space-md);
+		margin-top: var(--space-lg);
+		color: var(--color-text-muted);
+		font-size: var(--font-size-sm);
+	}
+	.pagination a {
+		color: var(--color-brand-primary);
+		font-weight: var(--font-weight-semibold);
 	}
 	.checkbox-label {
 		display: flex;

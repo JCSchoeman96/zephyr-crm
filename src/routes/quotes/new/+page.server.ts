@@ -1,6 +1,7 @@
 import { fail, redirect } from '@sveltejs/kit';
 import type { Actions, PageServerLoad } from './$types';
 import { quoteFormValues } from '$lib/server/quote-form';
+import { actionFailureDetails, logActionFailure } from '$lib/server/action-errors';
 import { requireActiveStaff } from '$lib/server/require-auth';
 
 const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -9,6 +10,12 @@ function record(value: unknown) {
 	return value && typeof value === 'object' && !Array.isArray(value)
 		? (value as Record<string, unknown>)
 		: {};
+}
+
+function actionFailure(cause: unknown, fallback: string) {
+	const details = actionFailureDetails(cause, fallback);
+	logActionFailure(cause, details.code);
+	return fail(details.status, { message: details.message, code: details.code });
 }
 
 export const load: PageServerLoad = async (event) => {
@@ -59,16 +66,14 @@ export const actions: Actions = {
 				'save_quote_draft',
 				quoteFormValues(form, leadId) as never
 			);
-			if (response.error) return fail(422, { message: response.error.message });
+			if (response.error) return actionFailure(response.error, 'Could not save quote');
 			const quoteId = String(record(response.data).quote_id ?? '');
 			if (!quoteId) return fail(500, { message: 'Quote was saved without an identifier.' });
 			throw redirect(303, `/quotes/${quoteId}`);
 		} catch (actionError) {
 			if (actionError && typeof actionError === 'object' && 'status' in actionError)
 				throw actionError;
-			return fail(422, {
-				message: actionError instanceof Error ? actionError.message : 'Could not save quote'
-			});
+			return actionFailure(actionError, 'Could not save quote');
 		}
 	}
 };
