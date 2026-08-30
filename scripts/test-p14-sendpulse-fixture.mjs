@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import { createServer } from 'node:http';
 
 const server = createServer(async (request, response) => {
@@ -25,7 +26,7 @@ const server = createServer(async (request, response) => {
 			response.end(JSON.stringify({ result: false }));
 			return;
 		}
-		response.end(JSON.stringify({ result: true, id: `p14-browser-provider-${Date.now()}` }));
+		response.end(JSON.stringify({ result: true, id: `p14-browser-provider-${randomUUID()}` }));
 		return;
 	}
 	response.statusCode = 404;

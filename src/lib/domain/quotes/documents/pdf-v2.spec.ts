@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { PDFDocument } from 'pdf-lib';
+import { PDFDocument, StandardFonts } from 'pdf-lib';
 import type { QuotePresentationModel } from './presentation-model';
-import { generateProfessionalQuoteDocument } from './pdf-v2';
+import { generateProfessionalQuoteDocument, wrapPdfProductCode } from './pdf-v2';
 
 const onePixelPng =
 	'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=';
@@ -85,12 +85,27 @@ describe('professional Quote PDF Template v2', () => {
 		expect(first.content).toContain('Zephyr South Africa');
 		expect(first.content).toContain('José Müller');
 		expect(first.content).toContain('Café & Co');
+		expect(first.content).toContain('WEB-MAINT-2026-VERY-LONG-CODE');
 		expect(first.content).toContain('Bank details');
 		expect(first.content).toContain('Page 1 of 1');
 		expect(first.content).not.toContain('internal_notes');
 		expect(first.content).not.toContain('private/');
 		expect(first.fitness.overflowCount).toBe(0);
 		expect(first.fitness.repeatedTableHeaders).toBe(0);
+	});
+
+	it('wraps Product codes at hyphen boundaries before splitting a segment', async () => {
+		const pdf = await PDFDocument.create();
+		const font = await pdf.embedFont(StandardFonts.Helvetica);
+
+		expect(wrapPdfProductCode('OPS-ROOF-INSPECT-01', 52, font, 8.2)).toEqual([
+			'OPS-ROOF-',
+			'INSPECT-01'
+		]);
+		expect(wrapPdfProductCode('OPS-ROOF-INSPECT-01', 92, font, 8)).toEqual(['OPS-ROOF-INSPECT-01']);
+		expect(wrapPdfProductCode('UNBROKENPRODUCTCODE', 30, font, 8.2).join('')).toBe(
+			'UNBROKENPRODUCTCODE'
+		);
 	});
 
 	it('wraps and paginates a 100-item customer document without clipping', async () => {

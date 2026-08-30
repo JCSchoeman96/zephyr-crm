@@ -1,5 +1,6 @@
 import { fail, redirect } from '@sveltejs/kit';
 import type { Actions, PageServerLoad } from './$types';
+import { normalizeQuoteDefaults } from '$lib/domain/quotes/defaults';
 import { quoteFormValues } from '$lib/server/quote-form';
 import { actionFailureDetails, logActionFailure } from '$lib/server/action-errors';
 import { requireActiveStaff } from '$lib/server/require-auth';
@@ -20,7 +21,7 @@ function actionFailure(cause: unknown, fallback: string) {
 
 export const load: PageServerLoad = async (event) => {
 	const { supabase, profile } = await requireActiveStaff(event);
-	const [leadResponse, clientResponse] = await Promise.all([
+	const [leadResponse, clientResponse, quoteDefaultsResponse] = await Promise.all([
 		supabase
 			.from('leads')
 			.select('id,lead_number,first_name,last_name,company,pipeline_stage')
@@ -32,9 +33,15 @@ export const load: PageServerLoad = async (event) => {
 			.select('id,display_name,company_name')
 			.eq('status', 'active')
 			.order('display_name')
-			.limit(100)
+			.limit(100),
+		supabase
+			.from('app_settings')
+			.select('setting_value')
+			.eq('setting_key', 'quote_defaults')
+			.maybeSingle()
 	]);
-	if (leadResponse.error || clientResponse.error) throw redirect(303, '/quotes');
+	if (leadResponse.error || clientResponse.error || quoteDefaultsResponse.error)
+		throw redirect(303, '/quotes');
 	const leads = leadResponse.data ?? [];
 	const requestedLeadId = event.url.searchParams.get('lead_id')?.trim() ?? '';
 	const selectedLeadId =
@@ -50,6 +57,7 @@ export const load: PageServerLoad = async (event) => {
 			id: client.id,
 			label: client.display_name || client.company_name || 'Unnamed client'
 		})),
+		quoteDefaults: normalizeQuoteDefaults(quoteDefaultsResponse.data?.setting_value),
 		selectedLeadId,
 		profile
 	};

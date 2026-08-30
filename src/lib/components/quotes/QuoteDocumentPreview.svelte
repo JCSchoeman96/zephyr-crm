@@ -1,7 +1,13 @@
 <script lang="ts">
 	import type { QuotePresentationModel } from '$lib/domain/quotes/documents/presentation-model';
+	import { companyMonogram } from '$lib/domain/quotes/documents/template-v2';
 
 	let { model }: { model: QuotePresentationModel | null } = $props();
+	let logoFailedFor = $state<string | null>(null);
+
+	function handleLogoError() {
+		logoFailedFor = model?.brand.logoAsset ?? null;
+	}
 
 	function money(value: string, currency: string) {
 		const numeric = Number(value);
@@ -16,12 +22,19 @@
 	<article class="document-preview" data-testid="quote-document-preview">
 		<header class="document-header">
 			<div class="brand-lockup">
-				{#if model.brand.logoAsset}<img
-						src={model.brand.logoAsset}
-						alt=""
-						width="32"
-						height="32"
-					/>{/if}
+				<div class="brand-mark" aria-hidden="true">
+					{#if model.brand.logoAsset && logoFailedFor !== model.brand.logoAsset}
+						<img
+							src={model.brand.logoAsset}
+							alt=""
+							width="32"
+							height="32"
+							onerror={handleLogoError}
+						/>
+					{:else}<span data-testid="quote-brand-fallback"
+							>{companyMonogram(model.brand.companyName)}</span
+						>{/if}
+				</div>
 				<div>
 					<strong>{model.brand.companyName}</strong>
 					<span>{model.quoteIdentity.number} · Revision {model.quoteIdentity.revision}</span>
@@ -152,7 +165,20 @@
 	.brand-lockup {
 		align-items: center;
 	}
-	.brand-lockup img {
+	.brand-mark {
+		display: grid;
+		place-items: center;
+		flex: 0 0 32px;
+		width: 32px;
+		height: 32px;
+		border-radius: var(--radius-sm);
+		background: var(--color-brand-primary);
+		color: var(--color-text-inverse);
+		font-size: var(--font-size-xs);
+		font-weight: var(--font-weight-semibold);
+	}
+	.brand-mark img {
+		display: block;
 		flex: 0 0 auto;
 		border-radius: var(--radius-sm);
 	}
@@ -217,7 +243,7 @@
 	.preview-empty p {
 		margin: var(--space-md) 0;
 		white-space: pre-wrap;
-		overflow-wrap: anywhere;
+		overflow-wrap: break-word;
 	}
 	.items-wrap {
 		width: 100%;
@@ -248,6 +274,12 @@
 	.document-items th:not(:first-child),
 	.document-items td:not(:first-child) {
 		text-align: right;
+	}
+	.document-items td[data-label='Qty'],
+	.document-items td[data-label='Unit price'],
+	.document-items td[data-label='Amount'] {
+		white-space: nowrap;
+		overflow-wrap: normal;
 	}
 	.document-items td strong,
 	.document-items td span,
@@ -345,6 +377,14 @@
 			padding: var(--space-xs) 0;
 			border: 0;
 			text-align: left !important;
+			white-space: normal;
+			overflow-wrap: anywhere;
+		}
+		.document-items td[data-label='Qty'],
+		.document-items td[data-label='Unit price'],
+		.document-items td[data-label='Amount'] {
+			white-space: normal;
+			overflow-wrap: anywhere;
 		}
 		.document-items td::before {
 			content: attr(data-label);

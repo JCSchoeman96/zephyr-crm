@@ -7,6 +7,11 @@
 	import QuoteEditor from '$lib/components/quotes/QuoteEditor.svelte';
 
 	let { data, form }: { data: PageData; form: ActionData } = $props();
+
+	function defaultValidUntil(validityDays: number) {
+		const timestamp = Date.now() + validityDays * 24 * 60 * 60 * 1000;
+		return new Date(timestamp).toISOString().slice(0, 10);
+	}
 </script>
 
 <svelte:head><title>New Quote | Zephyr CRM</title></svelte:head>
@@ -22,5 +27,9 @@
 		leadId={data.selectedLeadId}
 		leadOptions={data.leads}
 		clientOptions={data.clients}
+		terms={data.quoteDefaults.terms}
+		taxLabel={data.quoteDefaults.tax_label}
+		taxRate={String(data.quoteDefaults.tax_rate)}
+		validUntil={defaultValidUntil(data.quoteDefaults.validity_days)}
 	/>
 </AppShell>

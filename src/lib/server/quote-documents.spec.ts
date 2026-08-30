@@ -5,6 +5,19 @@ const onePixelPng =
 	'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=';
 
 describe('quote document logo assets', () => {
+	it('does not fetch an empty logo asset', async () => {
+		let requests = 0;
+		const assets = {
+			fetch: async () => {
+				requests += 1;
+				return new Response();
+			}
+		};
+
+		expect(await resolveLogoAsset('', assets)).toBeNull();
+		expect(requests).toBe(0);
+	});
+
 	it('resolves same-deployment PNG assets into deterministic inline data', async () => {
 		const requests: string[] = [];
 		const assets = {

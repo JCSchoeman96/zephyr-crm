@@ -114,14 +114,14 @@ const TABLE_HEADER_HEIGHT = 26;
 const PARTY_COLUMN_GAP = 18;
 const PARTY_COLUMN_WIDTH = (DOCUMENT_CONTENT.right - DOCUMENT_CONTENT.left - PARTY_COLUMN_GAP) / 2;
 const TABLE_COLUMNS = {
-	code: { x: DOCUMENT_CONTENT.left, width: 58 },
-	description: { x: DOCUMENT_CONTENT.left + 58, width: 230 },
-	quantity: { x: DOCUMENT_CONTENT.left + 288, width: 46 },
-	unit: { x: DOCUMENT_CONTENT.left + 334, width: 48 },
-	unitPrice: { x: DOCUMENT_CONTENT.left + 382, width: 66 },
+	code: { x: DOCUMENT_CONTENT.left, width: 98 },
+	description: { x: DOCUMENT_CONTENT.left + 98, width: 180 },
+	quantity: { x: DOCUMENT_CONTENT.left + 278, width: 44 },
+	unit: { x: DOCUMENT_CONTENT.left + 322, width: 48 },
+	unitPrice: { x: DOCUMENT_CONTENT.left + 370, width: 70 },
 	amount: {
-		x: DOCUMENT_CONTENT.left + 448,
-		width: DOCUMENT_CONTENT.right - (DOCUMENT_CONTENT.left + 448)
+		x: DOCUMENT_CONTENT.left + 440,
+		width: DOCUMENT_CONTENT.right - (DOCUMENT_CONTENT.left + 440)
 	}
 } as const;
 const ITEM_LINE_HEIGHT = 10.5;
@@ -221,6 +221,43 @@ export function wrapPdfText(value: string, width: number, font: PDFFont, size: n
 		if (line) lines.push(line);
 	}
 	return lines;
+}
+
+export function wrapPdfProductCode(
+	value: string,
+	width: number,
+	font: PDFFont,
+	size: number
+): string[] {
+	const lines: string[] = [];
+	for (const paragraph of normalizeNewlines(value).split('\n')) {
+		const segments = paragraph.match(/[^-]*-|[^-]+$/g) ?? [''];
+		let line = '';
+		for (const segment of segments) {
+			if (font.widthOfTextAtSize(segment, size) > width) {
+				if (line) lines.push(line);
+				const segmentLines = wrapWord(segment, width, font, size);
+				if (segmentLines.length > 1) {
+					lines.push(...segmentLines.slice(0, -1));
+					line = segmentLines.at(-1) ?? '';
+				} else {
+					line = segmentLines[0] ?? '';
+				}
+				continue;
+			}
+
+			const candidate = line + segment;
+			if (line && font.widthOfTextAtSize(candidate, size) > width) {
+				lines.push(line);
+				line = segment;
+			} else {
+				line = candidate;
+			}
+		}
+		if (line) lines.push(line);
+		if (!paragraph) lines.push('');
+	}
+	return lines.length ? lines : [''];
 }
 
 function unsupportedCharacter(value: string, font: PDFFont): string | null {
@@ -467,7 +504,7 @@ function itemSegments(
 	bold: PDFFont,
 	pages: LayoutPage[]
 ): void {
-	const codeLines = wrapPdfText(item.code || '—', TABLE_COLUMNS.code.width - 6, regular, 8.2);
+	const codeLines = wrapPdfProductCode(item.code || '—', TABLE_COLUMNS.code.width - 6, regular, 8);
 	const descriptionLines = [
 		...styleLine(
 			item.name,
@@ -774,8 +811,8 @@ function drawItemRow(
 	for (const line of block.codeLines) {
 		page.drawText(line, {
 			x: TABLE_COLUMNS.code.x,
-			y: y - 8.2,
-			size: 8.2,
+			y: y - 8,
+			size: 8,
 			font: fonts.regular,
 			color: palette.muted
 		});

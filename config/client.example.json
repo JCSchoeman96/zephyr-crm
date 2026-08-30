@@ -2,7 +2,7 @@
 	"version": 1,
 	"brand": {
 		"companyName": "Example Client",
-		"logoPath": "/favicon.svg",
+		"logoPath": "",
 		"colors": {
 			"primary": "#315cce",
 			"primaryStrong": "#2649a8",
