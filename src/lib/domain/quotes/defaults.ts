@@ -86,8 +86,7 @@ function formText(form: FormData, field: string, maxLength: number, issues: stri
 
 function formPrefix(form: FormData, issues: string[]): string {
 	const prefix = formText(form, 'prefix', 12, issues).toUpperCase();
-	if (!PREFIX_PATTERN.test(prefix))
-		issues.push('prefix must be 1-12 letters, numbers, or hyphens');
+	if (!PREFIX_PATTERN.test(prefix)) issues.push('prefix must be 1-12 letters, numbers, or hyphens');
 	return prefix;
 }
 
