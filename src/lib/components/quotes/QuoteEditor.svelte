@@ -260,7 +260,7 @@
 <style>
 	.quote-editor-layout {
 		display: grid;
-		grid-template-columns: minmax(0, 1.3fr) minmax(19rem, 0.7fr);
+		grid-template-columns: minmax(0, 1fr) minmax(26rem, 1fr);
 		gap: var(--space-lg);
 		align-items: start;
 	}
@@ -300,7 +300,7 @@
 	:global(.quote-preview-card .ui-card__body) {
 		padding: 0;
 	}
-	@media (max-width: 900px) {
+	@media (max-width: 1100px) {
 		.quote-editor-layout {
 			grid-template-columns: 1fr;
 		}

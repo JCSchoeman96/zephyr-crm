@@ -1,9 +1,13 @@
 <script lang="ts">
 	import AppShell from '$lib/components/shell/AppShell.svelte';
 	import Badge from '$lib/components/ui/Badge.svelte';
+	import Button from '$lib/components/ui/Button.svelte';
 	import Card from '$lib/components/ui/Card.svelte';
+	import ErrorState from '$lib/components/ui/ErrorState.svelte';
+	import Input from '$lib/components/ui/Input.svelte';
 	import PageHeader from '$lib/components/ui/PageHeader.svelte';
-	import type { PageData } from './$types';
+	import Textarea from '$lib/components/ui/Textarea.svelte';
+	import type { ActionData, PageData } from './$types';
 
 	type Diagnostics = {
 		generated_at: string;
@@ -39,7 +43,7 @@
 		}>;
 	};
 
-	let { data }: { data: PageData } = $props();
+	let { data, form }: { data: PageData; form: ActionData } = $props();
 	const diagnostics = $derived(data.diagnostics as unknown as Diagnostics);
 
 	function timestamp(value: string | null) {
@@ -57,6 +61,77 @@
 		title="Operations"
 		description="Redacted integration, automation, and failure evidence. No raw payloads or secrets are shown."
 	/>
+	{#if form?.message}<ErrorState
+			title="Quote defaults could not be saved"
+			message={form.message}
+		/>{/if}
+	{#if data.saved}<p class="save-note" data-tone="success">Quote defaults saved.</p>{/if}
+
+	<Card title="Quote defaults" class="settings-card">
+		<p class="settings-intro">
+			These customer-facing defaults apply to new Quotes. They are captured into the immutable Quote
+			snapshot when a Quote is marked Ready. Saving requires your current MFA verification.
+		</p>
+		<form method="POST" action="?/saveQuoteDefaults" class="settings-form">
+			<div class="settings-grid">
+				<Input
+					id="quote-prefix"
+					name="prefix"
+					label="Quote prefix"
+					value={data.quoteDefaults.prefix}
+					maxlength={12}
+					required
+				/>
+				<Input
+					id="quote-tax-label"
+					name="tax_label"
+					label="Tax label"
+					value={data.quoteDefaults.tax_label}
+					maxlength={40}
+				/>
+				<Input
+					id="quote-tax-rate"
+					name="tax_rate"
+					label="Tax rate (%)"
+					type="number"
+					min="0"
+					max="100"
+					step="0.000001"
+					value={String(data.quoteDefaults.tax_rate)}
+					required
+				/>
+				<Input
+					id="quote-validity-days"
+					name="validity_days"
+					label="Validity (days)"
+					type="number"
+					min="1"
+					max="365"
+					step="1"
+					value={String(data.quoteDefaults.validity_days)}
+					required
+				/>
+			</div>
+			<Textarea
+				id="quote-default-terms"
+				name="terms"
+				label="Terms"
+				rows={4}
+				maxlength={10000}
+				value={data.quoteDefaults.terms}
+			/>
+			<Textarea
+				id="quote-default-bank-details"
+				name="bank_details"
+				label="Bank details"
+				rows={4}
+				maxlength={5000}
+				hint="Optional customer-facing payment instructions. Do not enter secrets or credentials."
+				value={data.quoteDefaults.bank_details}
+			/>
+			<Button type="submit">Save Quote defaults</Button>
+		</form>
+	</Card>
 
 	<div class="operations-grid">
 		<Card title="Bricks intake">
@@ -165,6 +240,31 @@
 		gap: var(--space-xl);
 		margin-bottom: var(--space-xl);
 	}
+	:global(.settings-card) {
+		margin-bottom: var(--space-xl);
+	}
+	.settings-intro {
+		max-width: 70ch;
+		margin: 0 0 var(--space-lg);
+		color: var(--color-text-muted);
+		font-size: var(--font-size-sm);
+		line-height: var(--line-height-relaxed);
+	}
+	.settings-form {
+		display: grid;
+		gap: var(--space-lg);
+	}
+	.settings-grid {
+		display: grid;
+		grid-template-columns: repeat(4, minmax(0, 1fr));
+		gap: var(--space-md);
+	}
+	.save-note {
+		margin: var(--space-md) 0;
+		color: var(--color-success);
+		font-size: var(--font-size-sm);
+		font-weight: var(--font-weight-semibold);
+	}
 	dl {
 		display: grid;
 		gap: var(--space-md);
@@ -220,6 +320,14 @@
 	}
 	@media (max-width: 900px) {
 		.operations-grid {
+			grid-template-columns: 1fr;
+		}
+		.settings-grid {
+			grid-template-columns: repeat(2, minmax(0, 1fr));
+		}
+	}
+	@media (max-width: 620px) {
+		.settings-grid {
 			grid-template-columns: 1fr;
 		}
 	}

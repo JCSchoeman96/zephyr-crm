@@ -18,6 +18,19 @@ describe('client configuration contract', () => {
 		expect(configuration.quotes.prefix).toBe('ACME-');
 	});
 
+	it('accepts an intentionally empty logo path for the safe monogram fallback', () => {
+		const configuration = parseClientConfiguration({
+			...defaultClientConfiguration,
+			brand: { ...defaultClientConfiguration.brand, logoPath: '' }
+		});
+
+		expect(configuration.brand.logoPath).toBe('');
+	});
+
+	it('uses no broken placeholder as the default client logo', () => {
+		expect(defaultClientConfiguration.brand.logoPath).toBe('');
+	});
+
 	it('fails clearly for missing sections and inline secrets', () => {
 		expect(() => parseClientConfiguration({ version: 1 })).toThrow(/brand/);
 		expect(() =>

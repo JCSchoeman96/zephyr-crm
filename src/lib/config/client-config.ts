@@ -82,7 +82,7 @@ export const defaultClientConfiguration: ClientConfiguration = {
 	version: CLIENT_CONFIGURATION_VERSION,
 	brand: {
 		companyName: 'Zephyr CRM',
-		logoPath: '/favicon.svg',
+		logoPath: '',
 		colors: {
 			primary: '#315cce',
 			primaryStrong: '#2649a8',
@@ -391,7 +391,8 @@ function parseConfiguration(
 	);
 	const logoPath = text(required(root, 'brand.logoPath', issues), 'brand.logoPath', issues, {
 		max: 500,
-		pattern: /^(?:\/(?!\/)|https:\/\/)/
+		pattern: /^(?:\/(?!\/)|https:\/\/)/,
+		allowEmpty: true
 	});
 	objectAt(brand, 'colors', issues);
 	const primary = text(

@@ -256,50 +256,66 @@
 	{#if canMutate && data.lead.pipeline_stage === 'PROPOSAL' && data.quotes.length === 0}
 		<Card class="quote-create-card">
 			<SectionHeader title="Create a simple quote" description="Totals are calculated for you." />
-			<form method="POST" action="?/createQuote" class="quote-form">
-				<Input
-					id="subject"
-					name="subject"
-					label="Subject"
-					value="Quote for your enquiry"
-					required
+			<div class="quote-builder-option">
+				<SectionHeader
+					title="Recommended: Quote Builder"
+					description="Search active catalogue Products and combine multiple or custom lines."
 				/>
-				<Input id="item_name" name="item_name" label="Line item" value="Services" required />
-				<div class="form-row">
+				<a
+					class="ui-button ui-button--primary ui-button--md"
+					href={resolve(`/quotes/new?lead_id=${data.lead.id}`)}>Open Quote Builder</a
+				>
+			</div>
+			<div class="quick-custom-option">
+				<SectionHeader
+					title="Quick custom quote"
+					description="Use this short form for one custom line without opening the catalogue."
+				/>
+				<form method="POST" action="?/createQuote" class="quote-form">
 					<Input
-						id="quantity"
-						name="quantity"
-						label="Quantity"
-						type="number"
-						min="0.01"
-						step="0.01"
-						value="1"
+						id="subject"
+						name="subject"
+						label="Subject"
+						value="Quote for your enquiry"
 						required
 					/>
-					<Input
-						id="unit_price"
-						name="unit_price"
-						label="Unit price (ZAR)"
-						type="number"
-						min="0"
-						step="0.01"
-						value="0"
-						required
-					/>
-					<Input
-						id="tax_rate"
-						name="tax_rate"
-						label="Tax rate (%)"
-						type="number"
-						min="0"
-						max="100"
-						step="0.01"
-						value="0"
-						required
-					/>
-				</div>
-				<Button type="submit">Create quote</Button>
-			</form>
+					<Input id="item_name" name="item_name" label="Line item" value="Services" required />
+					<div class="form-row">
+						<Input
+							id="quantity"
+							name="quantity"
+							label="Quantity"
+							type="number"
+							min="0.01"
+							step="0.01"
+							value="1"
+							required
+						/>
+						<Input
+							id="unit_price"
+							name="unit_price"
+							label="Unit price (ZAR)"
+							type="number"
+							min="0"
+							step="0.01"
+							value="0"
+							required
+						/>
+						<Input
+							id="tax_rate"
+							name="tax_rate"
+							label="Tax rate (%)"
+							type="number"
+							min="0"
+							max="100"
+							step="0.01"
+							value="0"
+							required
+						/>
+					</div>
+					<Button type="submit">Create quote</Button>
+				</form>
+			</div>
 		</Card>
 	{/if}
 
@@ -640,6 +656,16 @@
 	.quote-form {
 		display: grid;
 		gap: var(--space-md);
+	}
+	.quote-builder-option,
+	.quick-custom-option {
+		display: grid;
+		gap: var(--space-md);
+	}
+	.quick-custom-option {
+		margin-top: var(--space-xl);
+		padding-top: var(--space-xl);
+		border-top: 1px solid var(--color-border-subtle);
 	}
 	.action-note,
 	.success-note,

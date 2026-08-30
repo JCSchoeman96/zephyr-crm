@@ -17,6 +17,7 @@
 		"lint": "eslint .",
 		"test:unit": "vitest",
 		"test:e2e": "playwright test",
+		"test:v151:operational-acceptance": "playwright test tests/e2e/domain/v151-operational-polish.e2e.ts",
 		"test:e2e:smoke": "playwright test tests/e2e/auth.e2e.ts tests/e2e/design-system.e2e.ts tests/e2e/scaffold.e2e.ts",
 		"test:e2e:domain": "playwright test tests/e2e/domain",
 		"test:e2e:baseline": "playwright test tests/e2e/auth.e2e.ts tests/e2e/design-system.e2e.ts tests/e2e/scaffold.e2e.ts",
