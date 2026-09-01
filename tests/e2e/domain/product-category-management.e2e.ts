@@ -31,26 +31,44 @@ function localDatabaseUrl(): string {
 	return parseLocalDatabaseUrl(line.slice('DB_URL='.length));
 }
 
-function cleanupCategoryFixture(categoryId: string): void {
-	if (!/^[0-9a-f-]{36}$/i.test(categoryId)) throw new Error('Invalid category cleanup ID.');
+const testCategoryCodePattern = /^p22-\d+-[a-z]+(?:-[a-z]+)*$/;
+
+function validatedCategoryCode(code: string): string {
+	if (!testCategoryCodePattern.test(code)) throw new Error('Invalid category cleanup code.');
+	return code;
+}
+
+function cleanupCategoryFixture(categoryId: string, categoryCodes: readonly string[]): void {
+	const codes = [...new Set(categoryCodes)].map(validatedCategoryCode);
+	if (codes.length === 0) throw new Error('At least one category cleanup code is required.');
+	const safeCategoryId = /^[0-9a-f-]{36}$/i.test(categoryId) ? categoryId : '';
+	const codeVariables = codes.map((code, index) => ({
+		name: `category_code_${index}`,
+		value: code
+	}));
+	const categoryMatch = [
+		safeCategoryId ? "id = :'category_id'::uuid" : '',
+		`code in (${codeVariables.map(({ name }) => `:'${name}'`).join(', ')})`
+	]
+		.filter(Boolean)
+		.join(' or ');
+	const variableArguments = [
+		...(safeCategoryId ? ['-v', `category_id=${safeCategoryId}`] : []),
+		...codeVariables.flatMap(({ name, value }) => ['-v', `${name}=${value}`])
+	];
+	const cleanupSql =
+		[
+			'begin',
+			'alter table public.activities disable trigger activities_append_only',
+			`delete from public.activities where product_category_id in (select id from public.product_categories where ${categoryMatch})`,
+			`delete from public.product_categories where ${categoryMatch}`,
+			'alter table public.activities enable trigger activities_append_only',
+			'commit'
+		].join(';') + ';\n';
 	execFileSync(
 		'psql',
-		[
-			localDatabaseUrl(),
-			'-X',
-			'-v',
-			'ON_ERROR_STOP=1',
-			'-c',
-			[
-				'begin',
-				'alter table public.activities disable trigger activities_append_only',
-				`delete from public.activities where product_category_id = '${categoryId}'::uuid`,
-				`delete from public.product_categories where id = '${categoryId}'::uuid`,
-				'alter table public.activities enable trigger activities_append_only',
-				'commit'
-			].join(';') + ';'
-		],
-		{ encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] }
+		[localDatabaseUrl(), '-X', '-v', 'ON_ERROR_STOP=1', ...variableArguments, '-f', '-'],
+		{ encoding: 'utf8', input: cleanupSql, stdio: ['pipe', 'pipe', 'pipe'] }
 	);
 }
 
@@ -165,7 +183,7 @@ test('Owner can manage flat Product categories while Sales cannot access the man
 		expect(managementResponse?.status()).toBe(403);
 	} finally {
 		try {
-			if (categoryId) cleanupCategoryFixture(categoryId);
+			cleanupCategoryFixture(categoryId, [categoryCode, editedCategoryCode]);
 		} finally {
 			try {
 				if (owner) await cleanupUser(owner.id);
@@ -212,6 +230,7 @@ test('category validation returns a 422 response for an oversized sort order', a
 test('category edit failures preserve submitted values', async ({ page }) => {
 	let owner: StaffUser | null = null;
 	const categoryCode = `p22-${Date.now()}-preserve`;
+	const editedCode = `${categoryCode}-edited`;
 	let categoryId = '';
 
 	try {
@@ -231,7 +250,6 @@ test('category edit failures preserve submitted values', async ({ page }) => {
 		await editForm.evaluate((form) => {
 			(form as HTMLFormElement).noValidate = true;
 		});
-		const editedCode = `${categoryCode}-edited`;
 		await editForm.getByLabel('Category code').fill(editedCode);
 		await editForm.getByLabel('Category label').fill('');
 		await editForm.getByLabel('Sort order').fill('25');
@@ -268,7 +286,7 @@ test('category edit failures preserve submitted values', async ({ page }) => {
 		);
 	} finally {
 		try {
-			if (categoryId) cleanupCategoryFixture(categoryId);
+			cleanupCategoryFixture(categoryId, [categoryCode, editedCode]);
 		} finally {
 			if (owner) await cleanupUser(owner.id);
 		}
