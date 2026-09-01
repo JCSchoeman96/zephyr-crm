@@ -6,6 +6,15 @@ import { requireActiveStaff } from '$lib/server/require-auth';
 
 const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
+class CategoryValidationError extends Error {
+	readonly status = 422;
+
+	constructor(message: string) {
+		super(message);
+		this.name = 'CategoryValidationError';
+	}
+}
+
 function categoryId(form: FormData): string {
 	const value = String(form.get('category_id') ?? '').trim();
 	if (!uuidPattern.test(value)) throw new Error('A valid Product category is required');
@@ -21,23 +30,25 @@ function lockVersion(form: FormData): number {
 
 function requiredText(form: FormData, name: string, label: string, maxLength: number): string {
 	const value = String(form.get(name) ?? '').trim();
-	if (!value) throw new Error(`${label} is required`);
-	if (value.length > maxLength) throw new Error(`${label} is too long`);
+	if (!value) throw new CategoryValidationError(`${label} is required`);
+	if (value.length > maxLength) throw new CategoryValidationError(`${label} is too long`);
 	return value;
 }
 
 function sortOrder(form: FormData): number {
 	const rawValue = String(form.get('sort_order') ?? '').trim();
-	if (!/^\d+$/.test(rawValue)) throw new Error('Category sort order must be a nonnegative integer');
+	if (!/^\d+$/.test(rawValue))
+		throw new CategoryValidationError('Category sort order must be a nonnegative integer');
 	const value = Number(rawValue);
-	if (!Number.isSafeInteger(value)) throw new Error('Category sort order is too large');
+	if (!Number.isSafeInteger(value))
+		throw new CategoryValidationError('Category sort order is too large');
 	return value;
 }
 
 function requiredReason(form: FormData): string {
 	const reason = String(form.get('reason') ?? '').trim();
-	if (!reason) throw new Error('An inactivation reason is required');
-	if (reason.length > 2000) throw new Error('Inactivation reason is too long');
+	if (!reason) throw new CategoryValidationError('An inactivation reason is required');
+	if (reason.length > 2000) throw new CategoryValidationError('Inactivation reason is too long');
 	return reason;
 }
 

@@ -87,6 +87,9 @@ test('Owner can manage flat Product categories while Sales cannot access the man
 
 		categoryRow = await categoryRowForCode(page, editedCategoryCode);
 		await expect(categoryRow.getByLabel('Category label')).toHaveValue(editedCategoryLabel);
+		await page.reload({ waitUntil: 'networkidle' });
+		categoryRow = await categoryRowForCode(page, editedCategoryCode);
+		await expect(categoryRow.getByLabel('Sort order')).toHaveValue('25');
 		await categoryRow.getByLabel('Inactivation reason').fill('Temporarily unavailable');
 		await categoryRow.getByRole('button', { name: 'Inactivate category', exact: true }).click();
 		await page.waitForURL('/products/categories');
@@ -115,5 +118,33 @@ test('Owner can manage flat Product categories while Sales cannot access the man
 		}
 		await cleanupUser(owner.id);
 		await cleanupUser(sales.id);
+	}
+});
+
+test('category validation returns a 422 response for an oversized sort order', async ({ page }) => {
+	const owner = await createStaff('owner', 'p22-category-validation');
+
+	try {
+		await signIn(page, owner);
+		await page.goto('/products/categories', { waitUntil: 'networkidle' });
+		const createForm = page.locator('form.category-create-form');
+		await createForm.evaluate((form) => {
+			(form as HTMLFormElement).noValidate = true;
+		});
+		await createForm.getByLabel('Category code').fill(`p22-${Date.now()}-validation`);
+		await createForm.getByLabel('Category label').fill('P22 Validation');
+		await createForm.getByLabel('Sort order').fill('9007199254740992');
+
+		const responsePromise = page.waitForResponse(
+			(response) =>
+				response.request().method() === 'POST' &&
+				new URL(response.url()).pathname === '/products/categories'
+		);
+		await createForm.getByRole('button', { name: 'Create category', exact: true }).click();
+		const response = await responsePromise;
+		expect(response.status()).toBe(422);
+		await expect(page.getByRole('alert')).toContainText('Category sort order is too large');
+	} finally {
+		await cleanupUser(owner.id);
 	}
 });
