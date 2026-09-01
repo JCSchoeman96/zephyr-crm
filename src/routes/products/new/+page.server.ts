@@ -15,7 +15,9 @@ function formValues(form: FormData): Record<string, string> {
 		'unit_price',
 		'customer_description',
 		'internal_notes',
-		'taxable'
+		'taxable',
+		'dimensions_enabled',
+		'dimension_definitions'
 	];
 	return Object.fromEntries(names.map((name) => [name, String(form.get(name) ?? '')]));
 }
@@ -31,7 +33,9 @@ function inputFromForm(form: FormData): ProductInput {
 		unitLabel: String(form.get('unit_label') ?? ''),
 		currency: String(form.get('currency') ?? ''),
 		unitPrice: String(form.get('unit_price') ?? ''),
-		taxable: form.get('taxable') === 'on'
+		taxable: form.get('taxable') === 'on',
+		dimensionsEnabled: form.get('dimensions_enabled') === 'on',
+		dimensionDefinitions: String(form.get('dimension_definitions') ?? '[]')
 	};
 }
 
@@ -66,7 +70,9 @@ async function saveProduct(event: Parameters<NonNullable<Actions['save']>>[0], a
 			p_unit_label: input.unitLabel,
 			p_currency: input.currency,
 			p_unit_price: input.unitPrice,
-			p_taxable: input.taxable
+			p_taxable: input.taxable,
+			p_dimensions_enabled: input.dimensionsEnabled,
+			p_dimension_definitions: input.dimensionDefinitions
 		} as never);
 		if (response.error) return failure(response.error, 'Could not create Product', values);
 		const created = record(response.data);

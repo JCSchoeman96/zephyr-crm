@@ -1107,6 +1107,8 @@ export type Database = {
 					created_by: string;
 					currency: string;
 					customer_description: string | null;
+					dimension_definitions: Json;
+					dimensions_enabled: boolean;
 					id: string;
 					inactivated_at: string | null;
 					internal_notes: string | null;
@@ -1128,6 +1130,8 @@ export type Database = {
 					created_by: string;
 					currency?: string;
 					customer_description?: string | null;
+					dimension_definitions?: Json;
+					dimensions_enabled?: boolean;
 					id?: string;
 					inactivated_at?: string | null;
 					internal_notes?: string | null;
@@ -1149,6 +1153,8 @@ export type Database = {
 					created_by?: string;
 					currency?: string;
 					customer_description?: string | null;
+					dimension_definitions?: Json;
+					dimensions_enabled?: boolean;
 					id?: string;
 					inactivated_at?: string | null;
 					internal_notes?: string | null;
@@ -2064,6 +2070,8 @@ export type Database = {
 					p_category_id?: string;
 					p_currency?: string;
 					p_customer_description?: string;
+					p_dimension_definitions?: Json;
+					p_dimensions_enabled?: boolean;
 					p_internal_notes?: string;
 					p_kind?: string;
 					p_name: string;
@@ -2494,6 +2502,8 @@ export type Database = {
 					p_category_id?: string;
 					p_currency?: string;
 					p_customer_description?: string;
+					p_dimension_definitions?: Json;
+					p_dimensions_enabled?: boolean;
 					p_internal_notes?: string;
 					p_kind?: string;
 					p_lock_version: number;
