@@ -31,7 +31,13 @@ function localDatabaseUrl(): string {
 	return parseLocalDatabaseUrl(line.slice('DB_URL='.length));
 }
 
-const testCategoryCodePattern = /^p22-\d+-[a-z]+(?:-[a-z]+)*$/;
+const testCategoryCodePattern = /^p22-\d+-[0-9a-f]{32}-[a-z]+(?:-[a-z]+)*$/;
+const categoryCodeSuffixPattern = /^[a-z]+(?:-[a-z]+)*$/;
+
+function generatedCategoryCode(suffix: string): string {
+	if (!categoryCodeSuffixPattern.test(suffix)) throw new Error('Invalid category code suffix.');
+	return `p22-${Date.now()}-${globalThis.crypto.randomUUID().replaceAll('-', '')}-${suffix}`;
+}
 
 function validatedCategoryCode(code: string): string {
 	if (!testCategoryCodePattern.test(code)) throw new Error('Invalid category cleanup code.');
@@ -97,12 +103,21 @@ test('category cleanup rejects unsafe database URLs', () => {
 	expect(() => parseLocalDatabaseUrl('postgresql://[::1]:54332/postgres')).not.toThrow();
 });
 
+test('category fixture codes include a unique safe random suffix', () => {
+	const first = generatedCategoryCode('screens');
+	const second = generatedCategoryCode('screens');
+
+	expect(first).toMatch(/^p22-\d+-[0-9a-f]{32}-screens$/);
+	expect(first.length).toBeLessThanOrEqual(80);
+	expect(second).not.toBe(first);
+});
+
 test('Owner can manage flat Product categories while Sales cannot access the manager', async ({
 	page
 }) => {
 	let owner: StaffUser | null = null;
 	let sales: StaffUser | null = null;
-	const categoryCode = `p22-${Date.now()}-screens`;
+	const categoryCode = generatedCategoryCode('screens');
 	const editedCategoryCode = `${categoryCode}-edited`;
 	const categoryLabel = 'P22 Screens';
 	const editedCategoryLabel = 'P22 Edited Screens';
@@ -205,7 +220,7 @@ test('category validation returns a 422 response for an oversized sort order', a
 		await createForm.evaluate((form) => {
 			(form as HTMLFormElement).noValidate = true;
 		});
-		const validationCode = `p22-${Date.now()}-validation`;
+		const validationCode = generatedCategoryCode('validation');
 		await createForm.getByLabel('Category code').fill(validationCode);
 		await createForm.getByLabel('Category label').fill('P22 Validation');
 		await createForm.getByLabel('Sort order').fill('9007199254740992');
@@ -229,7 +244,7 @@ test('category validation returns a 422 response for an oversized sort order', a
 
 test('category edit failures preserve submitted values', async ({ page }) => {
 	let owner: StaffUser | null = null;
-	const categoryCode = `p22-${Date.now()}-preserve`;
+	const categoryCode = generatedCategoryCode('preserve');
 	const editedCode = `${categoryCode}-edited`;
 	let categoryId = '';
 
