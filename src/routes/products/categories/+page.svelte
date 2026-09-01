@@ -21,6 +21,19 @@
 			? 'Conflict — reload before saving'
 			: 'Product category action could not be completed';
 	}
+
+	type CategoryFormValues = Record<string, string>;
+
+	function submittedValues(categoryId?: string): CategoryFormValues | null {
+		if (!form || !('values' in form) || !form.values) return null;
+		const values = form.values as CategoryFormValues;
+		if (categoryId) return values.category_id === categoryId ? values : null;
+		return values.category_id ? null : values;
+	}
+
+	function categoryValue(categoryId: string | undefined, name: string, fallback = ''): string {
+		return submittedValues(categoryId)?.[name] ?? fallback;
+	}
 </script>
 
 <svelte:head>
@@ -45,11 +58,19 @@
 
 	<Card title="Add category" class="category-create-card">
 		<form method="POST" action="?/create" class="category-create-form">
-			<Input id="category-create-code" name="code" label="Category code" maxlength={80} required />
+			<Input
+				id="category-create-code"
+				name="code"
+				label="Category code"
+				value={categoryValue(undefined, 'code')}
+				maxlength={80}
+				required
+			/>
 			<Input
 				id="category-create-label"
 				name="label"
 				label="Category label"
+				value={categoryValue(undefined, 'label')}
 				maxlength={200}
 				required
 			/>
@@ -58,9 +79,9 @@
 				name="sort_order"
 				label="Sort order"
 				type="number"
+				value={categoryValue(undefined, 'sort_order', '0')}
 				min="0"
 				step="1"
-				value="0"
 				required
 			/>
 			<Button type="submit" size="sm">Create category</Button>
@@ -96,7 +117,7 @@
 											id={`category-code-${category.id}`}
 											name="code"
 											label="Category code"
-											value={category.code}
+											value={categoryValue(category.id, 'code', category.code)}
 											maxlength={80}
 											required
 										/>
@@ -104,7 +125,7 @@
 											id={`category-label-${category.id}`}
 											name="label"
 											label="Category label"
-											value={category.label}
+											value={categoryValue(category.id, 'label', category.label)}
 											maxlength={200}
 											required
 										/>
@@ -113,9 +134,9 @@
 											name="sort_order"
 											label="Sort order"
 											type="number"
+											value={categoryValue(category.id, 'sort_order', String(category.sort_order))}
 											min="0"
 											step="1"
-											value={String(category.sort_order)}
 											required
 										/>
 										<Button type="submit" size="sm" variant="secondary">Save category</Button>
@@ -132,6 +153,7 @@
 												id={`category-inactivation-reason-${category.id}`}
 												name="reason"
 												label="Inactivation reason"
+												value={categoryValue(category.id, 'reason')}
 												maxlength={2000}
 												required
 											/>

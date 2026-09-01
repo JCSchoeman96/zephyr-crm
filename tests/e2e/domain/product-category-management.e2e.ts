@@ -76,8 +76,25 @@ test('Owner can manage flat Product categories while Sales cannot access the man
 		await page.waitForURL('/products/categories');
 
 		let categoryRow = await categoryRowForCode(page, categoryCode);
-		await expect(categoryRow.getByLabel('Category label')).toHaveValue(categoryLabel);
 		categoryId = await categoryRow.locator('input[name="category_id"]').first().inputValue();
+		await expect(categoryRow.getByLabel('Category label')).toHaveValue(categoryLabel);
+
+		const duplicateForm = page.locator('form.category-create-form');
+		await duplicateForm.getByLabel('Category code').fill(categoryCode);
+		await duplicateForm.getByLabel('Category label').fill('Duplicate Screens');
+		await duplicateForm.getByLabel('Sort order').fill('41');
+		const duplicateResponsePromise = page.waitForResponse(
+			(response) =>
+				response.request().method() === 'POST' &&
+				new URL(response.url()).pathname === '/products/categories'
+		);
+		await duplicateForm.getByRole('button', { name: 'Create category', exact: true }).click();
+		const duplicateResponse = await duplicateResponsePromise;
+		expect(duplicateResponse.status()).toBe(422);
+		await expect(page.getByRole('alert')).toContainText('unique code');
+		await expect(duplicateForm.getByLabel('Category code')).toHaveValue(categoryCode);
+		await expect(duplicateForm.getByLabel('Category label')).toHaveValue('Duplicate Screens');
+		await expect(duplicateForm.getByLabel('Sort order')).toHaveValue('41');
 
 		await categoryRow.getByLabel('Category code').fill(editedCategoryCode);
 		await categoryRow.getByLabel('Category label').fill(editedCategoryLabel);
@@ -113,11 +130,15 @@ test('Owner can manage flat Product categories while Sales cannot access the man
 		});
 		expect(managementResponse?.status()).toBe(403);
 	} finally {
-		if (categoryId) {
-			cleanupCategoryFixture(categoryId);
+		try {
+			if (categoryId) cleanupCategoryFixture(categoryId);
+		} finally {
+			try {
+				await cleanupUser(owner.id);
+			} finally {
+				await cleanupUser(sales.id);
+			}
 		}
-		await cleanupUser(owner.id);
-		await cleanupUser(sales.id);
 	}
 });
 
@@ -131,7 +152,8 @@ test('category validation returns a 422 response for an oversized sort order', a
 		await createForm.evaluate((form) => {
 			(form as HTMLFormElement).noValidate = true;
 		});
-		await createForm.getByLabel('Category code').fill(`p22-${Date.now()}-validation`);
+		const validationCode = `p22-${Date.now()}-validation`;
+		await createForm.getByLabel('Category code').fill(validationCode);
 		await createForm.getByLabel('Category label').fill('P22 Validation');
 		await createForm.getByLabel('Sort order').fill('9007199254740992');
 
@@ -144,7 +166,75 @@ test('category validation returns a 422 response for an oversized sort order', a
 		const response = await responsePromise;
 		expect(response.status()).toBe(422);
 		await expect(page.getByRole('alert')).toContainText('Category sort order is too large');
+		await expect(createForm.getByLabel('Category code')).toHaveValue(validationCode);
+		await expect(createForm.getByLabel('Category label')).toHaveValue('P22 Validation');
+		await expect(createForm.getByLabel('Sort order')).toHaveValue('9007199254740992');
 	} finally {
 		await cleanupUser(owner.id);
+	}
+});
+
+test('category edit failures preserve submitted values', async ({ page }) => {
+	const owner = await createStaff('owner', 'p22-category-preserve');
+	const categoryCode = `p22-${Date.now()}-preserve`;
+	let categoryId = '';
+
+	try {
+		await signIn(page, owner);
+		await page.goto('/products/categories', { waitUntil: 'networkidle' });
+		const createForm = page.locator('form.category-create-form');
+		await createForm.getByLabel('Category code').fill(categoryCode);
+		await createForm.getByLabel('Category label').fill('P22 Preserve');
+		await createForm.getByLabel('Sort order').fill('10');
+		await createForm.getByRole('button', { name: 'Create category', exact: true }).click();
+		await page.waitForURL('/products/categories');
+
+		let categoryRow = await categoryRowForCode(page, categoryCode);
+		categoryId = await categoryRow.locator('input[name="category_id"]').first().inputValue();
+		const editForm = categoryRow.locator('form.category-edit-form');
+		await editForm.evaluate((form) => {
+			(form as HTMLFormElement).noValidate = true;
+		});
+		const editedCode = `${categoryCode}-edited`;
+		await editForm.getByLabel('Category code').fill(editedCode);
+		await editForm.getByLabel('Category label').fill('');
+		await editForm.getByLabel('Sort order').fill('25');
+		const updateResponsePromise = page.waitForResponse(
+			(response) =>
+				response.request().method() === 'POST' &&
+				new URL(response.url()).pathname === '/products/categories'
+		);
+		await editForm.getByRole('button', { name: 'Save category', exact: true }).click();
+		const updateResponse = await updateResponsePromise;
+		expect(updateResponse.status()).toBe(422);
+
+		categoryRow = await categoryRowForCode(page, editedCode);
+		await expect(categoryRow.getByLabel('Category code')).toHaveValue(editedCode);
+		await expect(categoryRow.getByLabel('Category label')).toHaveValue('');
+		await expect(categoryRow.getByLabel('Sort order')).toHaveValue('25');
+
+		const statusForm = categoryRow.locator('form.category-status-form');
+		await statusForm.locator('input[name="lock_version"]').evaluate((input) => {
+			(input as HTMLInputElement).value = '999';
+		});
+		await statusForm.getByLabel('Inactivation reason').fill('Preserve this conflict reason');
+		const conflictResponsePromise = page.waitForResponse(
+			(response) =>
+				response.request().method() === 'POST' &&
+				new URL(response.url()).pathname === '/products/categories'
+		);
+		await statusForm.getByRole('button', { name: 'Inactivate category', exact: true }).click();
+		const conflictResponse = await conflictResponsePromise;
+		expect(conflictResponse.status()).toBe(409);
+		categoryRow = await categoryRowForCode(page, categoryCode);
+		await expect(categoryRow.getByLabel('Inactivation reason')).toHaveValue(
+			'Preserve this conflict reason'
+		);
+	} finally {
+		try {
+			if (categoryId) cleanupCategoryFixture(categoryId);
+		} finally {
+			await cleanupUser(owner.id);
+		}
 	}
 });

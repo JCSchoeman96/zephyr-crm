@@ -59,10 +59,22 @@ function formValues(form: FormData): Record<string, string> {
 	);
 }
 
+function isUniqueViolation(cause: unknown): boolean {
+	if (!cause || typeof cause !== 'object') return false;
+	return (cause as { code?: unknown }).code === '23505';
+}
+
 function failure(cause: unknown, fallback: string, values?: Record<string, string>) {
 	const details = actionFailureDetails(cause, fallback);
 	logActionFailure(cause, details.code);
 	return fail(details.status, { message: details.message, code: details.code, values });
+}
+
+function categoryMutationFailure(cause: unknown, fallback: string, values: Record<string, string>) {
+	const actionError = isUniqueViolation(cause)
+		? new CategoryValidationError('Product category code is already in use. Choose a unique code.')
+		: cause;
+	return failure(actionError, fallback, values);
 }
 
 export const load: PageServerLoad = async (event) => {
@@ -99,9 +111,9 @@ export const actions: Actions = {
 				p_sort_order: sortOrder(form)
 			} as never);
 			if (response.error)
-				return failure(response.error, 'Could not create Product category', values);
+				return categoryMutationFailure(response.error, 'Could not create Product category', values);
 		} catch (actionError) {
-			return failure(actionError, 'Could not create Product category', values);
+			return categoryMutationFailure(actionError, 'Could not create Product category', values);
 		}
 		throw redirect(303, '/products/categories');
 	},
@@ -119,9 +131,9 @@ export const actions: Actions = {
 				p_sort_order: sortOrder(form)
 			} as never);
 			if (response.error)
-				return failure(response.error, 'Could not update Product category', values);
+				return categoryMutationFailure(response.error, 'Could not update Product category', values);
 		} catch (actionError) {
-			return failure(actionError, 'Could not update Product category', values);
+			return categoryMutationFailure(actionError, 'Could not update Product category', values);
 		}
 		throw redirect(303, '/products/categories');
 	},
