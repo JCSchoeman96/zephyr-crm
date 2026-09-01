@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
 	initializeProductDimensions,
 	parseProductDimensions,
+	productDimensionsFieldValue,
 	serializeProductDimensions
 } from './product-form';
 
@@ -27,15 +28,51 @@ describe('ProductForm dimension serialization', () => {
 	it('initializes persisted and failed-form dimension values without exposing service dimensions', () => {
 		expect(initializeProductDimensions('product', true, JSON.stringify([height, width]))).toEqual({
 			enabled: true,
-			definitions: [height, width]
+			definitions: [height, width],
+			preservedSerializedDefinitions: null
 		});
 		expect(initializeProductDimensions('product', 'on', JSON.stringify([width]))).toEqual({
 			enabled: true,
-			definitions: [width]
+			definitions: [width],
+			preservedSerializedDefinitions: null
 		});
 		expect(initializeProductDimensions('service', true, JSON.stringify([width]))).toEqual({
 			enabled: false,
-			definitions: []
+			definitions: [],
+			preservedSerializedDefinitions: null
 		});
+	});
+
+	it('retains invalid failed-form payloads until the measurement editor changes', () => {
+		const invalidPayload = '[{"key":"width","label":';
+		const initialized = initializeProductDimensions('product', 'on', invalidPayload, true);
+
+		expect(initialized.definitions).toEqual([]);
+		expect(initialized.preservedSerializedDefinitions).toBe(invalidPayload);
+		expect(
+			productDimensionsFieldValue(
+				'product',
+				initialized.enabled,
+				initialized.definitions,
+				initialized.preservedSerializedDefinitions
+			)
+		).toBe(invalidPayload);
+		expect(productDimensionsFieldValue('product', true, [width], null)).toBe(
+			JSON.stringify([width])
+		);
+	});
+
+	it('keeps valid failed-form definitions editable and preserves their submitted spelling', () => {
+		const submittedPayload = ` ${JSON.stringify([height, width])} `;
+		const initialized = initializeProductDimensions('product', 'on', submittedPayload, true);
+
+		expect(initialized.definitions).toEqual([height, width]);
+		expect(initialized.preservedSerializedDefinitions).toBe(submittedPayload);
+
+		const editedDefinitions = initialized.definitions.map((definition) => ({ ...definition }));
+		editedDefinitions[0].label = 'Customer height';
+		expect(productDimensionsFieldValue('product', true, editedDefinitions, null)).toBe(
+			JSON.stringify([{ ...height, label: 'Customer height' }, width])
+		);
 	});
 });

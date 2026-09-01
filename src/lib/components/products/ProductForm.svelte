@@ -10,7 +10,7 @@
 	import Input from '$lib/components/ui/Input.svelte';
 	import Select from '$lib/components/ui/Select.svelte';
 	import Textarea from '$lib/components/ui/Textarea.svelte';
-	import { initializeProductDimensions, serializeProductDimensions } from './product-form';
+	import { initializeProductDimensions, productDimensionsFieldValue } from './product-form';
 
 	type Product = Database['public']['Tables']['products']['Row'];
 	type ProductCategory = Database['public']['Tables']['product_categories']['Row'];
@@ -40,12 +40,18 @@
 
 	function initialDimensionState() {
 		const initialKind = value('kind', product?.kind ?? 'product');
+		const submittedDimensions = form?.values
+			? Object.prototype.hasOwnProperty.call(form.values, 'dimension_definitions')
+			: false;
 		return {
 			kind: initialKind,
 			...initializeProductDimensions(
 				initialKind,
 				form?.values?.dimensions_enabled ?? product?.dimensions_enabled ?? false,
-				form?.values?.dimension_definitions ?? product?.dimension_definitions ?? []
+				submittedDimensions
+					? form?.values?.dimension_definitions
+					: (product?.dimension_definitions ?? []),
+				submittedDimensions
 			)
 		};
 	}
@@ -54,6 +60,9 @@
 	let kind = $state(initialDimensions.kind);
 	let dimensionsEnabled = $state(initialDimensions.enabled);
 	let dimensionDefinitions = $state<DimensionDefinition[]>(initialDimensions.definitions);
+	let preservedSerializedDefinitions = $state<string | null>(
+		initialDimensions.preservedSerializedDefinitions
+	);
 	let selectedPreset = $state<DimensionKey | ''>('');
 	let dimensionsInitialized = true;
 	function currentFormValues() {
@@ -85,11 +94,15 @@
 		const initialDimensions = initializeProductDimensions(
 			initialKind,
 			form?.values?.dimensions_enabled ?? product?.dimensions_enabled ?? false,
-			form?.values?.dimension_definitions ?? product?.dimension_definitions ?? []
+			form?.values?.dimension_definitions ?? product?.dimension_definitions ?? [],
+			Boolean(
+				form?.values && Object.prototype.hasOwnProperty.call(form.values, 'dimension_definitions')
+			)
 		);
 		kind = initialKind;
 		dimensionsEnabled = initialDimensions.enabled;
 		dimensionDefinitions = initialDimensions.definitions;
+		preservedSerializedDefinitions = initialDimensions.preservedSerializedDefinitions;
 	});
 
 	$effect(() => {
@@ -98,6 +111,10 @@
 			if (dimensionDefinitions.length) dimensionDefinitions = [];
 		}
 	});
+
+	function clearPreservedDimensions() {
+		preservedSerializedDefinitions = null;
+	}
 
 	const availableDimensionKeys = $derived(
 		DIMENSION_KEYS.filter(
@@ -115,6 +132,7 @@
 	}
 
 	function addDimension() {
+		clearPreservedDimensions();
 		const key =
 			selectedPreset !== '' && availableDimensionKeys.includes(selectedPreset)
 				? selectedPreset
@@ -127,12 +145,14 @@
 	}
 
 	function removeDimension(index: number) {
+		clearPreservedDimensions();
 		dimensionDefinitions = dimensionDefinitions.filter((_, currentIndex) => currentIndex !== index);
 	}
 
 	function moveDimension(index: number, direction: -1 | 1) {
 		const target = index + direction;
 		if (target < 0 || target >= dimensionDefinitions.length) return;
+		clearPreservedDimensions();
 		const next = [...dimensionDefinitions];
 		[next[index], next[target]] = [next[target], next[index]];
 		dimensionDefinitions = next;
@@ -157,7 +177,14 @@
 		maxlength={200}
 		required
 	/>
-	<Select id="product-kind" name="kind" label="Kind" bind:value={kind} required>
+	<Select
+		id="product-kind"
+		name="kind"
+		label="Kind"
+		bind:value={kind}
+		onchange={clearPreservedDimensions}
+		required
+	>
 		<option value="product">Product</option>
 		<option value="service">Service</option>
 	</Select>
@@ -168,6 +195,7 @@
 			name="dimensions_enabled"
 			label="This Product requires measurements"
 			bind:checked={dimensionsEnabled}
+			onchange={clearPreservedDimensions}
 			disabled={kind.trim().toLowerCase() === 'service'}
 		/>
 		{#if kind.trim().toLowerCase() === 'service'}
@@ -215,12 +243,17 @@
 								id={`product-dimension-label-${definition.key}`}
 								class="ui-field__control"
 								bind:value={definition.label}
+								oninput={clearPreservedDimensions}
 								maxlength="200"
 								required
 							/>
 						</label>
 						<label class="dimension-required">
-							<input type="checkbox" bind:checked={definition.required} />
+							<input
+								type="checkbox"
+								bind:checked={definition.required}
+								onchange={clearPreservedDimensions}
+							/>
 							<span>Required measurement</span>
 						</label>
 					</div>
@@ -258,7 +291,12 @@
 	<input
 		type="hidden"
 		name="dimension_definitions"
-		value={serializeProductDimensions(kind, dimensionsEnabled, dimensionDefinitions)}
+		value={productDimensionsFieldValue(
+			kind,
+			dimensionsEnabled,
+			dimensionDefinitions,
+			preservedSerializedDefinitions
+		)}
 	/>
 	<Select
 		id="product-category"

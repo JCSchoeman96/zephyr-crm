@@ -33,7 +33,7 @@ function requiredReason(form: FormData) {
 	return reason;
 }
 
-function formValues(form: FormData): Record<string, string> {
+function formValues(form: FormData, includeDimensionFields = false): Record<string, string> {
 	const names = [
 		'lock_version',
 		'product_code',
@@ -50,7 +50,12 @@ function formValues(form: FormData): Record<string, string> {
 		'dimension_definitions',
 		'reason'
 	];
-	return Object.fromEntries(names.map((name) => [name, String(form.get(name) ?? '')]));
+	const values = Object.fromEntries(names.map((name) => [name, String(form.get(name) ?? '')]));
+	if (!includeDimensionFields) {
+		delete values.dimensions_enabled;
+		delete values.dimension_definitions;
+	}
+	return values;
 }
 
 function failure(cause: unknown, fallback: string, values?: Record<string, string>) {
@@ -115,7 +120,7 @@ export const actions: Actions = {
 		if (!canManageProducts(profile.role))
 			return fail(403, { message: 'Viewer access is read-only.' });
 		const form = await event.request.formData();
-		const values = formValues(form);
+		const values = formValues(form, true);
 		try {
 			const input = normalizeProductInput(inputFromForm(form));
 			const response = await supabase.rpc('update_product', {

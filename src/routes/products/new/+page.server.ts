@@ -4,7 +4,7 @@ import { actionFailureDetails, logActionFailure } from '$lib/server/action-error
 import { canManageProducts, normalizeProductInput, type ProductInput } from '$lib/server/products';
 import { requireActiveStaff } from '$lib/server/require-auth';
 
-function formValues(form: FormData): Record<string, string> {
+function formValues(form: FormData, includeDimensionFields = false): Record<string, string> {
 	const names = [
 		'product_code',
 		'name',
@@ -19,7 +19,12 @@ function formValues(form: FormData): Record<string, string> {
 		'dimensions_enabled',
 		'dimension_definitions'
 	];
-	return Object.fromEntries(names.map((name) => [name, String(form.get(name) ?? '')]));
+	const values = Object.fromEntries(names.map((name) => [name, String(form.get(name) ?? '')]));
+	if (!includeDimensionFields) {
+		delete values.dimensions_enabled;
+		delete values.dimension_definitions;
+	}
+	return values;
 }
 
 function inputFromForm(form: FormData): ProductInput {
@@ -56,7 +61,7 @@ async function saveProduct(event: Parameters<NonNullable<Actions['save']>>[0], a
 	if (!canManageProducts(profile.role))
 		return fail(403, { message: 'Viewer access is read-only.' });
 	const form = await event.request.formData();
-	const values = formValues(form);
+	const values = formValues(form, true);
 	let productId: string;
 	try {
 		const input = normalizeProductInput(inputFromForm(form));

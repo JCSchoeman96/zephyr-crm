@@ -14,6 +14,18 @@ export function serializeProductDimensions(
 	);
 }
 
+export function productDimensionsFieldValue(
+	kind: string,
+	dimensionsEnabled: boolean,
+	definitions: readonly DimensionDefinition[],
+	preservedSerializedDefinitions: string | null = null
+): string {
+	return (
+		preservedSerializedDefinitions ??
+		serializeProductDimensions(kind, dimensionsEnabled, definitions)
+	);
+}
+
 function checkboxValue(value: unknown): boolean {
 	if (typeof value === 'boolean') return value;
 	if (typeof value !== 'string') return false;
@@ -41,12 +53,23 @@ export function parseProductDimensions(
 export function initializeProductDimensions(
 	kind: string,
 	enabledInput: unknown,
-	definitionsInput: unknown
-): { enabled: boolean; definitions: DimensionDefinition[] } {
+	definitionsInput: unknown,
+	preserveSerializedInput = false
+): {
+	enabled: boolean;
+	definitions: DimensionDefinition[];
+	preservedSerializedDefinitions: string | null;
+} {
 	const normalizedKind = kind.trim().toLowerCase();
 	const enabled = normalizedKind !== 'service' && checkboxValue(enabledInput);
 	return {
 		enabled,
-		definitions: parseProductDimensions(normalizedKind, enabled, definitionsInput)
+		definitions: parseProductDimensions(normalizedKind, enabled, definitionsInput),
+		preservedSerializedDefinitions:
+			preserveSerializedInput &&
+			normalizedKind !== 'service' &&
+			typeof definitionsInput === 'string'
+				? definitionsInput
+				: null
 	};
 }
