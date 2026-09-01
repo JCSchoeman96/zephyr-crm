@@ -116,7 +116,7 @@ function configurationValue(
 
 export function normalizeDimensionDefinitions(input: unknown): DimensionDefinition[] {
 	const parsed = parseJson(input, 'Dimension definitions');
-	if (Array.isArray(parsed)) return normalizeDefinitionArray(parsed, true);
+	if (Array.isArray(parsed)) return normalizeDefinitionArray(parsed, false);
 	if (!isRecord(parsed))
 		throw new Error('Dimension definitions must be an array or configuration object');
 	if (Object.keys(parsed).length === 0) {
@@ -197,7 +197,7 @@ export function buildDimensionSnapshot(
 	definitions: DimensionDefinition[],
 	values: Record<string, unknown> = {}
 ): DimensionValue[] {
-	const normalizedDefinitions = normalizeDimensionDefinitions(definitions);
+	const normalizedDefinitions = normalizeDefinitionArray(definitions, true);
 	if (!isRecord(values)) throw new Error('Dimension values must be an object');
 
 	const allowedKeys = new Set<string>(normalizedDefinitions.map((definition) => definition.key));

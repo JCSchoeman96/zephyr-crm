@@ -63,6 +63,11 @@ describe('product dimension contract', () => {
 		).toThrow(/disabled/i);
 	});
 
+	it('rejects an unconfigured bare empty array while allowing an empty snapshot', () => {
+		expect(() => normalizeDimensionDefinitions([])).toThrow(/at least one|enabled/i);
+		expect(buildDimensionSnapshot([], {})).toEqual([]);
+	});
+
 	it('rejects dimensions for services', () => {
 		expect(() =>
 			normalizeDimensionDefinitions({
