@@ -387,4 +387,93 @@ grant execute on function public.update_product(uuid, bigint, text, text, text, 
 comment on column public.products.dimensions_enabled is 'Whether this Product requires configured millimetre measurements.';
 comment on column public.products.dimension_definitions is 'Ordered Product measurement definitions; trusted actions enforce the canonical shape.';
 
+create or replace function private.is_valid_quote_item_dimensions(p_dimensions jsonb)
+returns boolean
+language plpgsql
+immutable
+strict
+set search_path = pg_catalog, public
+as $$
+declare
+	v_item jsonb;
+	v_field text;
+	v_key text;
+	v_value text;
+	v_seen_keys text[] := array[]::text[];
+begin
+	if jsonb_typeof(p_dimensions) is distinct from 'array' then
+		return false;
+	end if;
+
+	for v_item in select value from jsonb_array_elements(p_dimensions) loop
+		if jsonb_typeof(v_item) is distinct from 'object'
+			or (select count(*) from jsonb_object_keys(v_item)) <> 5 then
+			return false;
+		end if;
+
+		for v_field in select jsonb_object_keys(v_item) loop
+			if v_field not in ('key', 'label', 'unit', 'required', 'value') then
+				return false;
+			end if;
+		end loop;
+
+		if not (v_item ? 'key')
+			or jsonb_typeof(v_item -> 'key') is distinct from 'string' then
+			return false;
+		end if;
+		v_key := v_item ->> 'key';
+		if v_key not in ('width', 'height', 'length', 'depth') or v_key = any(v_seen_keys) then
+			return false;
+		end if;
+		v_seen_keys := array_append(v_seen_keys, v_key);
+
+		if not (v_item ? 'label')
+			or jsonb_typeof(v_item -> 'label') is distinct from 'string'
+			or (v_item ->> 'label') = ''
+			or (v_item ->> 'label') <> btrim(v_item ->> 'label') then
+			return false;
+		end if;
+		if not (v_item ? 'unit')
+			or jsonb_typeof(v_item -> 'unit') is distinct from 'string'
+			or (v_item ->> 'unit') <> 'mm' then
+			return false;
+		end if;
+		if not (v_item ? 'required')
+			or jsonb_typeof(v_item -> 'required') is distinct from 'boolean' then
+			return false;
+		end if;
+		if not (v_item ? 'value')
+			or jsonb_typeof(v_item -> 'value') not in ('null', 'string') then
+			return false;
+		end if;
+
+		if jsonb_typeof(v_item -> 'value') = 'string' then
+			v_value := v_item ->> 'value';
+			if v_value !~ '^(?:[1-9][0-9]*(?:\.[0-9]*[1-9])?|0\.[0-9]*[1-9])$' then
+				return false;
+			end if;
+		end if;
+	end loop;
+
+	return true;
+end;
+$$;
+
+alter table public.quote_items
+	add column dimensions jsonb not null default '[]'::jsonb,
+	add column product_category_id_snapshot uuid,
+	add column product_category_code_snapshot text,
+	add column product_category_label_snapshot text,
+	add constraint quote_items_dimensions_array_check
+		check (jsonb_typeof(dimensions) = 'array'),
+	add constraint quote_items_dimensions_snapshot_check
+		check (private.is_valid_quote_item_dimensions(dimensions));
+
+revoke all on function private.is_valid_quote_item_dimensions(jsonb) from public, anon, authenticated, service_role;
+
+comment on column public.quote_items.dimensions is 'Canonical client-specific dimension snapshot; values are positive millimetre decimal strings or null while a draft is incomplete.';
+comment on column public.quote_items.product_category_id_snapshot is 'Historical ProductCategory identity captured on the QuoteItem; intentionally has no live foreign key.';
+comment on column public.quote_items.product_category_code_snapshot is 'Historical ProductCategory code captured on the QuoteItem.';
+comment on column public.quote_items.product_category_label_snapshot is 'Historical ProductCategory label captured on the QuoteItem.';
+
 commit;
