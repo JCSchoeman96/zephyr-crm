@@ -269,7 +269,7 @@
 					{#if availableDimensionKeys.length === 0}
 						<option value="">All four presets added</option>
 					{:else}
-						{#each availableDimensionKeys as key}
+						{#each availableDimensionKeys as key (key)}
 							<option value={key}>{presetLabel(key)} (mm)</option>
 						{/each}
 					{/if}

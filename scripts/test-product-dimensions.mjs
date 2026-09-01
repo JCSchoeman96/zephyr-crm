@@ -21,6 +21,10 @@ const oldCreateSignature =
 	'public.create_product(text,text,text,text,text,uuid,text,text,numeric,boolean)';
 const oldUpdateSignature =
 	'public.update_product(uuid,bigint,text,text,text,text,text,uuid,text,text,boolean)';
+const dimensionsConstraintDefinition =
+	"CHECK ((((NOT dimensions_enabled) AND (dimension_definitions = '[]'::jsonb)) OR (dimensions_enabled AND (jsonb_typeof(dimension_definitions) = 'array'::text))))";
+const serviceDimensionsConstraintDefinition =
+	"CHECK (((kind <> 'service'::text) OR ((NOT dimensions_enabled) AND (dimension_definitions = '[]'::jsonb))))";
 
 const width = { key: 'width', label: 'Width', unit: 'mm', required: true };
 
@@ -63,24 +67,51 @@ function baseProduct(code, kind = 'product') {
 function definitionShape(value) {
 	return Array.isArray(value)
 		? value.map((definition) => ({
-					key: definition.key,
-					label: definition.label,
-					unit: definition.unit,
-					required: definition.required
-				}))
+				key: definition.key,
+				label: definition.label,
+				unit: definition.unit,
+				required: definition.required
+			}))
 		: value;
+}
+
+function updateProductArgs(product, overrides = {}) {
+	return {
+		p_product_id: product.id,
+		p_lock_version: product.lock_version,
+		p_product_code: product.product_code,
+		p_name: product.name,
+		p_customer_description: product.customer_description,
+		p_internal_notes: product.internal_notes,
+		p_kind: product.kind,
+		p_category_id: product.category_id,
+		p_unit_label: product.unit_label,
+		p_currency: product.currency,
+		p_taxable: product.taxable,
+		...overrides
+	};
 }
 
 async function schemaContract() {
 	expectSql(
-		`select count(*) from information_schema.columns where table_schema = 'public' and table_name = 'products' and column_name in ('dimensions_enabled', 'dimension_definitions')`,
-		'2',
-		'Product dimension columns'
+		`select count(*) from information_schema.columns where table_schema = 'public' and table_name = 'products' and column_name = 'dimensions_enabled' and data_type = 'boolean' and is_nullable = 'NO' and column_default = 'false'`,
+		'1',
+		'Product dimensions_enabled column contract'
 	);
 	expectSql(
-		`select count(*) from pg_constraint where conname in ('products_dimensions_configuration_check', 'products_service_dimensions_check')`,
-		'2',
-		'Product dimension constraints'
+		`select count(*) from information_schema.columns where table_schema = 'public' and table_name = 'products' and column_name = 'dimension_definitions' and data_type = 'jsonb' and is_nullable = 'NO' and column_default = '''[]''::jsonb'`,
+		'1',
+		'Product dimension_definitions column contract'
+	);
+	expectSql(
+		`select count(*) from pg_constraint where conrelid = 'public.products'::regclass and conname = 'products_dimensions_configuration_check' and contype = 'c' and pg_get_constraintdef(oid) = ${sqlLiteral(dimensionsConstraintDefinition)}`,
+		'1',
+		'Product dimensions configuration constraint'
+	);
+	expectSql(
+		`select count(*) from pg_constraint where conrelid = 'public.products'::regclass and conname = 'products_service_dimensions_check' and contype = 'c' and pg_get_constraintdef(oid) = ${sqlLiteral(serviceDimensionsConstraintDefinition)}`,
+		'1',
+		'Product service dimensions constraint'
 	);
 	expectSql(
 		`select count(*) from pg_proc p join pg_namespace n on n.oid = p.pronamespace where n.nspname = 'public' and p.proname = 'create_product'`,
@@ -102,16 +133,22 @@ async function schemaContract() {
 		't',
 		'old update_product overload removed'
 	);
-	expectSql(
-		functionPrivilege('authenticated', createSignature),
-		't',
-		'authenticated create_product grant'
-	);
-	expectSql(
-		functionPrivilege('authenticated', updateSignature),
-		't',
-		'authenticated update_product grant'
-	);
+	for (const [label, signature] of [
+		['create_product', createSignature],
+		['update_product', updateSignature]
+	]) {
+		expectSql(
+			functionPrivilege('authenticated', signature),
+			't',
+			`authenticated ${label} execute grant`
+		);
+		expectSql(functionPrivilege('public', signature), 'f', `public ${label} execute grant absent`);
+		expectSql(
+			functionPrivilege('service_role', signature),
+			'f',
+			`service_role ${label} execute grant absent`
+		);
+	}
 	expectSql(
 		functionPrivilege('authenticated', oldCreateSignature),
 		'f',
@@ -122,16 +159,8 @@ async function schemaContract() {
 		'f',
 		'old update_product grant absent'
 	);
-	expectSql(
-		functionPrivilege('anon', createSignature),
-		'f',
-		'anon create_product grant absent'
-	);
-	expectSql(
-		functionPrivilege('anon', updateSignature),
-		'f',
-		'anon update_product grant absent'
-	);
+	expectSql(functionPrivilege('anon', createSignature), 'f', 'anon create_product grant absent');
+	expectSql(functionPrivilege('anon', updateSignature), 'f', 'anon update_product grant absent');
 }
 
 async function main() {
@@ -205,10 +234,7 @@ async function main() {
 		['unknown fields', [{ ...width, extra: true }]],
 		[
 			'duplicate keys',
-			[
-				width,
-				{ key: 'width', label: 'Second width', unit: 'mm', required: false }
-			]
+			[width, { key: 'width', label: 'Second width', unit: 'mm', required: false }]
 		],
 		['invalid unit', [{ ...width, unit: 'cm' }]],
 		['non-boolean required', [{ ...width, required: 'yes' }]],
@@ -240,21 +266,10 @@ async function main() {
 	const updated = await mustRpc(
 		'update_product',
 		{
-			p_product_id: dimensionalProduct.id,
-			p_lock_version: dimensionalProduct.lock_version,
-			p_product_code: dimensionalProduct.product_code,
+			...updateProductArgs(dimensionalProduct),
 			p_name: 'Updated dimensional Product',
-			p_customer_description: dimensionalProduct.customer_description,
-			p_internal_notes: dimensionalProduct.internal_notes,
-			p_kind: dimensionalProduct.kind,
-			p_category_id: dimensionalProduct.category_id,
-			p_unit_label: dimensionalProduct.unit_label,
-			p_currency: dimensionalProduct.currency,
-			p_taxable: dimensionalProduct.taxable,
 			p_dimensions_enabled: true,
-			p_dimension_definitions: [
-				{ key: 'length', label: 'Length', unit: 'mm', required: true }
-			]
+			p_dimension_definitions: [{ key: 'length', label: 'Length', unit: 'mm', required: true }]
 		},
 		undefined,
 		await signIn(admin)
@@ -270,6 +285,46 @@ async function main() {
 			dimensionalProduct.currency === 'ZAR' &&
 			dimensionalProduct.taxable === true,
 		'Product dimension update did not preserve lock/version or commercial fields'
+	);
+
+	const disabledUpdate = await mustRpc(
+		'update_product',
+		{
+			...updateProductArgs(dimensionalProduct),
+			p_dimensions_enabled: false,
+			p_dimension_definitions: []
+		},
+		undefined,
+		await signIn(admin)
+	);
+	dimensionalProduct = await productById(dimensionalProduct.id, admin);
+	assert(
+		disabledUpdate.lock_version === dimensionalProduct.lock_version &&
+			dimensionalProduct.lock_version === 3 &&
+			dimensionalProduct.dimensions_enabled === false &&
+			JSON.stringify(dimensionalProduct.dimension_definitions) === '[]',
+		'Product dimension disable update did not clear definitions or increment lock_version'
+	);
+
+	await expectRpcFailure(
+		'update_product',
+		{
+			...updateProductArgs(dimensionalProduct),
+			p_kind: 'service',
+			p_unit_label: 'job',
+			p_dimensions_enabled: true,
+			p_dimension_definitions: [width]
+		},
+		admin,
+		'service dimensions on update'
+	);
+	dimensionalProduct = await productById(dimensionalProduct.id, admin);
+	assert(
+		dimensionalProduct.kind === 'product' &&
+			dimensionalProduct.lock_version === 3 &&
+			dimensionalProduct.dimensions_enabled === false &&
+			JSON.stringify(dimensionalProduct.dimension_definitions) === '[]',
+		'Rejected service dimension update changed the Product'
 	);
 
 	await expectRpcFailure(
