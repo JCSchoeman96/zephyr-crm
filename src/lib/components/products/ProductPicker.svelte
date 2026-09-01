@@ -2,6 +2,7 @@
 	import Button from '$lib/components/ui/Button.svelte';
 	import Input from '$lib/components/ui/Input.svelte';
 	import Select from '$lib/components/ui/Select.svelte';
+	import type { DimensionDefinition } from '$lib/domain/products/dimensions';
 	import {
 		searchProducts,
 		type ProductOption,
@@ -43,6 +44,18 @@
 
 	function categoryLabel(categoryIdValue: string | null) {
 		return categories.find((category) => category.id === categoryIdValue)?.label ?? 'Uncategorised';
+	}
+
+	function measurementSummary(definitions: DimensionDefinition[]) {
+		const format = (definition: DimensionDefinition) => `${definition.label} (${definition.unit})`;
+		const required = definitions.filter((definition) => definition.required).map(format);
+		const optional = definitions.filter((definition) => !definition.required).map(format);
+		return [
+			required.length ? `Required: ${required.join(', ')}` : '',
+			optional.length ? `Optional: ${optional.join(', ')}` : ''
+		]
+			.filter(Boolean)
+			.join(' · ');
 	}
 
 	$effect(() => {
@@ -140,6 +153,11 @@
 						<span class="product-option-meta"
 							>{categoryLabel(product.category_id)} · per {product.unit_label}</span
 						>
+						{#if product.dimensions_enabled}
+							<p class="product-option-dimensions">
+								Measurements: {measurementSummary(product.dimension_definitions)}
+							</p>
+						{/if}
 					</div>
 					<div class="product-option-side">
 						<strong>{formatPrice(product)}</strong>
@@ -182,16 +200,24 @@
 				<span
 					>{selectedProduct.product_code} · {formatPrice(selectedProduct)} per {selectedProduct.unit_label}</span
 				>
+				{#if selectedProduct.dimensions_enabled}
+					<span class="selected-product-measurements">
+						Measurements: {measurementSummary(selectedProduct.dimension_definitions)}. The quote
+						server will set the quantity to 1.
+					</span>
+				{/if}
 			</div>
 			<div class="selected-product-actions">
-				<Input
-					id="catalogue-quantity"
-					name="quantity"
-					label="Catalogue quantity"
-					inputmode="decimal"
-					bind:value={quantity}
-					required
-				/>
+				{#if !selectedProduct.dimensions_enabled}
+					<Input
+						id="catalogue-quantity"
+						name="quantity"
+						label="Catalogue quantity"
+						inputmode="decimal"
+						bind:value={quantity}
+						required
+					/>
+				{/if}
 				<input type="hidden" name="product_id" value={selectedProduct.id} />
 				<input type="hidden" name="product_lock_version" value={selectedProduct.lock_version} />
 				<Button type="submit" formaction={action}>Add Product to quote</Button>
@@ -261,6 +287,12 @@
 		font-size: var(--font-size-xs);
 	}
 	.product-option-copy p {
+		margin: 0;
+		color: var(--color-text-muted);
+		font-size: var(--font-size-sm);
+	}
+	.product-option-dimensions,
+	.selected-product-measurements {
 		margin: 0;
 		color: var(--color-text-muted);
 		font-size: var(--font-size-sm);

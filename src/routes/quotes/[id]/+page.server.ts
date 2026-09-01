@@ -153,7 +153,7 @@ export const load: PageServerLoad = async (event) => {
 			? supabase
 					.from('products')
 					.select(
-						'id,product_code,name,customer_description,kind,category_id,unit_label,currency,unit_price,taxable,status,lock_version'
+						'id,product_code,name,customer_description,kind,category_id,unit_label,currency,unit_price,taxable,status,lock_version,dimensions_enabled,dimension_definitions'
 					)
 					.in('id', catalogueItemIds)
 			: Promise.resolve({ data: [], error: null }),
@@ -187,6 +187,8 @@ export const load: PageServerLoad = async (event) => {
 				currency: product?.currency ?? quoteResponse.data?.currency ?? '',
 				catalogueUnitPrice: item.catalogue_unit_price,
 				status: product?.status ?? 'missing',
+				dimensionsEnabled: product?.dimensions_enabled ?? false,
+				dimensionDefinitions: product?.dimension_definitions ?? [],
 				currentLockVersion: product?.lock_version ?? null,
 				sourceProductVersion: item.source_product_version,
 				sourceProductReviewedVersion: reviewedVersion,

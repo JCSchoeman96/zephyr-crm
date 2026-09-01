@@ -36,7 +36,7 @@ export const GET: RequestHandler = async ({ locals, url }) => {
 	let productsQuery = locals.supabase
 		.from('products')
 		.select(
-			'id,product_code,name,customer_description,kind,category_id,unit_label,currency,unit_price,taxable,lock_version',
+			'id,product_code,name,customer_description,kind,category_id,unit_label,currency,unit_price,taxable,lock_version,dimensions_enabled,dimension_definitions',
 			{ count: 'exact' }
 		)
 		.eq('status', 'active')
