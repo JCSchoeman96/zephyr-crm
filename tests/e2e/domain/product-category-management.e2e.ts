@@ -1,6 +1,25 @@
 import { execFileSync } from 'node:child_process';
 import { expect, test, type Locator, type Page } from '@playwright/test';
-import { cleanupUser, createStaff, signIn } from './helpers';
+import { cleanupUser, createStaff, signIn, type StaffUser } from './helpers';
+
+function parseLocalDatabaseUrl(value: string): string {
+	const rawValue = value.trim().replace(/^"(.*)"$/, '$1');
+	let url: URL;
+	try {
+		url = new URL(rawValue);
+	} catch {
+		throw new Error('Local Supabase DB_URL is not a valid URL.');
+	}
+
+	const hostname = url.hostname.toLowerCase().replace(/^\[(.*)\]$/, '$1');
+	if (url.protocol !== 'postgresql:') {
+		throw new Error('Local Supabase DB_URL must use the PostgreSQL protocol.');
+	}
+	if (!['localhost', '127.0.0.1', '::1'].includes(hostname)) {
+		throw new Error('Local Supabase DB_URL must point to localhost, 127.0.0.1, or ::1.');
+	}
+	return url.toString();
+}
 
 function localDatabaseUrl(): string {
 	const output = execFileSync('bunx', ['supabase', 'status', '-o', 'env'], {
@@ -9,7 +28,7 @@ function localDatabaseUrl(): string {
 	});
 	const line = output.split('\n').find((value) => value.startsWith('DB_URL='));
 	if (!line) throw new Error('Local Supabase DB_URL is unavailable for category cleanup.');
-	return line.slice('DB_URL='.length).replace(/^"(.*)"$/, '$1');
+	return parseLocalDatabaseUrl(line.slice('DB_URL='.length));
 }
 
 function cleanupCategoryFixture(categoryId: string): void {
@@ -47,11 +66,24 @@ async function categoryRowForCode(page: Page, code: string): Promise<Locator> {
 	return rows.nth(index);
 }
 
+test('category cleanup rejects unsafe database URLs', () => {
+	expect(() => parseLocalDatabaseUrl('not-a-url')).toThrow(
+		'Local Supabase DB_URL is not a valid URL.'
+	);
+	expect(() => parseLocalDatabaseUrl('https://localhost:54332/postgres')).toThrow(
+		'Local Supabase DB_URL must use the PostgreSQL protocol.'
+	);
+	expect(() => parseLocalDatabaseUrl('postgresql://db.example:54332/postgres')).toThrow(
+		'Local Supabase DB_URL must point to localhost, 127.0.0.1, or ::1.'
+	);
+	expect(() => parseLocalDatabaseUrl('postgresql://[::1]:54332/postgres')).not.toThrow();
+});
+
 test('Owner can manage flat Product categories while Sales cannot access the manager', async ({
 	page
 }) => {
-	const owner = await createStaff('owner', 'p22-category-owner');
-	const sales = await createStaff('sales', 'p22-category-sales');
+	let owner: StaffUser | null = null;
+	let sales: StaffUser | null = null;
 	const categoryCode = `p22-${Date.now()}-screens`;
 	const editedCategoryCode = `${categoryCode}-edited`;
 	const categoryLabel = 'P22 Screens';
@@ -59,6 +91,8 @@ test('Owner can manage flat Product categories while Sales cannot access the man
 	let categoryId = '';
 
 	try {
+		owner = await createStaff('owner', 'p22-category-owner');
+		sales = await createStaff('sales', 'p22-category-sales');
 		await signIn(page, owner);
 		await page.goto('/products', { waitUntil: 'networkidle' });
 		await expect(page.getByRole('link', { name: 'Manage categories', exact: true })).toBeVisible();
@@ -134,18 +168,19 @@ test('Owner can manage flat Product categories while Sales cannot access the man
 			if (categoryId) cleanupCategoryFixture(categoryId);
 		} finally {
 			try {
-				await cleanupUser(owner.id);
+				if (owner) await cleanupUser(owner.id);
 			} finally {
-				await cleanupUser(sales.id);
+				if (sales) await cleanupUser(sales.id);
 			}
 		}
 	}
 });
 
 test('category validation returns a 422 response for an oversized sort order', async ({ page }) => {
-	const owner = await createStaff('owner', 'p22-category-validation');
+	let owner: StaffUser | null = null;
 
 	try {
+		owner = await createStaff('owner', 'p22-category-validation');
 		await signIn(page, owner);
 		await page.goto('/products/categories', { waitUntil: 'networkidle' });
 		const createForm = page.locator('form.category-create-form');
@@ -170,16 +205,17 @@ test('category validation returns a 422 response for an oversized sort order', a
 		await expect(createForm.getByLabel('Category label')).toHaveValue('P22 Validation');
 		await expect(createForm.getByLabel('Sort order')).toHaveValue('9007199254740992');
 	} finally {
-		await cleanupUser(owner.id);
+		if (owner) await cleanupUser(owner.id);
 	}
 });
 
 test('category edit failures preserve submitted values', async ({ page }) => {
-	const owner = await createStaff('owner', 'p22-category-preserve');
+	let owner: StaffUser | null = null;
 	const categoryCode = `p22-${Date.now()}-preserve`;
 	let categoryId = '';
 
 	try {
+		owner = await createStaff('owner', 'p22-category-preserve');
 		await signIn(page, owner);
 		await page.goto('/products/categories', { waitUntil: 'networkidle' });
 		const createForm = page.locator('form.category-create-form');
@@ -234,7 +270,7 @@ test('category edit failures preserve submitted values', async ({ page }) => {
 		try {
 			if (categoryId) cleanupCategoryFixture(categoryId);
 		} finally {
-			await cleanupUser(owner.id);
+			if (owner) await cleanupUser(owner.id);
 		}
 	}
 });
