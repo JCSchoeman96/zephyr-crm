@@ -78,25 +78,36 @@ describe('product dimension contract', () => {
 		).toThrow(/service/i);
 	});
 
+	it('rejects non-string product kinds instead of coercing them', () => {
+		expect(() =>
+			normalizeDimensionDefinitions({
+				kind: ['product'],
+				dimensionsEnabled: true,
+				dimensionDefinitions: [width]
+			})
+		).toThrow(/kind.*string|invalid/i);
+	});
+
 	it.each([
 		['an unknown key', [{ ...width, key: 'angle' }], /unknown|key/i],
 		['a duplicate key', [width, { ...height, key: 'width' }], /duplicate/i],
 		['an invalid unit', [{ ...width, unit: 'cm' }], /unit/i],
 		['an empty label', [{ ...width, label: '   ' }], /label/i],
-		['an invalid required flag', [{ ...width, required: 'yes' }], /required/i],
-		[
-			'more than four definitions',
-			[
+		['an invalid required flag', [{ ...width, required: 'yes' }], /required/i]
+	] as const)('rejects %s', (_reason, input, message) => {
+		expect(() => normalizeDimensionDefinitions(input)).toThrow(message);
+	});
+
+	it('rejects more than four definitions before duplicate-key validation', () => {
+		expect(() =>
+			normalizeDimensionDefinitions([
 				width,
 				height,
 				{ key: 'length', label: 'Length', unit: 'mm', required: false },
 				{ key: 'depth', label: 'Depth', unit: 'mm', required: false },
-				{ key: 'width', label: 'Second width', unit: 'mm', required: false }
-			],
-			/four|exceed|duplicate/i
-		]
-	] as const)('rejects %s', (_reason, input, message) => {
-		expect(() => normalizeDimensionDefinitions(input)).toThrow(message);
+				{ ...width, label: 'Second width' }
+			])
+		).toThrow('Dimension definitions cannot exceed 4 entries');
 	});
 
 	it('rejects malformed definition input instead of dropping it', () => {

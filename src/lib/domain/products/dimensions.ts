@@ -12,23 +12,9 @@ export type DimensionValue = DimensionDefinition & {
 	value: string | null;
 };
 
-export type DimensionConfiguration = {
-	kind?: string;
-	dimensionsEnabled?: boolean;
-	dimensionDefinitions?: unknown;
-};
-
 const dimensionKeys = new Set<string>(DIMENSION_KEYS);
 const definitionFields = new Set(['key', 'label', 'unit', 'required']);
-const configurationFields = new Set([
-	'kind',
-	'enabled',
-	'dimensionsEnabled',
-	'dimensions_enabled',
-	'dimensionDefinitions',
-	'dimension_definitions',
-	'definitions'
-]);
+const configurationFields = new Set(['kind', 'dimensionsEnabled', 'dimensionDefinitions']);
 
 function isRecord(value: unknown): value is Record<string, unknown> {
 	return typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -133,24 +119,21 @@ export function normalizeDimensionDefinitions(input: unknown): DimensionDefiniti
 	}
 
 	const kindInput = parsed.kind;
-	const kind = kindInput === undefined ? undefined : String(kindInput).trim().toLowerCase();
+	if (kindInput !== undefined && typeof kindInput !== 'string') {
+		throw new Error('Product kind must be a string');
+	}
+	const kind = kindInput === undefined ? undefined : kindInput.trim().toLowerCase();
 	if (kind !== undefined && kind !== 'product' && kind !== 'service') {
 		throw new Error('Product kind is invalid for dimensions');
 	}
 	const definitionsInput = configurationValue(
 		parsed,
-		['dimensionDefinitions', 'dimension_definitions', 'definitions'],
+		['dimensionDefinitions'],
 		'Dimension definitions'
 	);
-	const hasDefinitionsField = ['dimensionDefinitions', 'dimension_definitions', 'definitions'].some(
-		(field) => Object.prototype.hasOwnProperty.call(parsed, field)
-	);
+	const hasDefinitionsField = Object.prototype.hasOwnProperty.call(parsed, 'dimensionDefinitions');
 	const definitions = normalizeDefinitionArray(hasDefinitionsField ? definitionsInput : [], true);
-	const enabledInput = configurationValue(
-		parsed,
-		['dimensionsEnabled', 'dimensions_enabled', 'enabled'],
-		'Dimensions enabled'
-	);
+	const enabledInput = configurationValue(parsed, ['dimensionsEnabled'], 'Dimensions enabled');
 	const enabled =
 		enabledInput === undefined
 			? definitions.length > 0
