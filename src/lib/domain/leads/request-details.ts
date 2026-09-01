@@ -248,6 +248,21 @@ export function parseLeadRequestMessage(
 	};
 }
 
+export function extractLeadMeasurements(parsed: ParsedLeadRequestMessage): {
+	width: string | null;
+	height: string | null;
+	openings: string | null;
+} {
+	const fields = new Map(
+		parsed.groups.flatMap((group) => group.fields).map((field) => [field.key, field.value])
+	);
+	return {
+		width: fields.get('width') ?? null,
+		height: fields.get('height') ?? null,
+		openings: fields.get('openings') ?? null
+	};
+}
+
 export function formatLeadRequestValue(key: string, value: string): string {
 	const trimmed = value.trim();
 	if (!trimmed) return '';

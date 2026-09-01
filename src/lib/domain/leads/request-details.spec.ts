@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+	extractLeadMeasurements,
 	formatLeadRequestValue,
 	parseLeadRequestMessage,
 	shouldExpandLeadRequestDetails
@@ -66,6 +67,39 @@ describe('lead request details', () => {
 		expect(result.hasStructuredFields).toBe(false);
 		expect(result.groups).toEqual([]);
 		expect(result.fallbackMessage).toBe('Customer asked for a site visit');
+	});
+
+	it('extracts raw Width, Height, and Openings values without conflating the fields', () => {
+		const parsed = parseLeadRequestMessage('Width (mm): 1200 | Height (mm): 800 | Openings: 3');
+
+		expect(extractLeadMeasurements(parsed)).toEqual({
+			width: '1200',
+			height: '800',
+			openings: '3'
+		});
+		expect(parsed.hasStructuredFields).toBe(true);
+	});
+
+	it('returns null measurements for an unstructured message and preserves parser state', () => {
+		const parsed = parseLeadRequestMessage('Customer asked for a site visit');
+
+		expect(extractLeadMeasurements(parsed)).toEqual({
+			width: null,
+			height: null,
+			openings: null
+		});
+		expect(parsed.hasStructuredFields).toBe(false);
+	});
+
+	it('does not treat Openings as a Width or Height value', () => {
+		const parsed = parseLeadRequestMessage('Openings: 3');
+
+		expect(extractLeadMeasurements(parsed)).toEqual({
+			width: null,
+			height: null,
+			openings: '3'
+		});
+		expect(parsed.hasStructuredFields).toBe(true);
 	});
 
 	it('formats known captured slugs without changing the stored values', () => {
