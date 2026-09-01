@@ -42,7 +42,10 @@
 		description="Reusable Products and services can be selected into future Quotes without changing historical commercial records."
 	>
 		{#snippet actions()}
-			{#if canManage}<a class="new-link" href={resolve('/products/new')}>New Product</a>{/if}
+			{#if canManage}
+				<a class="manage-link" href={resolve('/products/categories')}>Manage categories</a>
+				<a class="new-link" href={resolve('/products/new')}>New Product</a>
+			{/if}
 		{/snippet}
 	</PageHeader>
 
@@ -143,6 +146,21 @@
 		font-size: var(--font-size-sm);
 		font-weight: var(--font-weight-semibold);
 		text-decoration: none;
+	}
+	.manage-link {
+		display: inline-flex;
+		align-items: center;
+		min-height: 2.5rem;
+		padding: 0 var(--space-md);
+		border: 1px solid var(--color-border-subtle);
+		border-radius: var(--radius-md);
+		color: var(--color-brand-primary);
+		font-size: var(--font-size-sm);
+		font-weight: var(--font-weight-semibold);
+		text-decoration: none;
+	}
+	.manage-link:hover {
+		background: var(--color-surface-subtle);
 	}
 	.new-link:hover {
 		background: var(--color-brand-primary-strong);
