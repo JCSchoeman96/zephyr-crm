@@ -40,6 +40,38 @@ Saving a draft captures the current company identity setting alongside the quote
 
 Line item controls and preview totals are intentionally useful before saving, but every save and ready transition is recalculated in PostgreSQL. A stale form submission returns a visible conflict message.
 
+## Dimensional Product lines
+
+Products may opt into an ordered set of `Width`, `Height`, `Length`, and/or
+`Depth` fields. The current unit is `mm`; services cannot use Product
+dimensions. A dimensional QuoteItem stores the Product definition and the
+salesperson's final values as a snapshot, uses quantity `1`, and treats
+`unit_price` as the full manually entered quoted price. The optional future
+pricing engine for per-mm, per-cm, per-metre, m², or m³ billing is deferred.
+
+Every actual Product/opening is a separate line. Two differently sized lines
+may reference the same Product, while `Openings` captured on the Lead remains
+read-only enquiry context and never creates or multiplies quote lines. Flat
+ProductCategories render as non-priced headings; they are not parent/sub-
+product records.
+
+Lead Width, Height, and Openings values remain structured enquiry data. The
+quote editor shows them beside the builder and allows Width/Height to be
+applied to one selected dimensional line as editable defaults. The salesperson
+can then change each line's dimensions and full price independently. The
+trusted `save_quote_draft` action owns source, Product, category, quantity, and
+total derivation; the browser only submits editable line values. Readiness
+rejects a draft with a missing required Product dimension.
+
+Product and ProductCategory changes do not cascade into existing QuoteItems.
+When a Product source is stale, the salesperson must explicitly refresh the
+snapshot or keep the quoted values and record the review. Quote revisions copy
+the complete dimension and category snapshots.
+
+The customer-facing preview and PDF show the Product, stored size, quantity,
+unit, full quoted amount, and category heading. They never expose Product
+`internal_notes` or private source-review metadata.
+
 ## P14 document and email hardening
 
 Quote documents are generated locally from the frozen `quote_snapshot`, not
