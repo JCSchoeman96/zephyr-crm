@@ -198,11 +198,32 @@ test('quote editor carries enquiry dimensions through a draft and exposes readin
 
 		await dimensionalLine.getByLabel('Width (required)').fill('');
 		await dimensionalLine.getByLabel('Full quoted price').fill('1400');
+		const saveRequestPromise = page.waitForRequest(
+			(request) =>
+				request.method() === 'POST' && request.url().includes(`/quotes/${draft.quote_id}?/save`)
+		);
+		const saveNavigationPromise = page.waitForNavigation({ waitUntil: 'networkidle' });
 		await page.getByRole('button', { name: 'Save draft', exact: true }).click();
-		await page.waitForLoadState('networkidle');
-		await expect(
-			page.locator('.line-item').filter({ hasText: productCode }).getByLabel('Width (required)')
-		).toHaveValue('');
+		const [saveRequest, saveResponse] = await Promise.all([
+			saveRequestPromise,
+			saveNavigationPromise
+		]);
+		expect(saveResponse?.ok()).toBe(true);
+		expect(page.url()).toBe(`${appUrl}/quotes/${draft.quote_id}`);
+		const submittedItems = JSON.parse(
+			new URLSearchParams(saveRequest.postData() ?? '').get('items') ?? '[]'
+		) as Array<Record<string, unknown>>;
+		const submittedDimensionalLine = submittedItems.find(
+			(item) => item.name === 'Dimensional editor Product'
+		);
+		expect(submittedDimensionalLine?.unit_price).toBe('1400');
+		expect(submittedDimensionalLine?.dimensions).toEqual([
+			{ key: 'width', label: 'Width', unit: 'mm', required: true, value: null },
+			{ key: 'height', label: 'Height', unit: 'mm', required: true, value: '1200' }
+		]);
+		const reloadedDimensionalLine = page.locator('.line-item').filter({ hasText: productCode });
+		await expect(reloadedDimensionalLine.getByLabel('Width (required)')).toHaveValue('');
+		await expect(reloadedDimensionalLine.getByLabel('Full quoted price')).toHaveValue('1400');
 
 		await page.getByRole('button', { name: 'Mark ready', exact: true }).click();
 		await expect(
