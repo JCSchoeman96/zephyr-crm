@@ -587,6 +587,74 @@ begin
 end;
 $$;
 
+create or replace function private.normalize_quote_item_dimensions_from_snapshot(
+	p_definition_snapshot jsonb,
+	p_dimensions jsonb
+)
+returns jsonb
+language plpgsql
+stable
+set search_path = pg_catalog, public
+as $$
+declare
+	v_definition jsonb;
+	v_item jsonb;
+	v_value text;
+	v_canonical text;
+	v_normalized jsonb := '[]'::jsonb;
+	v_index integer := 0;
+begin
+	if p_definition_snapshot = '[]'::jsonb then
+		if p_dimensions is not null and p_dimensions <> '[]'::jsonb then
+			raise exception using errcode = '22023', message = 'Non-dimensional Quote items cannot have dimensions';
+		end if;
+		return '[]'::jsonb;
+	end if;
+	if jsonb_typeof(p_definition_snapshot) is distinct from 'array'
+		or p_dimensions is null
+		or jsonb_typeof(p_dimensions) is distinct from 'array'
+		or jsonb_array_length(p_dimensions) <> jsonb_array_length(p_definition_snapshot) then
+		raise exception using errcode = '22023', message = 'Quote item dimensions do not match their stored Product definition';
+	end if;
+	for v_definition in select value from jsonb_array_elements(p_definition_snapshot) loop
+		v_index := v_index + 1;
+		v_item := p_dimensions -> (v_index - 1);
+		if jsonb_typeof(v_item) is distinct from 'object'
+			or (select count(*) from jsonb_object_keys(v_item)) <> 5 then
+			raise exception using errcode = '22023', message = format('Dimension %s is malformed', v_index);
+		end if;
+		if v_item ->> 'key' is distinct from v_definition ->> 'key'
+			or v_item ->> 'label' is distinct from v_definition ->> 'label'
+			or v_item ->> 'unit' is distinct from v_definition ->> 'unit'
+			or (v_item ->> 'required')::boolean is distinct from (v_definition ->> 'required')::boolean then
+			raise exception using errcode = '22023', message = format('Dimension %s does not match its stored Product definition', v_index);
+		end if;
+		if jsonb_typeof(v_item -> 'value') is distinct from 'null'
+			and jsonb_typeof(v_item -> 'value') is distinct from 'string' then
+			raise exception using errcode = '22023', message = format('Dimension %s value must be text or null', v_index);
+		end if;
+		if jsonb_typeof(v_item -> 'value') = 'null' then
+			v_normalized := v_normalized || jsonb_build_array(jsonb_build_object(
+				'key', v_definition ->> 'key', 'label', v_definition ->> 'label', 'unit', v_definition ->> 'unit',
+				'required', (v_definition ->> 'required')::boolean, 'value', null
+			));
+			continue;
+		end if;
+		v_value := v_item ->> 'value';
+		if v_value !~ '^(?:0|[1-9][0-9]*)(?:\.[0-9]+)?$' or v_value::numeric <= 0 then
+			raise exception using errcode = '22023', message = format('Dimension %s value must be positive', v_index);
+		end if;
+		v_canonical := v_value::numeric::text;
+		if position('.' in v_canonical) > 0 then v_canonical := rtrim(rtrim(v_canonical, '0'), '.'); end if;
+		v_normalized := v_normalized || jsonb_build_array(jsonb_build_object(
+			'key', v_definition ->> 'key', 'label', v_definition ->> 'label', 'unit', v_definition ->> 'unit',
+			'required', (v_definition ->> 'required')::boolean, 'value', v_canonical
+		));
+	end loop;
+	return v_normalized;
+end;
+$$;
+
 create or replace function private.product_dimension_snapshot(
 	p_product public.products,
 	p_existing_dimensions jsonb default '[]'::jsonb
@@ -626,6 +694,7 @@ $$;
 revoke execute on function private.normalize_quote_item_dimensions(public.products, jsonb, boolean) from public, anon, authenticated, service_role;
 revoke execute on function private.quote_item_dimensions_ready(jsonb) from public, anon, authenticated, service_role;
 revoke execute on function private.product_dimension_snapshot(public.products, jsonb) from public, anon, authenticated, service_role;
+revoke execute on function private.normalize_quote_item_dimensions_from_snapshot(jsonb, jsonb) from public, anon, authenticated, service_role;
 
 create or replace function public.add_product_quote_item(
 	p_quote_id uuid,
@@ -744,7 +813,6 @@ declare
 	v_items jsonb := coalesce(p_items, '[]'::jsonb);
 	v_normalized_items jsonb := '[]'::jsonb;
 	v_item jsonb;
-	v_normalized jsonb;
 	v_position integer := 0;
 	v_name text;
 	v_description text;
@@ -774,6 +842,7 @@ declare
 	v_product public.products%rowtype;
 	v_category public.product_categories%rowtype;
 	v_item_id uuid;
+	v_lock_product_id uuid;
 	v_item_id_text text;
 	v_product_id_text text;
 	v_product_lock_text text;
@@ -806,6 +875,30 @@ begin
 		old_status := v_quote.status;
 	end if;
 
+	-- Lock every Product participating in this save in one deterministic order.
+	-- New rows identify Products directly; existing catalogue rows identify them
+	-- through their already-persisted QuoteItem lineage.
+	for v_lock_product_id in
+		select product_id
+		from (
+			select (value ->> 'product_id')::uuid as product_id
+			from jsonb_array_elements(v_items)
+			where nullif(trim(value ->> 'product_id'), '') ~* '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'
+			union
+			select qi.product_id
+			from public.quote_items qi
+			join jsonb_array_elements(v_items) item
+				on nullif(trim(item.value ->> 'id'), '') ~* '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'
+				and qi.id = (item.value ->> 'id')::uuid
+			where qi.quote_id = v_quote_id
+				and qi.source_type = 'catalogue'
+		) product_ids
+		where product_id is not null
+		order by product_id
+	loop
+		perform 1 from public.products where id = v_lock_product_id for update;
+	end loop;
+
 	-- Validate every line and replace all browser-owned source fields with a
 	-- server-derived normalized representation before changing the Quote.
 	for v_item in select value from jsonb_array_elements(v_items) loop
@@ -813,6 +906,9 @@ begin
 		v_item_id_text := nullif(trim(coalesce(v_item ->> 'id', '')), '');
 		if v_item_id_text is not null and v_item_id_text !~* '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$' then
 			raise exception using errcode = '22023', message = format('Quote item %s identifier is invalid', v_position);
+		end if;
+		if coalesce(v_item ->> 'quantity', '') !~ '^(?:0|[1-9][0-9]*)(?:\.[0-9]{1,4})?$' then
+			raise exception using errcode = '22023', message = format('Quote item %s quantity is invalid', v_position);
 		end if;
 		if coalesce(v_item ->> 'unit_price', '') !~ '^(?:0|[1-9][0-9]*)(?:\.[0-9]{1,4})?$' then
 			raise exception using errcode = '22023', message = format('Quote item %s unit price is invalid', v_position);
@@ -853,9 +949,9 @@ begin
 				if not found then raise exception using errcode = 'P0002', message = 'Product not found'; end if;
 				v_name := v_existing_item.name;
 				v_description := nullif(trim(coalesce(v_item ->> 'description', '')), '');
-				v_quantity := case when v_product.dimensions_enabled then 1 else (v_item ->> 'quantity')::numeric end;
-				v_dimensions := private.normalize_quote_item_dimensions(v_product, case when v_item ? 'dimensions' then v_item -> 'dimensions' else v_existing_item.dimensions end);
-				if v_product.dimensions_enabled and v_item ? 'quantity' and (v_item ->> 'quantity')::numeric <> 1 then
+				v_quantity := case when v_existing_item.dimensions <> '[]'::jsonb then 1 else (v_item ->> 'quantity')::numeric end;
+				v_dimensions := private.normalize_quote_item_dimensions_from_snapshot(v_existing_item.dimensions, case when v_item ? 'dimensions' then v_item -> 'dimensions' else v_existing_item.dimensions end);
+				if v_existing_item.dimensions <> '[]'::jsonb and (v_item ->> 'quantity')::numeric <> 1 then
 					raise exception using errcode = '22023', message = format('Dimensional Quote item %s quantity must be 1', v_position);
 				end if;
 			else
