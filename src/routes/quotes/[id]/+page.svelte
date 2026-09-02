@@ -13,7 +13,12 @@
 	import Select from '$lib/components/ui/Select.svelte';
 	import Textarea from '$lib/components/ui/Textarea.svelte';
 	import { activityEventLabel, quoteStatusLabel } from '$lib/domain/presentation/labels';
-	import type { DimensionValue } from '$lib/domain/products/dimensions';
+	import {
+		DIMENSION_KEYS,
+		normalizeDimensionValue,
+		type DimensionKey,
+		type DimensionValue
+	} from '$lib/domain/products/dimensions';
 
 	let { data, form }: { data: PageData; form: ActionData } = $props();
 
@@ -73,6 +78,71 @@
 		return failedValues()?.[name] ?? fallback;
 	}
 
+	function safePersistedDimensions(value: unknown): DimensionValue[] {
+		if (!Array.isArray(value)) return [];
+		const seen: string[] = [];
+		return value.flatMap((candidate) => {
+			if (!candidate || typeof candidate !== 'object' || Array.isArray(candidate)) return [];
+			const record = candidate as Record<string, unknown>;
+			const key = typeof record.key === 'string' ? record.key : '';
+			if (!DIMENSION_KEYS.includes(key as DimensionKey) || seen.includes(key)) return [];
+			const label = typeof record.label === 'string' ? record.label.trim() : '';
+			if (!label || record.unit !== 'mm' || typeof record.required !== 'boolean') return [];
+			if (record.value !== null && typeof record.value !== 'string') return [];
+			let normalizedValue: string | null;
+			try {
+				normalizedValue = normalizeDimensionValue(record.value);
+			} catch {
+				return [];
+			}
+			seen.push(key);
+			return [
+				{
+					key: key as DimensionKey,
+					label,
+					unit: 'mm',
+					required: record.required,
+					value: normalizedValue
+				}
+			];
+		});
+	}
+
+	function submittedDimensionValues(
+		persisted: DimensionValue[],
+		submitted: unknown
+	): DimensionValue[] {
+		if (!Array.isArray(submitted)) return persisted;
+		const persistedKeys: string[] = persisted.map((dimension) => dimension.key);
+		const submittedByKey: Array<{ key: string; value: string | null }> = [];
+		const duplicateKeys: string[] = [];
+		for (const candidate of submitted) {
+			if (!candidate || typeof candidate !== 'object' || Array.isArray(candidate)) continue;
+			const record = candidate as Record<string, unknown>;
+			const key = typeof record.key === 'string' ? record.key : '';
+			if (!persistedKeys.includes(key)) continue;
+			if (submittedByKey.some((entry) => entry.key === key)) {
+				if (!duplicateKeys.includes(key)) duplicateKeys.push(key);
+				continue;
+			}
+			if (record.value !== null && typeof record.value !== 'string') continue;
+			try {
+				submittedByKey.push({ key, value: normalizeDimensionValue(record.value) });
+			} catch {
+				// Keep the persisted value for malformed submitted measurements.
+			}
+		}
+		return persisted.map((dimension) =>
+			duplicateKeys.includes(dimension.key) ||
+			!submittedByKey.some((entry) => entry.key === dimension.key)
+				? dimension
+				: {
+						...dimension,
+						value: submittedByKey.find((entry) => entry.key === dimension.key)?.value ?? null
+					}
+		);
+	}
+
 	function initialItems() {
 		const raw = failedValues()?.items;
 		if (raw) {
@@ -98,9 +168,7 @@
 							quantity: String(record.quantity ?? '1'),
 							unit_price: String(record.unit_price ?? '0'),
 							taxable: typeof record.taxable === 'boolean' ? record.taxable : true,
-							dimensions: Array.isArray(record.dimensions)
-								? (record.dimensions as unknown as DimensionValue[])
-								: base.dimensions
+							dimensions: submittedDimensionValues(base.dimensions ?? [], record.dimensions)
 						};
 					});
 				}
@@ -113,9 +181,7 @@
 
 	function editorItem(item: PageData['items'][number]) {
 		const source = data.productSources.find((value) => value.quoteItemId === item.id);
-		const dimensions = (Array.isArray(item.dimensions)
-			? item.dimensions
-			: []) as unknown as DimensionValue[];
+		const dimensions = safePersistedDimensions(item.dimensions);
 		return {
 			id: item.id,
 			name: item.name,
@@ -128,9 +194,7 @@
 			product_code_snapshot: item.product_code_snapshot,
 			unit_label_snapshot: item.unit_label_snapshot,
 			dimensions,
-			dimensionsEnabled: Boolean(
-				source?.dimensionsEnabled ?? (Array.isArray(item.dimensions) && item.dimensions.length > 0)
-			),
+			dimensionsEnabled: item.source_type === 'catalogue' && dimensions.length > 0,
 			product_category_id_snapshot: item.product_category_id_snapshot,
 			product_category_code_snapshot: item.product_category_code_snapshot,
 			product_category_label_snapshot: item.product_category_label_snapshot,

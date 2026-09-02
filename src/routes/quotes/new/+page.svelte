@@ -38,7 +38,7 @@
 							quantity: String(record.quantity ?? '1'),
 							unit_price: String(record.unit_price ?? '0'),
 							taxable: typeof record.taxable === 'boolean' ? record.taxable : true,
-							dimensions: Array.isArray(record.dimensions) ? record.dimensions : []
+							dimensions: []
 						};
 					});
 				}

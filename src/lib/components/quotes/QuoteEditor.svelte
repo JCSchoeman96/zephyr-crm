@@ -120,7 +120,7 @@
 					source_product_reviewed_version: item.source_product_reviewed_version ?? null,
 					current_product_lock_version: item.current_product_lock_version ?? null,
 					is_stale: item.is_stale ?? false,
-					dimensionsEnabled: item.dimensionsEnabled ?? Boolean(item.dimensions?.length),
+					dimensionsEnabled: Boolean(item.dimensions?.length),
 					dimensions: Array.isArray(item.dimensions) ? item.dimensions : [],
 					product_category_id_snapshot: item.product_category_id_snapshot ?? null,
 					product_category_code_snapshot: item.product_category_code_snapshot ?? null,
@@ -149,9 +149,7 @@
 				quantity: item.quantity,
 				unit_price: item.unit_price,
 				taxable: item.taxable,
-				...(item.dimensionsEnabled && item.dimensions?.length
-					? { dimensions: item.dimensions }
-					: {})
+				...(item.dimensions?.length ? { dimensions: item.dimensions } : {})
 			}))
 		)
 	);
@@ -163,7 +161,7 @@
 	let dimensionalItems = $derived(
 		items
 			.map((item, index) => ({ item, index }))
-			.filter(({ item }) => item.dimensionsEnabled && item.source_type === 'catalogue')
+			.filter(({ item }) => item.dimensions?.length && item.source_type === 'catalogue')
 	);
 
 	function isDimensionReadinessError(message: string | undefined) {

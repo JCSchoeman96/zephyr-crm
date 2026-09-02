@@ -64,4 +64,17 @@ describe('action error handling', () => {
 			message: 'A valid Task ID is required'
 		});
 	});
+
+	it('classifies dimension parser unknown and duplicate key failures as validation', () => {
+		for (const message of [
+			'Quote line 1 has an unknown dimension field',
+			'Duplicate dimension key: width'
+		]) {
+			expect(actionFailureDetails(new Error(message), 'fallback')).toMatchObject({
+				status: 422,
+				code: 'VALIDATION',
+				message
+			});
+		}
+	});
 });

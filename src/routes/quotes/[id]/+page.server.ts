@@ -261,6 +261,15 @@ export const actions: Actions = {
 			if (response.error) {
 				if (
 					response.error.code === '23514' &&
+					response.error.message.includes('required Product dimensions')
+				) {
+					return fail(422, {
+						message: 'A ready Quote requires all required Product dimensions',
+						code: 'VALIDATION'
+					});
+				}
+				if (
+					response.error.code === '23514' &&
 					response.error.message.includes('unresolved Product source changes')
 				) {
 					return fail(422, {

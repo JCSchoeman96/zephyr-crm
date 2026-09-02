@@ -16,7 +16,6 @@
 		source_product_version?: number | null;
 		current_product_lock_version?: number | null;
 		is_stale?: boolean;
-		dimensionsEnabled?: boolean;
 		dimensions?: DimensionValue[];
 		product_category_label_snapshot?: string | null;
 	};
@@ -52,7 +51,7 @@
 	} = $props();
 
 	const isCatalogue = $derived(item.source_type === 'catalogue');
-	const isDimensional = $derived(isCatalogue && item.dimensionsEnabled === true);
+	const isDimensional = $derived(isCatalogue && Boolean(item.dimensions?.length));
 	const canReviewSource = $derived(
 		!readonly && reviewActions && isCatalogue && Boolean(item.id && item.is_stale)
 	);
@@ -143,7 +142,6 @@
 									dimension.value = (event.currentTarget as HTMLInputElement).value || null;
 								}}
 								disabled={readonly}
-								required={dimension.required}
 								aria-required={dimension.required ? 'true' : undefined}
 							/>
 						</div>
