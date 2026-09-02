@@ -1,6 +1,10 @@
 export const DIMENSION_KEYS = ['width', 'height', 'length', 'depth'] as const;
 export type DimensionKey = (typeof DIMENSION_KEYS)[number];
 
+export const MAX_DIMENSION_LABEL_LENGTH = 80;
+export const MAX_DIMENSION_VALUE_MM = 100_000;
+export const MAX_DIMENSION_VALUE_DECIMAL_PLACES = 4;
+
 export type DimensionDefinition = {
 	key: DimensionKey;
 	label: string;
@@ -57,6 +61,11 @@ function normalizedDefinition(value: unknown, index: number): DimensionDefinitio
 
 	const label = typeof value.label === 'string' ? value.label.trim() : '';
 	if (!label) throw new Error(`Dimension label for ${key} is required`);
+	if ([...label].length > MAX_DIMENSION_LABEL_LENGTH) {
+		throw new Error(
+			`Dimension label for ${key} cannot exceed ${MAX_DIMENSION_LABEL_LENGTH} characters`
+		);
+	}
 
 	const unit = typeof value.unit === 'string' ? value.unit.trim() : '';
 	if (unit !== 'mm') throw new Error(`Dimension unit for ${key} must be mm`);
@@ -162,6 +171,14 @@ function canonicalDecimal(text: string): string {
 	return normalizedFraction ? `${normalizedWhole}.${normalizedFraction}` : normalizedWhole;
 }
 
+function exceedsDimensionMaximum(normalized: string): boolean {
+	const [whole, fraction] = normalized.split('.');
+	const maximumWhole = String(MAX_DIMENSION_VALUE_MM);
+	if (whole.length !== maximumWhole.length) return whole.length > maximumWhole.length;
+	if (whole !== maximumWhole) return whole > maximumWhole;
+	return Boolean(fraction);
+}
+
 export function normalizeDimensionValue(input: unknown): string | null {
 	if (input === null) return null;
 
@@ -170,9 +187,18 @@ export function normalizeDimensionValue(input: unknown): string | null {
 	if (!text || !/^\d+(?:\.\d+)?$/.test(text)) {
 		throw new Error('Dimension value must be a positive decimal or null');
 	}
+	const fraction = text.includes('.') ? text.slice(text.indexOf('.') + 1) : '';
+	if (fraction.length > MAX_DIMENSION_VALUE_DECIMAL_PLACES) {
+		throw new Error(
+			`Dimension value cannot use more than ${MAX_DIMENSION_VALUE_DECIMAL_PLACES} decimal places`
+		);
+	}
 
 	const normalized = canonicalDecimal(text);
 	if (normalized === '0') throw new Error('Dimension value must be greater than zero');
+	if (exceedsDimensionMaximum(normalized)) {
+		throw new Error(`Dimension value cannot exceed ${MAX_DIMENSION_VALUE_MM} mm`);
+	}
 	return normalized;
 }
 

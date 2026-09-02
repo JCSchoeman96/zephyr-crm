@@ -1,5 +1,9 @@
 begin;
 
+-- Dimensional boundaries: customer-facing labels are at most 80 characters;
+-- values are positive millimetre decimals no greater than 100000 mm with at
+-- most four decimal places.
+
 alter table public.products
 	add column dimensions_enabled boolean not null default false,
 	add column dimension_definitions jsonb not null default '[]'::jsonb;
@@ -94,6 +98,9 @@ begin
 		v_label := btrim(v_definition ->> 'label');
 		if v_label = '' then
 			raise exception using errcode = '22023', message = format('Dimension label for %s is required', v_key);
+		end if;
+		if char_length(v_label) > 80 then
+			raise exception using errcode = '22023', message = format('Dimension label for %s cannot exceed 80 characters', v_key);
 		end if;
 
 		if not (v_definition ? 'unit')
@@ -430,7 +437,8 @@ begin
 		if not (v_item ? 'label')
 			or jsonb_typeof(v_item -> 'label') is distinct from 'string'
 			or (v_item ->> 'label') = ''
-			or (v_item ->> 'label') <> btrim(v_item ->> 'label') then
+			or (v_item ->> 'label') <> btrim(v_item ->> 'label')
+			or char_length(v_item ->> 'label') > 80 then
 			return false;
 		end if;
 		if not (v_item ? 'unit')
@@ -449,7 +457,10 @@ begin
 
 		if jsonb_typeof(v_item -> 'value') = 'string' then
 			v_value := v_item ->> 'value';
-			if v_value !~ '^(?:[1-9][0-9]*(?:\.[0-9]*[1-9])?|0\.[0-9]*[1-9])$' then
+			if v_value !~ '^(?:[1-9][0-9]{0,5}(?:\.[0-9]{0,3}[1-9])?|0\.[0-9]{0,3}[1-9])$' then
+				return false;
+			end if;
+			if v_value::numeric > 100000 then
 				return false;
 			end if;
 		end if;
@@ -471,7 +482,7 @@ alter table public.quote_items
 
 revoke all on function private.is_valid_quote_item_dimensions(jsonb) from public, anon, authenticated, service_role;
 
-comment on column public.quote_items.dimensions is 'Canonical client-specific dimension snapshot; values are positive millimetre decimal strings or null while a draft is incomplete.';
+comment on column public.quote_items.dimensions is 'Canonical client-specific dimension snapshot; values are positive millimetre decimal strings up to 100000 mm with at most four decimal places, or null while a draft is incomplete.';
 comment on column public.quote_items.product_category_id_snapshot is 'Historical ProductCategory identity captured on the QuoteItem; intentionally has no live foreign key.';
 comment on column public.quote_items.product_category_code_snapshot is 'Historical ProductCategory code captured on the QuoteItem.';
 comment on column public.quote_items.product_category_label_snapshot is 'Historical ProductCategory label captured on the QuoteItem.';
@@ -544,7 +555,18 @@ begin
 			continue;
 		end if;
 		v_value := v_item ->> 'value';
-		if v_value !~ '^(?:0|[1-9][0-9]*)(?:\.[0-9]+)?$' or v_value::numeric <= 0 then
+		if v_value !~ '^(?:0|[1-9][0-9]*)(?:\.[0-9]+)?$' then
+			raise exception using errcode = '22023', message = format('Dimension %s value must be positive', v_index);
+		end if;
+		if position('.' in v_value) > 0 and char_length(v_value) - position('.' in v_value) > 4 then
+			raise exception using errcode = '22023', message = format('Dimension %s value cannot use more than 4 decimal places', v_index);
+		end if;
+		if char_length(split_part(v_value, '.', 1)) > 6
+			or split_part(v_value, '.', 1)::bigint > 100000
+			or (split_part(v_value, '.', 1) = '100000' and rtrim(split_part(v_value, '.', 2), '0') <> '') then
+			raise exception using errcode = '22023', message = format('Dimension %s value cannot exceed 100000 mm', v_index);
+		end if;
+		if v_value::numeric <= 0 then
 			raise exception using errcode = '22023', message = format('Dimension %s value must be positive', v_index);
 		end if;
 		v_canonical := v_value::numeric::text;
@@ -641,7 +663,18 @@ begin
 			continue;
 		end if;
 		v_value := v_item ->> 'value';
-		if v_value !~ '^(?:0|[1-9][0-9]*)(?:\.[0-9]+)?$' or v_value::numeric <= 0 then
+		if v_value !~ '^(?:0|[1-9][0-9]*)(?:\.[0-9]+)?$' then
+			raise exception using errcode = '22023', message = format('Dimension %s value must be positive', v_index);
+		end if;
+		if position('.' in v_value) > 0 and char_length(v_value) - position('.' in v_value) > 4 then
+			raise exception using errcode = '22023', message = format('Dimension %s value cannot use more than 4 decimal places', v_index);
+		end if;
+		if char_length(split_part(v_value, '.', 1)) > 6
+			or split_part(v_value, '.', 1)::bigint > 100000
+			or (split_part(v_value, '.', 1) = '100000' and rtrim(split_part(v_value, '.', 2), '0') <> '') then
+			raise exception using errcode = '22023', message = format('Dimension %s value cannot exceed 100000 mm', v_index);
+		end if;
+		if v_value::numeric <= 0 then
 			raise exception using errcode = '22023', message = format('Dimension %s value must be positive', v_index);
 		end if;
 		v_canonical := v_value::numeric::text;

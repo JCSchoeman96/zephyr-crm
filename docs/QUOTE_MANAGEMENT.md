@@ -43,9 +43,11 @@ Line item controls and preview totals are intentionally useful before saving, bu
 ## Dimensional Product lines
 
 Products may opt into an ordered set of `Width`, `Height`, `Length`, and/or
-`Depth` fields. The current unit is `mm`; services cannot use Product
-dimensions. A dimensional QuoteItem stores the Product definition and the
-salesperson's final values as a snapshot, uses quantity `1`, and treats
+`Depth` fields. The current unit is `mm`; labels are limited to 80 characters,
+and values are positive millimetre decimals up to 100000 mm with at most four
+decimal places. These limits are enforced by the trusted Product and QuoteItem
+boundaries and mirrored in the browser. Services cannot use Product dimensions.
+A dimensional QuoteItem stores the Product definition and the salesperson's final values as a snapshot, uses quantity `1`, and treats
 `unit_price` as the full manually entered quoted price. The optional future
 pricing engine for per-mm, per-cm, per-metre, m², or m³ billing is deferred.
 

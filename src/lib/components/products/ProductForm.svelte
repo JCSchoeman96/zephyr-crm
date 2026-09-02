@@ -2,6 +2,7 @@
 	import type { Database } from '$lib/types/database';
 	import {
 		DIMENSION_KEYS,
+		MAX_DIMENSION_LABEL_LENGTH,
 		type DimensionDefinition,
 		type DimensionKey
 	} from '$lib/domain/products/dimensions';
@@ -244,7 +245,7 @@
 								class="ui-field__control"
 								bind:value={definition.label}
 								oninput={clearPreservedDimensions}
-								maxlength="200"
+								maxlength={MAX_DIMENSION_LABEL_LENGTH}
 								required
 							/>
 						</label>

@@ -169,10 +169,12 @@ Activity event.
 
 Dimensions are an optional Product configuration, not a catalogue hierarchy or
 variant system. A Product may define one to four ordered measurements using the
-supported keys `width`, `height`, `length`, and `depth`. Labels are configurable,
-units are currently `mm`, and each definition records whether the salesperson
-must provide a value before the Quote can become ready. Services cannot enable
-dimensions.
+supported keys `width`, `height`, `length`, and `depth`. Labels are configurable
+up to 80 characters, units are currently `mm`, and each definition records
+whether the salesperson must provide a value before the Quote can become ready.
+Values are positive millimetre decimals up to 100000 mm with at most four
+decimal places. The trusted Product and QuoteItem boundaries enforce these
+limits, with matching browser constraints. Services cannot enable dimensions.
 
 The first release uses manual full-line pricing. A dimensional QuoteItem has
 `quantity = 1`, and its `unit_price` is the full quoted amount entered by the

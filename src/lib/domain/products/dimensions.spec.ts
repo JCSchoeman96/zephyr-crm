@@ -40,6 +40,21 @@ describe('product dimension contract', () => {
 		expect(DIMENSION_KEYS).toEqual(['width', 'height', 'length', 'depth']);
 	});
 
+	it('bounds customer-facing labels and millimetre values', () => {
+		expect(normalizeDimensionDefinitions([{ ...width, label: 'L'.repeat(80) }])).toEqual([
+			{ ...width, label: 'L'.repeat(80) }
+		]);
+		expect(() => normalizeDimensionDefinitions([{ ...width, label: 'L'.repeat(81) }])).toThrow(
+			/80|long/i
+		);
+
+		expect(normalizeDimensionValue('100000')).toBe('100000');
+		expect(normalizeDimensionValue('1.2345')).toBe('1.2345');
+		expect(normalizeDimensionValue('100000.0000')).toBe('100000');
+		expect(() => normalizeDimensionValue('100000.0001')).toThrow(/100000|maximum/i);
+		expect(() => normalizeDimensionValue('1.23456')).toThrow(/4|decimal/i);
+	});
+
 	it('allows a dimensionless product only when it is explicitly disabled', () => {
 		expect(
 			normalizeDimensionDefinitions({

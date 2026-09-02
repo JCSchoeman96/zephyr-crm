@@ -1,6 +1,10 @@
 <script lang="ts">
 	import Button from '$lib/components/ui/Button.svelte';
-	import type { DimensionValue } from '$lib/domain/products/dimensions';
+	import {
+		MAX_DIMENSION_VALUE_DECIMAL_PLACES,
+		MAX_DIMENSION_VALUE_MM,
+		type DimensionValue
+	} from '$lib/domain/products/dimensions';
 
 	export type QuoteEditorItem = {
 		id?: string;
@@ -134,8 +138,9 @@
 								id={`quote-item-${index}-${dimension.key}`}
 								class="ui-field__control"
 								type="number"
-								min="0.000001"
-								step="any"
+								min={10 ** -MAX_DIMENSION_VALUE_DECIMAL_PLACES}
+								max={MAX_DIMENSION_VALUE_MM}
+								step={10 ** -MAX_DIMENSION_VALUE_DECIMAL_PLACES}
 								inputmode="decimal"
 								value={dimension.value ?? ''}
 								oninput={(event) => {

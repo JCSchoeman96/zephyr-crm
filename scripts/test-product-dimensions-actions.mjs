@@ -168,6 +168,25 @@ async function main() {
 		'product',
 		category.product_category_id
 	);
+	await expectRpcFailure(
+		'create_product',
+		{
+			p_product_code: `${prefix}-LONG-LABEL`,
+			p_name: 'Overlong dimension label fixture',
+			p_customer_description: 'Boundary fixture',
+			p_internal_notes: 'Boundary fixture',
+			p_kind: 'product',
+			p_category_id: category.product_category_id,
+			p_unit_label: 'each',
+			p_currency: 'ZAR',
+			p_unit_price: '100',
+			p_taxable: true,
+			p_dimensions_enabled: true,
+			p_dimension_definitions: [{ key: 'width', label: 'L'.repeat(81), unit: 'mm', required: true }]
+		},
+		owner,
+		'overlong dimension label'
+	);
 
 	const lead = await mustRpc(
 		'ingest_bricks_lead',
@@ -358,6 +377,40 @@ async function main() {
 		{ key: 'width', label: 'Width', unit: 'mm', required: true, value: width },
 		{ key: 'height', label: 'Height', unit: 'mm', required: true, value: height }
 	];
+	for (const [value, label] of [
+		['100000.0001', 'dimension value above maximum'],
+		['1.23456', 'dimension value with excessive precision']
+	]) {
+		await expectRpcFailure(
+			'save_quote_draft',
+			{
+				p_quote_id: quote.id,
+				p_lock_version: quote.lock_version,
+				p_lead_id: lead.lead_id,
+				p_client_id: null,
+				p_subject: quote.subject,
+				p_introduction: quote.introduction,
+				p_terms: quote.terms,
+				p_tax_label: quote.tax_label,
+				p_tax_rate: String(quote.tax_rate),
+				p_valid_until: quote.valid_until,
+				p_currency: quote.currency,
+				p_items: [
+					{
+						id: dimensionalItem.id,
+						name: dimensional.name,
+						description: 'Boundary fixture',
+						quantity: '1',
+						unit_price: '1550.00',
+						taxable: true,
+						dimensions: widthHeight(value, '1500')
+					}
+				]
+			},
+			sales,
+			label
+		);
+	}
 	const saved = await mustRpc(
 		'save_quote_draft',
 		{
