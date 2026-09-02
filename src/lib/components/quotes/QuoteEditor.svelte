@@ -163,6 +163,26 @@
 			}))
 		)
 	);
+	let serializedFailureRehydrationCatalogueDisplay = $derived(
+		JSON.stringify(
+			items.map((item) =>
+				item.source_type === 'catalogue'
+					? {
+							product_code_snapshot: item.product_code_snapshot ?? null,
+							unit_label_snapshot: item.unit_label_snapshot ?? null,
+							catalogue_unit_price: item.catalogue_unit_price ?? null,
+							source_product_version: item.source_product_version ?? null,
+							source_product_reviewed_version: item.source_product_reviewed_version ?? null,
+							current_product_lock_version: item.current_product_lock_version ?? null,
+							is_stale: item.is_stale ?? false,
+							product_category_id_snapshot: item.product_category_id_snapshot ?? null,
+							product_category_code_snapshot: item.product_category_code_snapshot ?? null,
+							product_category_label_snapshot: item.product_category_label_snapshot ?? null
+						}
+					: null
+			)
+		)
+	);
 	let reviewActions = $derived(!readonly && status === 'draft');
 	let selectedMeasurementLine = $state('');
 	let enquiry = $derived(
@@ -260,6 +280,13 @@
 			<input type="hidden" name="quote_id" value={quoteId ?? ''} />
 			<input type="hidden" name="lock_version" value={lockVersion} />
 			<input type="hidden" name="items" value={serializedItems} />
+			{#if !quoteId}
+				<input
+					type="hidden"
+					name="quote_failure_rehydration_catalogue_display"
+					value={serializedFailureRehydrationCatalogueDisplay}
+				/>
+			{/if}
 			<Card title="Customer and header" class="editor-card">
 				<div class="editor-grid">
 					{#if leadOptions.length}

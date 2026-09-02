@@ -158,7 +158,8 @@ export function quoteFormFailureValues(form: FormData): Record<string, string> {
 		'valid_until',
 		'currency',
 		'lock_version',
-		'items'
+		'items',
+		'quote_failure_rehydration_catalogue_display'
 	];
 	return Object.fromEntries(
 		names.filter((name) => form.has(name)).map((name) => [name, String(form.get(name) ?? '')])

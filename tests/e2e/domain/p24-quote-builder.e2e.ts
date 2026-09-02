@@ -446,9 +446,15 @@ test('catalogue-first new quotes add Products locally before saving', async ({ p
 			page.getByRole('heading', { name: 'Quote could not be saved', exact: true })
 		).toBeVisible();
 		await expect(page.getByText('tax rate must be a valid decimal', { exact: true })).toBeVisible();
-		await expect(page.locator('.line-item.catalogue-line')).toHaveCount(1);
+		const pendingLine = page.locator('.line-item.catalogue-line');
+		await expect(pendingLine).toHaveCount(1);
 		await expect(page.getByText('Catalogue line', { exact: true })).toBeVisible();
 		await expect(page.locator('#quote-item-name-0')).toHaveValue('P24 Catalogue First Product');
+		await expect(pendingLine.getByText('P24-CATALOGUE-FIRST', { exact: true })).toBeVisible();
+		await expect(pendingLine.getByText('hour', { exact: true })).toBeVisible();
+		await expect(pendingLine.getByText('P24 Catalogue First', { exact: true })).toBeVisible();
+		await expect(pendingLine.getByText('125.5', { exact: true })).toBeVisible();
+		await expect(pendingLine.getByText(String(product.lockVersion), { exact: true })).toBeVisible();
 		expect(await readQuotesForLead(lead.id, owner)).toHaveLength(0);
 	} finally {
 		await runCleanup([
