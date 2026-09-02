@@ -467,7 +467,12 @@ function addHeading(pages: LayoutPage[], value: string, regular: PDFFont, bold: 
 	void bold;
 }
 
-function addCategoryHeading(pages: LayoutPage[], value: string, bold: PDFFont): void {
+function addCategoryHeading(
+	pages: LayoutPage[],
+	value: string,
+	bold: PDFFont,
+	keepFirstItemWithHeading = false
+): void {
 	const lines = styleLine(
 		value,
 		{
@@ -483,6 +488,15 @@ function addCategoryHeading(pages: LayoutPage[], value: string, bold: PDFFont): 
 		CATEGORY_HEADING_TOP_PADDING +
 		CATEGORY_HEADING_BOTTOM_PADDING +
 		lines.length * CATEGORY_HEADING_LINE_HEIGHT;
+	if (
+		keepFirstItemWithHeading &&
+		currentPage(pages).cursor -
+			height -
+			(ITEM_TOP_PADDING + ITEM_BOTTOM_PADDING + ITEM_LINE_HEIGHT) <
+			DOCUMENT_CONTENT.bottom
+	) {
+		pages.push(createPage(true));
+	}
 	placeBlock(pages, { kind: 'category-heading', lines, height }, height, true);
 }
 
@@ -681,7 +695,7 @@ function layoutDocument(
 	addHeading(pages, 'LINE ITEMS', regular, bold);
 	addTableHeader(pages);
 	for (const group of groupQuotePresentationItems(model.items)) {
-		addCategoryHeading(pages, group.label, bold);
+		addCategoryHeading(pages, group.label, bold, group.items.length > 0);
 		for (const item of group.items)
 			itemSegments(item, model.quoteIdentity.currency, regular, bold, pages);
 	}

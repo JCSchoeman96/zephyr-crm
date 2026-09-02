@@ -29,6 +29,7 @@ export type QuotePresentationDimension = {
 };
 
 export type QuotePresentationCategory = {
+	key?: string;
 	label: string;
 };
 
@@ -46,6 +47,7 @@ export type QuotePresentationItem = {
 };
 
 export type QuotePresentationItemGroup = {
+	key: string;
 	label: string;
 	items: QuotePresentationItem[];
 };
@@ -166,8 +168,18 @@ function customerFacingDimensions(value: unknown): QuotePresentationDimension[] 
 	});
 }
 
-function category(value: unknown): QuotePresentationCategory {
-	return { label: nullableText(value) ?? 'Other' };
+function category(
+	labelValue: unknown,
+	idValue: unknown,
+	codeValue: unknown
+): QuotePresentationCategory {
+	const label = nullableText(labelValue) ?? 'Other';
+	const id = nullableText(idValue);
+	const code = nullableText(codeValue);
+	return {
+		key: id ? `id:${id}` : code ? `code:${code}` : label === 'Other' ? 'other' : `label:${label}`,
+		label
+	};
 }
 
 function addressLines(value: JsonRecord): string[] {
@@ -207,12 +219,13 @@ export function groupQuotePresentationItems(
 	const groups = new Map<string, QuotePresentationItemGroup>();
 	for (const item of items) {
 		const label = item.category.label || 'Other';
-		const group = groups.get(label);
+		const key = item.category.key || (label === 'Other' ? 'other' : `label:${label}`);
+		const group = groups.get(key);
 		if (group) {
 			group.items.push(item);
 			continue;
 		}
-		groups.set(label, { label, items: [item] });
+		groups.set(key, { key, label, items: [item] });
 	}
 	return [...groups.values()];
 }
@@ -288,7 +301,11 @@ export function buildQuotePresentationModel(input: QuotePresentationInput): Quot
 			unitPrice: decimal(item.unit_price),
 			amount: decimal(item.line_subtotal),
 			taxable: item.taxable,
-			category: category(item.product_category_label_snapshot),
+			category: category(
+				item.product_category_label_snapshot,
+				item.product_category_id_snapshot,
+				item.product_category_code_snapshot
+			),
 			dimensions: customerFacingDimensions(item.dimensions)
 		})),
 		subtotal: decimal(value('subtotal', input.quote.subtotal)),

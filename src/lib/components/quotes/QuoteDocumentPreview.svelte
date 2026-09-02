@@ -92,8 +92,8 @@
 						></tr
 					></thead
 				>
-				<tbody>
-					{#each groups as group (group.label)}
+				{#each groups as group (group.key)}
+					<tbody aria-label={group.label}>
 						<tr class="category-heading">
 							<th colspan="4" scope="rowgroup">{group.label}</th>
 						</tr>
@@ -117,8 +117,8 @@
 								<td data-label="Amount">{money(item.amount, model.quoteIdentity.currency)}</td>
 							</tr>
 						{/each}
-					{/each}
-				</tbody>
+					</tbody>
+				{/each}
 			</table>
 		</div>
 
