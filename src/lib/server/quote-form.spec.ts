@@ -13,7 +13,7 @@ function formWithItems(items: unknown[]) {
 }
 
 describe('quote form item parsing', () => {
-	it('accepts editable dimensions, preserves null drafts, and excludes server-owned fields', () => {
+	it('preserves pending catalogue identity and excludes server-owned fields', () => {
 		const [item] = parseQuoteItems(
 			formWithItems([
 				{
@@ -26,9 +26,13 @@ describe('quote form item parsing', () => {
 					dimensions: productDimensions,
 					source_type: 'catalogue',
 					product_id: '650e8400-e29b-41d4-a716-446655440000',
-					product_lock_version: 4,
+					product_lock_version: '7',
+					product_code_snapshot: 'BLK-001',
+					catalogue_unit_price: '1200',
 					product_category_label_snapshot: 'Blinds',
-					line_subtotal: '999999'
+					source_product_version: 6,
+					line_subtotal: '999999',
+					total: '999999'
 				}
 			])
 		);
@@ -40,8 +44,71 @@ describe('quote form item parsing', () => {
 			quantity: '1',
 			unit_price: '1500',
 			taxable: true,
-			dimensions: productDimensions
+			dimensions: productDimensions,
+			source_type: 'catalogue',
+			product_id: '650e8400-e29b-41d4-a716-446655440000',
+			product_lock_version: 7
 		});
+		expect(item).not.toHaveProperty('product_code_snapshot');
+		expect(item).not.toHaveProperty('catalogue_unit_price');
+		expect(item).not.toHaveProperty('line_subtotal');
+		expect(item).not.toHaveProperty('total');
+	});
+
+	it.each([
+		['without a Product UUID', { product_id: 'not-a-uuid', product_lock_version: '7' }],
+		['without a Product UUID', { product_lock_version: '7' }],
+		[
+			'without a positive integer Product lock version',
+			{ product_id: '650e8400-e29b-41d4-a716-446655440000' }
+		],
+		[
+			'with a non-positive Product lock version',
+			{ product_id: '650e8400-e29b-41d4-a716-446655440000', product_lock_version: '0' }
+		],
+		[
+			'with a non-integer Product lock version',
+			{ product_id: '650e8400-e29b-41d4-a716-446655440000', product_lock_version: '1.5' }
+		]
+	])('rejects catalogue rows %s', (_label, identity) => {
+		expect(() =>
+			parseQuoteItems(
+				formWithItems([
+					{
+						name: 'Screen',
+						quantity: '1',
+						unit_price: '100',
+						taxable: true,
+						source_type: 'catalogue',
+						...identity
+					}
+				])
+			)
+		).toThrow();
+	});
+
+	it.each([
+		['Product ID', { product_id: '650e8400-e29b-41d4-a716-446655440000' }],
+		['Product lock version', { product_lock_version: 7 }]
+	])('rejects custom rows carrying %s', (_label, identity) => {
+		expect(() =>
+			parseQuoteItems(
+				formWithItems([
+					{
+						name: 'One-off item',
+						quantity: '1',
+						unit_price: '500',
+						taxable: true,
+						source_type: 'custom',
+						...identity
+					}
+				])
+			)
+		).toThrow(/custom|Product/i);
+	});
+
+	it('accepts an empty item array', () => {
+		expect(parseQuoteItems(formWithItems([]))).toEqual([]);
 	});
 
 	it('canonicalizes decimal dimension values without filling incomplete drafts', () => {
