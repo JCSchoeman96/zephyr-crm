@@ -72,7 +72,9 @@ function isValidation(error: unknown) {
 		code.startsWith('22') ||
 		code === '23514' ||
 		errorStatus(error) === 422 ||
-		/required|invalid|choose|must be|validation/i.test(errorMessage(error))
+		/required|invalid|choose|must be|validation|unknown dimension|duplicate dimension/i.test(
+			errorMessage(error)
+		)
 	);
 }
 

@@ -60,7 +60,7 @@ async function loadQuote(
 	const itemsResponse = await supabase
 		.from('quote_items')
 		.select(
-			'position,name,description,quantity,unit_price,taxable,line_subtotal,product_code_snapshot,unit_label_snapshot'
+			'position,name,description,quantity,unit_price,taxable,line_subtotal,product_code_snapshot,unit_label_snapshot,dimensions,product_category_id_snapshot,product_category_code_snapshot,product_category_label_snapshot'
 		)
 		.eq('quote_id', quoteId)
 		.order('position');

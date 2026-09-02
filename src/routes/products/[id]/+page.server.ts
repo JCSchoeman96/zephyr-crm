@@ -33,7 +33,7 @@ function requiredReason(form: FormData) {
 	return reason;
 }
 
-function formValues(form: FormData): Record<string, string> {
+function formValues(form: FormData, includeDimensionFields = false): Record<string, string> {
 	const names = [
 		'lock_version',
 		'product_code',
@@ -46,9 +46,16 @@ function formValues(form: FormData): Record<string, string> {
 		'customer_description',
 		'internal_notes',
 		'taxable',
+		'dimensions_enabled',
+		'dimension_definitions',
 		'reason'
 	];
-	return Object.fromEntries(names.map((name) => [name, String(form.get(name) ?? '')]));
+	const values = Object.fromEntries(names.map((name) => [name, String(form.get(name) ?? '')]));
+	if (!includeDimensionFields) {
+		delete values.dimensions_enabled;
+		delete values.dimension_definitions;
+	}
+	return values;
 }
 
 function failure(cause: unknown, fallback: string, values?: Record<string, string>) {
@@ -68,7 +75,9 @@ function inputFromForm(form: FormData): ProductInput {
 		unitLabel: String(form.get('unit_label') ?? ''),
 		currency: String(form.get('currency') ?? ''),
 		unitPrice: String(form.get('unit_price') ?? '0'),
-		taxable: form.get('taxable') === 'on'
+		taxable: form.get('taxable') === 'on',
+		dimensionsEnabled: form.get('dimensions_enabled') === 'on',
+		dimensionDefinitions: String(form.get('dimension_definitions') ?? '[]')
 	};
 }
 
@@ -111,7 +120,7 @@ export const actions: Actions = {
 		if (!canManageProducts(profile.role))
 			return fail(403, { message: 'Viewer access is read-only.' });
 		const form = await event.request.formData();
-		const values = formValues(form);
+		const values = formValues(form, true);
 		try {
 			const input = normalizeProductInput(inputFromForm(form));
 			const response = await supabase.rpc('update_product', {
@@ -125,7 +134,9 @@ export const actions: Actions = {
 				p_category_id: input.categoryId ?? undefined,
 				p_unit_label: input.unitLabel,
 				p_currency: input.currency,
-				p_taxable: input.taxable
+				p_taxable: input.taxable,
+				p_dimensions_enabled: input.dimensionsEnabled,
+				p_dimension_definitions: input.dimensionDefinitions
 			} as never);
 			if (response.error) return failure(response.error, 'Could not update Product', values);
 		} catch (actionError) {

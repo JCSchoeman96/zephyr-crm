@@ -13,6 +13,12 @@
 	import Select from '$lib/components/ui/Select.svelte';
 	import Textarea from '$lib/components/ui/Textarea.svelte';
 	import { activityEventLabel, quoteStatusLabel } from '$lib/domain/presentation/labels';
+	import {
+		DIMENSION_KEYS,
+		normalizeDimensionValue,
+		type DimensionKey,
+		type DimensionValue
+	} from '$lib/domain/products/dimensions';
 
 	let { data, form }: { data: PageData; form: ActionData } = $props();
 
@@ -64,8 +70,118 @@
 			: 'Quote action could not be completed';
 	}
 
+	function failedValues() {
+		return form && 'values' in form && form.values ? (form.values as Record<string, string>) : null;
+	}
+
+	function formValue(name: string, fallback: string) {
+		return failedValues()?.[name] ?? fallback;
+	}
+
+	function safePersistedDimensions(value: unknown): DimensionValue[] {
+		if (!Array.isArray(value)) return [];
+		const seen: string[] = [];
+		return value.flatMap((candidate) => {
+			if (!candidate || typeof candidate !== 'object' || Array.isArray(candidate)) return [];
+			const record = candidate as Record<string, unknown>;
+			const key = typeof record.key === 'string' ? record.key : '';
+			if (!DIMENSION_KEYS.includes(key as DimensionKey) || seen.includes(key)) return [];
+			const label = typeof record.label === 'string' ? record.label.trim() : '';
+			if (!label || record.unit !== 'mm' || typeof record.required !== 'boolean') return [];
+			if (record.value !== null && typeof record.value !== 'string') return [];
+			let normalizedValue: string | null;
+			try {
+				normalizedValue = normalizeDimensionValue(record.value);
+			} catch {
+				return [];
+			}
+			seen.push(key);
+			return [
+				{
+					key: key as DimensionKey,
+					label,
+					unit: 'mm',
+					required: record.required,
+					value: normalizedValue
+				}
+			];
+		});
+	}
+
+	function submittedDimensionValues(
+		persisted: DimensionValue[],
+		submitted: unknown
+	): DimensionValue[] {
+		if (!Array.isArray(submitted)) return persisted;
+		const persistedKeys: string[] = persisted.map((dimension) => dimension.key);
+		const submittedByKey: Array<{ key: string; value: string | null }> = [];
+		const duplicateKeys: string[] = [];
+		for (const candidate of submitted) {
+			if (!candidate || typeof candidate !== 'object' || Array.isArray(candidate)) continue;
+			const record = candidate as Record<string, unknown>;
+			const key = typeof record.key === 'string' ? record.key : '';
+			if (!persistedKeys.includes(key)) continue;
+			if (submittedByKey.some((entry) => entry.key === key)) {
+				if (!duplicateKeys.includes(key)) duplicateKeys.push(key);
+				continue;
+			}
+			if (record.value !== null && typeof record.value !== 'string') continue;
+			try {
+				submittedByKey.push({ key, value: normalizeDimensionValue(record.value) });
+			} catch {
+				// Keep the persisted value for malformed submitted measurements.
+			}
+		}
+		return persisted.map((dimension) =>
+			duplicateKeys.includes(dimension.key) ||
+			!submittedByKey.some((entry) => entry.key === dimension.key)
+				? dimension
+				: {
+						...dimension,
+						value: submittedByKey.find((entry) => entry.key === dimension.key)?.value ?? null
+					}
+		);
+	}
+
+	function initialItems() {
+		const raw = failedValues()?.items;
+		if (raw) {
+			try {
+				const parsed = JSON.parse(raw);
+				if (Array.isArray(parsed)) {
+					return parsed.map((submitted) => {
+						const record =
+							submitted && typeof submitted === 'object' && !Array.isArray(submitted)
+								? (submitted as Record<string, unknown>)
+								: {};
+						const loaded =
+							typeof record.id === 'string'
+								? data.items.find((item) => item.id === record.id)
+								: undefined;
+						const base = loaded
+							? editorItem(loaded)
+							: { source_type: 'custom', name: '', dimensions: [] as DimensionValue[] };
+						return {
+							...base,
+							name: base.source_type === 'catalogue' ? base.name : String(record.name ?? ''),
+							description: String(record.description ?? ''),
+							quantity: String(record.quantity ?? '1'),
+							unit_price: String(record.unit_price ?? '0'),
+							taxable: typeof record.taxable === 'boolean' ? record.taxable : true,
+							dimensions: submittedDimensionValues(base.dimensions ?? [], record.dimensions)
+						};
+					});
+				}
+			} catch {
+				// The editor keeps the loaded rows available if the submitted JSON is malformed.
+			}
+		}
+		return data.items.map(editorItem);
+	}
+
 	function editorItem(item: PageData['items'][number]) {
 		const source = data.productSources.find((value) => value.quoteItemId === item.id);
+		const dimensions = safePersistedDimensions(item.dimensions);
 		return {
 			id: item.id,
 			name: item.name,
@@ -77,6 +193,11 @@
 			product_id: item.product_id,
 			product_code_snapshot: item.product_code_snapshot,
 			unit_label_snapshot: item.unit_label_snapshot,
+			dimensions,
+			dimensionsEnabled: item.source_type === 'catalogue' && dimensions.length > 0,
+			product_category_id_snapshot: item.product_category_id_snapshot,
+			product_category_code_snapshot: item.product_category_code_snapshot,
+			product_category_label_snapshot: item.product_category_label_snapshot,
 			catalogue_unit_price: item.catalogue_unit_price,
 			source_product_version: item.source_product_version,
 			source_product_reviewed_version: item.source_product_reviewed_version,
@@ -109,22 +230,24 @@
 		<QuoteEditor
 			action="?/save"
 			quoteId={data.quote.id}
-			leadId={data.quote.lead_id}
-			clientId={data.quote.client_id ?? ''}
-			subject={data.quote.subject}
-			introduction={data.quote.introduction ?? ''}
-			terms={data.quote.terms ?? ''}
-			taxLabel={data.quote.tax_label ?? 'VAT'}
-			taxRate={String(data.quote.tax_rate)}
-			validUntil={data.quote.valid_until ?? ''}
-			currency={data.quote.currency}
+			leadId={formValue('lead_id', data.quote.lead_id)}
+			clientId={formValue('client_id', data.quote.client_id ?? '')}
+			subject={formValue('subject', data.quote.subject)}
+			introduction={formValue('introduction', data.quote.introduction ?? '')}
+			terms={formValue('terms', data.quote.terms ?? '')}
+			taxLabel={formValue('tax_label', data.quote.tax_label ?? 'VAT')}
+			taxRate={formValue('tax_rate', String(data.quote.tax_rate))}
+			validUntil={formValue('valid_until', data.quote.valid_until ?? '')}
+			currency={formValue('currency', data.quote.currency)}
 			lockVersion={data.quote.lock_version}
 			productCategories={data.productCategories}
 			productAction="?/addProduct"
 			refreshAction="?/refreshProduct"
 			reviewAction="?/reviewProduct"
 			presentationModel={data.presentationModel}
-			initialItems={data.items.map(editorItem)}
+			initialItems={initialItems()}
+			errorMessage={form?.message ?? ''}
+			leadMeasurements={data.leadMeasurements}
 			status={data.quote.status}
 		/>
 	{:else}

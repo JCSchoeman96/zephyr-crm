@@ -43,7 +43,9 @@ function fixture(itemCount = 1): QuotePresentationModel {
 			unit: 'month',
 			unitPrice: '100.00',
 			amount: '100.00',
-			taxable: true
+			taxable: true,
+			category: { key: 'other', label: 'Other' },
+			dimensions: []
 		})),
 		subtotal: String(itemCount * 100) + '.00',
 		tax: { label: 'VAT', rate: '15.000000', amount: String(itemCount * 15) + '.00' },
@@ -67,6 +69,74 @@ function fixture(itemCount = 1): QuotePresentationModel {
 }
 
 describe('professional Quote PDF Template v2', () => {
+	it('renders first-seen category headings and customer-facing dimensions deterministically', async () => {
+		const model = fixture();
+		model.items = [
+			{
+				...model.items[0],
+				code: 'BLIND-001',
+				name: 'Blockout blind',
+				description: 'Blackout fabric',
+				category: { key: 'id:blinds', label: 'Blinds' },
+				dimensions: [
+					{ key: 'width', label: 'Width', unit: 'mm', value: '1500' },
+					{ key: 'height', label: 'Height', unit: 'mm', value: '1500' }
+				]
+			},
+			{
+				...model.items[0],
+				code: 'SHUT-001',
+				name: 'Security shutter',
+				category: { key: 'id:shutters', label: 'Shutters' },
+				dimensions: [{ key: 'width', label: 'Width', unit: 'mm', value: '2500' }]
+			},
+			{
+				...model.items[0],
+				code: 'BLIND-002',
+				name: 'Roller blind',
+				category: { key: 'id:blinds', label: 'Blinds' },
+				dimensions: [{ key: 'height', label: 'Height', unit: 'mm', value: '900' }]
+			},
+			{
+				...model.items[0],
+				code: null,
+				name: 'Custom fitting',
+				category: { key: 'other', label: 'Other' },
+				dimensions: []
+			}
+		];
+
+		const first = await generateProfessionalQuoteDocument(model);
+		const second = await generateProfessionalQuoteDocument(structuredClone(model));
+
+		expect(first.hash).toBe(second.hash);
+		expect([...first.bytes]).toEqual([...second.bytes]);
+		expect(first.content.indexOf('Category: Blinds')).toBeLessThan(
+			first.content.indexOf('Category: Shutters')
+		);
+		expect(first.content.indexOf('Category: Shutters')).toBeLessThan(
+			first.content.indexOf('Category: Other')
+		);
+		expect(first.content).toContain('Dimensions: Width: 1500 mm × Height: 1500 mm');
+		expect(first.content).toContain('Dimensions: Width: 2500 mm');
+		expect(first.content).toContain('Item: BLIND-001 Blockout blind 1.0000 month 100.00 100.00');
+		expect(first.content).not.toContain('internal_notes');
+		expect(first.content).not.toContain('private/');
+	});
+
+	it('validates category and dimension text with the approved PDF fonts', async () => {
+		const model = fixture();
+		model.items[0] = {
+			...model.items[0],
+			category: { key: 'id:blinds', label: 'Blinds 💼' },
+			dimensions: [{ key: 'width', label: 'Width', unit: 'mm', value: '1500' }]
+		};
+
+		await expect(generateProfessionalQuoteDocument(model)).rejects.toThrow(
+			/cannot be represented/i
+		);
+	});
+
 	it('renders the canonical model as deterministic branded A4 PDF bytes', async () => {
 		const first = await generateProfessionalQuoteDocument(fixture());
 		const second = await generateProfessionalQuoteDocument(structuredClone(fixture()));
@@ -106,6 +176,34 @@ describe('professional Quote PDF Template v2', () => {
 		expect(wrapPdfProductCode('UNBROKENPRODUCTCODE', 30, font, 8.2).join('')).toBe(
 			'UNBROKENPRODUCTCODE'
 		);
+	});
+
+	it('keeps each category heading with the first item at a page break', async () => {
+		const model = fixture();
+		model.items = [
+			...Array.from({ length: 14 }, (_, index) => ({
+				...model.items[0],
+				code: `A-${index + 1}`,
+				name: `Category A item ${index + 1}`,
+				description: null,
+				category: { key: 'id:category-a', label: 'Category A' },
+				dimensions: []
+			})),
+			{
+				...model.items[0],
+				code: 'B-1',
+				name: 'Category B item 1',
+				description: null,
+				category: { key: 'id:category-b', label: 'Category B' },
+				dimensions: []
+			}
+		];
+
+		const generated = await generateProfessionalQuoteDocument(model);
+
+		expect(generated.pageCount).toBeGreaterThan(1);
+		expect(generated.fitness.orphanedCategoryHeadings).toBe(0);
+		expect(generated.fitness.overflowCount).toBe(0);
 	});
 
 	it('wraps and paginates a 100-item customer document without clipping', async () => {

@@ -21,7 +21,9 @@ describe('Product server action boundary', () => {
 				unitLabel: ' each ',
 				currency: ' zar ',
 				unitPrice: '125.5000',
-				taxable: true
+				taxable: true,
+				dimensionsEnabled: false,
+				dimensionDefinitions: '[]'
 			})
 		).toEqual({
 			productCode: 'SCR-001',
@@ -33,8 +35,109 @@ describe('Product server action boundary', () => {
 			unitLabel: 'each',
 			currency: 'ZAR',
 			unitPrice: '125.5000',
-			taxable: true
+			taxable: true,
+			dimensionsEnabled: false,
+			dimensionDefinitions: []
 		});
+	});
+
+	it('normalizes ordered dimensions for draft and active Product edits without changing price semantics', () => {
+		const input = {
+			productCode: 'SCR-003',
+			name: 'Measured screen',
+			customerDescription: '',
+			internalNotes: '',
+			kind: 'product',
+			categoryId: null,
+			unitLabel: 'each',
+			currency: ' zar ',
+			unitPrice: '125.5000',
+			taxable: false,
+			dimensionsEnabled: true,
+			dimensionDefinitions: JSON.stringify([
+				{ key: 'height', label: ' Height ', unit: 'mm', required: true },
+				{ key: 'width', label: ' Width ', unit: 'mm', required: false }
+			])
+		};
+
+		expect(normalizeProductInput(input)).toMatchObject({
+			kind: 'product',
+			currency: 'ZAR',
+			unitPrice: '125.5000',
+			taxable: false,
+			dimensionsEnabled: true,
+			dimensionDefinitions: [
+				{ key: 'height', label: 'Height', unit: 'mm', required: true },
+				{ key: 'width', label: 'Width', unit: 'mm', required: false }
+			]
+		});
+	});
+
+	it('stores an empty definition list when Product dimensions are disabled', () => {
+		expect(
+			normalizeProductInput({
+				productCode: 'SCR-004',
+				name: 'Dimensionless screen',
+				customerDescription: '',
+				internalNotes: '',
+				kind: 'product',
+				categoryId: null,
+				unitLabel: 'each',
+				currency: 'ZAR',
+				unitPrice: '10.0000',
+				taxable: true,
+				dimensionsEnabled: false,
+				dimensionDefinitions: []
+			}).dimensionDefinitions
+		).toEqual([]);
+	});
+
+	it('rejects dimensional configuration for services at the Product boundary', () => {
+		expect(() =>
+			normalizeProductInput({
+				productCode: 'SVC-001',
+				name: 'Installation',
+				customerDescription: '',
+				internalNotes: '',
+				kind: 'service',
+				categoryId: null,
+				unitLabel: 'job',
+				currency: 'ZAR',
+				unitPrice: '10.0000',
+				taxable: false,
+				dimensionsEnabled: true,
+				dimensionDefinitions: [{ key: 'width', label: 'Width', unit: 'mm', required: true }]
+			})
+		).toThrow(/service/i);
+	});
+
+	it.each([
+		['unknown fields', [{ key: 'width', label: 'Width', unit: 'mm', required: true, extra: true }]],
+		[
+			'duplicate keys',
+			[
+				{ key: 'width', label: 'Width', unit: 'mm', required: true },
+				{ key: 'width', label: 'Second width', unit: 'mm', required: false }
+			]
+		],
+		['invalid units', [{ key: 'width', label: 'Width', unit: 'cm', required: true }]]
+	] as const)('rejects malformed Product dimensions with %s', (_reason, dimensionDefinitions) => {
+		expect(() =>
+			normalizeProductInput({
+				productCode: 'SCR-005',
+				name: 'Malformed screen',
+				customerDescription: '',
+				internalNotes: '',
+				kind: 'product',
+				categoryId: null,
+				unitLabel: 'each',
+				currency: 'ZAR',
+				unitPrice: '10.0000',
+				taxable: true,
+				dimensionsEnabled: true,
+				dimensionDefinitions
+			})
+		).toThrow(/dimension|key|unit/i);
 	});
 
 	it('rejects blank or malformed commercial input before calling the database', () => {
@@ -49,7 +152,9 @@ describe('Product server action boundary', () => {
 				unitLabel: 'each',
 				currency: 'ZAR',
 				unitPrice: '10.0000',
-				taxable: true
+				taxable: true,
+				dimensionsEnabled: false,
+				dimensionDefinitions: []
 			})
 		).toThrow(/product code/i);
 		expect(() =>
@@ -63,7 +168,9 @@ describe('Product server action boundary', () => {
 				unitLabel: 'each',
 				currency: 'EURO',
 				unitPrice: '10.0000',
-				taxable: true
+				taxable: true,
+				dimensionsEnabled: false,
+				dimensionDefinitions: []
 			})
 		).toThrow(/currency/i);
 		expect(normalizeProductPrice('125.5000')).toBe('125.5000');

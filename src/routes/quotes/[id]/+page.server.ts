@@ -1,15 +1,23 @@
 import { error, fail, redirect } from '@sveltejs/kit';
 import type { Actions, PageServerLoad } from './$types';
-import { quoteFormValues } from '$lib/server/quote-form';
+import { quoteFormFailureValues, quoteFormValues } from '$lib/server/quote-form';
 import { sendQuote } from '$lib/server/quote-actions';
 import { actionFailureDetails, logActionFailure } from '$lib/server/action-errors';
 import { requireActiveStaff } from '$lib/server/require-auth';
 import { buildQuotePresentationModel } from '$lib/domain/quotes/documents/presentation-model';
+import {
+	extractLeadMeasurements,
+	parseLeadRequestMessage
+} from '$lib/domain/leads/request-details';
 
-function actionFailure(errorValue: unknown, fallback = 'Could not complete Quote action') {
+function actionFailure(
+	errorValue: unknown,
+	fallback = 'Could not complete Quote action',
+	values?: Record<string, string>
+) {
 	const details = actionFailureDetails(errorValue, fallback);
 	logActionFailure(errorValue, details.code);
-	return fail(details.status, { message: details.message, code: details.code });
+	return fail(details.status, { message: details.message, code: details.code, values });
 }
 
 function lockVersion(form: FormData) {
@@ -153,7 +161,7 @@ export const load: PageServerLoad = async (event) => {
 			? supabase
 					.from('products')
 					.select(
-						'id,product_code,name,customer_description,kind,category_id,unit_label,currency,unit_price,taxable,status,lock_version'
+						'id,product_code,name,customer_description,kind,category_id,unit_label,currency,unit_price,taxable,status,lock_version,dimensions_enabled,dimension_definitions'
 					)
 					.in('id', catalogueItemIds)
 			: Promise.resolve({ data: [], error: null }),
@@ -187,6 +195,8 @@ export const load: PageServerLoad = async (event) => {
 				currency: product?.currency ?? quoteResponse.data?.currency ?? '',
 				catalogueUnitPrice: item.catalogue_unit_price,
 				status: product?.status ?? 'missing',
+				dimensionsEnabled: product?.dimensions_enabled ?? false,
+				dimensionDefinitions: product?.dimension_definitions ?? [],
 				currentLockVersion: product?.lock_version ?? null,
 				sourceProductVersion: item.source_product_version,
 				sourceProductReviewedVersion: reviewedVersion,
@@ -206,6 +216,9 @@ export const load: PageServerLoad = async (event) => {
 		companyIdentity: settings.get('company_identity'),
 		quoteDefaults: settings.get('quote_defaults')
 	});
+	const leadMeasurements = extractLeadMeasurements(
+		parseLeadRequestMessage(leadResponse.data.message)
+	);
 	return {
 		quote: quoteResponse.data,
 		items: itemsResponse.data ?? [],
@@ -217,6 +230,7 @@ export const load: PageServerLoad = async (event) => {
 		productCategories: categoriesResponse.data ?? [],
 		productSources,
 		presentationModel,
+		leadMeasurements,
 		profile
 	};
 };
@@ -225,14 +239,15 @@ export const actions: Actions = {
 	save: async (event) => {
 		const { supabase } = await requireActiveStaff(event);
 		const form = await event.request.formData();
+		const values = quoteFormFailureValues(form);
 		try {
 			const response = await supabase.rpc(
 				'save_quote_draft',
 				quoteFormValues(form, String(form.get('lead_id') ?? ''), event.params.id) as never
 			);
-			if (response.error) return actionFailure(response.error, 'Could not save Quote');
+			if (response.error) return actionFailure(response.error, 'Could not save Quote', values);
 		} catch (actionError) {
-			return actionFailure(actionError, 'Could not save Quote');
+			return actionFailure(actionError, 'Could not save Quote', values);
 		}
 		throw redirect(303, `/quotes/${event.params.id}`);
 	},
@@ -244,6 +259,15 @@ export const actions: Actions = {
 				p_lock_version: lockVersion(await event.request.formData())
 			});
 			if (response.error) {
+				if (
+					response.error.code === '23514' &&
+					response.error.message.includes('required Product dimensions')
+				) {
+					return fail(422, {
+						message: 'A ready Quote requires all required Product dimensions',
+						code: 'VALIDATION'
+					});
+				}
 				if (
 					response.error.code === '23514' &&
 					response.error.message.includes('unresolved Product source changes')

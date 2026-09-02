@@ -1,4 +1,8 @@
 import { productKinds, type ProductKind } from '$lib/domain/products/states';
+import {
+	normalizeDimensionDefinitions,
+	type DimensionDefinition
+} from '$lib/domain/products/dimensions';
 
 export type ProductInput = {
 	productCode: string;
@@ -11,6 +15,8 @@ export type ProductInput = {
 	currency: string;
 	unitPrice: string | number;
 	taxable: boolean;
+	dimensionsEnabled?: boolean;
+	dimensionDefinitions?: unknown;
 };
 
 export type NormalizedProductInput = {
@@ -24,6 +30,8 @@ export type NormalizedProductInput = {
 	currency: string;
 	unitPrice: string;
 	taxable: boolean;
+	dimensionsEnabled: boolean;
+	dimensionDefinitions: DimensionDefinition[];
 };
 
 export function normalizeProductPrice(value: string | number): string {
@@ -60,6 +68,12 @@ export function normalizeProductInput(input: ProductInput): NormalizedProductInp
 	const currency = input.currency.trim().toUpperCase();
 	if (!/^[A-Z]{3}$/.test(currency)) throw new Error('Product currency is invalid');
 	const unitPrice = normalizeProductPrice(input.unitPrice);
+	const dimensionsEnabled = input.dimensionsEnabled ?? false;
+	const dimensionDefinitions = normalizeDimensionDefinitions({
+		kind,
+		dimensionsEnabled,
+		dimensionDefinitions: input.dimensionDefinitions ?? []
+	});
 	return {
 		productCode,
 		name,
@@ -70,6 +84,8 @@ export function normalizeProductInput(input: ProductInput): NormalizedProductInp
 		unitLabel,
 		currency,
 		unitPrice,
-		taxable: input.taxable
+		taxable: input.taxable,
+		dimensionsEnabled,
+		dimensionDefinitions
 	};
 }

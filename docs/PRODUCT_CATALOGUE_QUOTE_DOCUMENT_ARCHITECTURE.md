@@ -107,6 +107,8 @@ inventory. It has:
 | `currency` | required uppercase three-letter ISO currency code |
 | `unit_price` | required non-negative PostgreSQL `numeric` using the existing unit-price scale of 4 |
 | `taxable` | required boolean default used when the Product is selected |
+| `dimensions_enabled` | optional Product-level toggle; services must keep this disabled |
+| `dimension_definitions` | ordered JSON definitions for `width`, `height`, `length`, or `depth`; each currently uses `mm` and may be required |
 | `status` | `draft`, `active`, `inactive`, or `archived`; canonical lowercase |
 | `lock_version` | positive optimistic-concurrency version |
 | `created_by` | creator Profile UUID |
@@ -163,6 +165,22 @@ expected Product `lock_version`. Archive and restore require Owner/Admin,
 current lock, and a non-blank reason. Every material transition appends an
 Activity event.
 
+### Product dimensions
+
+Dimensions are an optional Product configuration, not a catalogue hierarchy or
+variant system. A Product may define one to four ordered measurements using the
+supported keys `width`, `height`, `length`, and `depth`. Labels are configurable
+up to 80 characters, units are currently `mm`, and each definition records
+whether the salesperson must provide a value before the Quote can become ready.
+Values are positive millimetre decimals up to 100000 mm with at most four
+decimal places. The trusted Product and QuoteItem boundaries enforce these
+limits, with matching browser constraints. Services cannot enable dimensions.
+
+The first release uses manual full-line pricing. A dimensional QuoteItem has
+`quantity = 1`, and its `unit_price` is the full quoted amount entered by the
+salesperson. Per-mm, per-cm, per-metre, square-metre, and cubic-metre pricing
+calculation is deferred and is not implied by the dimension definitions.
+
 ## Permissions
 
 The existing four roles remain the only roles:
@@ -194,6 +212,9 @@ Existing custom QuoteItems remain valid. The additive fields are:
 | `source_product_version` | nullable Product `lock_version` used for the current snapshot |
 | `source_product_reviewed_version` | nullable current Product version explicitly reviewed without refreshing values |
 | `source_product_reviewed_at`, `source_product_reviewed_by` | optional explicit stale-review evidence |
+| `dimensions` | ordered Product measurement snapshot with `key`, `label`, `unit`, `required`, and nullable final `value` |
+| `product_category_id_snapshot` | nullable historical ProductCategory identity; intentionally has no live FK |
+| `product_category_code_snapshot`, `product_category_label_snapshot` | nullable historical category display snapshot |
 
 The existing `name`, `description`, `quantity`, `unit_price`, `taxable`, and
 `line_subtotal` remain the commercial QuoteItem fields. For a catalogue line,
@@ -214,6 +235,20 @@ cascade and never changes a sent or terminal Quote.
 quoted value is `unit_price`; v1.5 has no discount engine. The database remains
 authoritative for line subtotal, Quote subtotal, tax, and total under
 `docs/MONEY_CONTRACT.md`.
+
+Each actual Product/opening is a separate QuoteItem, including two lines for
+the same Product when their sizes differ. `Openings` from a Lead is context and
+does not multiply or duplicate lines. ProductCategory is a flat, non-priced
+heading in the quote presentation; it has no parent/sub-product relationship.
+
+Structured Width, Height, and Openings values remain enquiry data. The quote
+builder displays them read-only and lets the salesperson apply matching
+Width/Height values to one selected dimensional line as editable defaults.
+`save_quote_draft` is the trusted boundary for line dimensions, price, and
+quantity, and readiness validation requires every required snapshot value to be
+present and positive. Product and category changes do not rewrite the stored
+QuoteItem snapshots; stale Product changes require an explicit refresh or
+keep-quoted-values review.
 
 ### Stale source review
 
@@ -291,7 +326,7 @@ Template v2 remains in the existing `pdf-lib` boundary and is A4 portrait:
 1. professional margins and a branded header with logo and quote identity;
 2. seller/company details and customer/recipient details;
 3. optional subject and introduction;
-4. item table with code, description, quantity, unit, unit price, and amount;
+4. item table with category headings, code, description, quantity, unit, unit price, and amount;
 5. subtotal, tax label/rate/amount, and prominent total;
 6. terms and payment/bank details;
 7. contact footer and `Page X of Y`.
@@ -308,6 +343,11 @@ deterministic.
 The renderer uses deterministic metadata/object settings, returns valid PDF
 bytes, and exposes page count/fitness evidence to tests. It does not call a
 browser, external rendering service, or network resource.
+
+Dimensional lines include their customer-facing stored size details, for
+example `Width: 1500 mm × Height: 1500 mm`. Category headings have no price or
+tax amount. Internal notes and source-review metadata are excluded from both
+the responsive preview and the PDF.
 
 ## Document versioning and storage
 

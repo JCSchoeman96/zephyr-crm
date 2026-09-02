@@ -1,3 +1,5 @@
+import { buildDimensionSnapshot, type DimensionValue } from '$lib/domain/products/dimensions';
+
 export type QuoteFormItem = {
 	id?: string;
 	name: string;
@@ -5,6 +7,7 @@ export type QuoteFormItem = {
 	quantity: string;
 	unit_price: string;
 	taxable: boolean;
+	dimensions?: DimensionValue[];
 };
 
 const quantityPattern = /^(?:0|[1-9]\d*)(?:\.\d{1,4})?$/;
@@ -37,6 +40,41 @@ function nullableLockVersion(form: FormData, quoteId: string | null) {
 	return value;
 }
 
+const dimensionFields = new Set(['key', 'label', 'unit', 'required', 'value']);
+
+function parseDimensionValues(value: unknown, index: number): DimensionValue[] {
+	if (!Array.isArray(value)) throw new Error(`Quote line ${index + 1} dimensions are invalid`);
+	const definitions = value.map((dimension, dimensionIndex) => {
+		if (!dimension || typeof dimension !== 'object' || Array.isArray(dimension)) {
+			throw new Error(`Quote line ${index + 1} dimension ${dimensionIndex + 1} is invalid`);
+		}
+		const record = dimension as Record<string, unknown>;
+		for (const field of Object.keys(record)) {
+			if (!dimensionFields.has(field)) {
+				throw new Error(`Quote line ${index + 1} has an unknown dimension field`);
+			}
+		}
+		if (!Object.prototype.hasOwnProperty.call(record, 'value')) {
+			throw new Error(`Quote line ${index + 1} dimension value is required`);
+		}
+		return {
+			key: record.key,
+			label: record.label,
+			unit: record.unit,
+			required: record.required
+		};
+	});
+	return buildDimensionSnapshot(
+		definitions as Parameters<typeof buildDimensionSnapshot>[0],
+		Object.fromEntries(
+			value.map((dimension) => {
+				const record = dimension as Record<string, unknown>;
+				return [String(record.key), record.value];
+			})
+		)
+	);
+}
+
 export function parseQuoteItems(form: FormData): QuoteFormItem[] {
 	const raw = textValue(form, 'items');
 	let value: unknown;
@@ -63,15 +101,39 @@ export function parseQuoteItems(form: FormData): QuoteFormItem[] {
 			throw new Error(`Quote line ${index + 1} unit price is invalid`);
 		if (typeof record.taxable !== 'boolean')
 			throw new Error(`Quote line ${index + 1} tax flag is invalid`);
+		const dimensions =
+			record.dimensions === undefined ? undefined : parseDimensionValues(record.dimensions, index);
+		if (record.source_type === 'custom' && dimensions && dimensions.length > 0)
+			throw new Error(`Quote line ${index + 1} custom items cannot have dimensions`);
 		return {
 			...(id ? { id } : {}),
 			name,
 			description: String(record.description ?? '').trim(),
 			quantity,
 			unit_price: unitPrice,
-			taxable: record.taxable
+			taxable: record.taxable,
+			...(dimensions ? { dimensions } : {})
 		};
 	});
+}
+
+export function quoteFormFailureValues(form: FormData): Record<string, string> {
+	const names = [
+		'lead_id',
+		'client_id',
+		'subject',
+		'introduction',
+		'terms',
+		'tax_label',
+		'tax_rate',
+		'valid_until',
+		'currency',
+		'lock_version',
+		'items'
+	];
+	return Object.fromEntries(
+		names.filter((name) => form.has(name)).map((name) => [name, String(form.get(name) ?? '')])
+	);
 }
 
 export function quoteFormValues(form: FormData, leadId: string, quoteId: string | null = null) {

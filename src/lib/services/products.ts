@@ -1,3 +1,5 @@
+import type { DimensionDefinition } from '$lib/domain/products/dimensions';
+
 export type ProductOption = {
 	id: string;
 	product_code: string;
@@ -10,6 +12,8 @@ export type ProductOption = {
 	unit_price: number | string;
 	taxable: boolean;
 	lock_version: number;
+	dimensions_enabled: boolean;
+	dimension_definitions: DimensionDefinition[];
 };
 
 export type ProductSearchPagination = {

@@ -1,7 +1,11 @@
 import { fail, redirect } from '@sveltejs/kit';
 import type { Actions, PageServerLoad } from './$types';
 import { normalizeQuoteDefaults } from '$lib/domain/quotes/defaults';
-import { quoteFormValues } from '$lib/server/quote-form';
+import {
+	extractLeadMeasurements,
+	parseLeadRequestMessage
+} from '$lib/domain/leads/request-details';
+import { quoteFormFailureValues, quoteFormValues } from '$lib/server/quote-form';
 import { actionFailureDetails, logActionFailure } from '$lib/server/action-errors';
 import { requireActiveStaff } from '$lib/server/require-auth';
 
@@ -13,10 +17,10 @@ function record(value: unknown) {
 		: {};
 }
 
-function actionFailure(cause: unknown, fallback: string) {
+function actionFailure(cause: unknown, fallback: string, values?: Record<string, string>) {
 	const details = actionFailureDetails(cause, fallback);
 	logActionFailure(cause, details.code);
-	return fail(details.status, { message: details.message, code: details.code });
+	return fail(details.status, { message: details.message, code: details.code, values });
 }
 
 export const load: PageServerLoad = async (event) => {
@@ -24,7 +28,7 @@ export const load: PageServerLoad = async (event) => {
 	const [leadResponse, clientResponse, quoteDefaultsResponse] = await Promise.all([
 		supabase
 			.from('leads')
-			.select('id,lead_number,first_name,last_name,company,pipeline_stage')
+			.select('id,lead_number,first_name,last_name,company,pipeline_stage,message')
 			.in('pipeline_stage', ['PROPOSAL', 'DECISION'])
 			.order('updated_at', { ascending: false })
 			.limit(100),
@@ -51,7 +55,8 @@ export const load: PageServerLoad = async (event) => {
 	return {
 		leads: leads.map((lead) => ({
 			id: lead.id,
-			label: `#${lead.lead_number} · ${lead.first_name} ${lead.last_name}${lead.company ? ` · ${lead.company}` : ''}`
+			label: `#${lead.lead_number} · ${lead.first_name} ${lead.last_name}${lead.company ? ` · ${lead.company}` : ''}`,
+			measurements: extractLeadMeasurements(parseLeadRequestMessage(lead.message))
 		})),
 		clients: (clientResponse.data ?? []).map((client) => ({
 			id: client.id,
@@ -68,20 +73,21 @@ export const actions: Actions = {
 		const { supabase } = await requireActiveStaff(event);
 		const form = await event.request.formData();
 		const leadId = String(form.get('lead_id') ?? '').trim();
-		if (!leadId) return fail(422, { message: 'Select a Lead before saving the quote.' });
+		const values = quoteFormFailureValues(form);
+		if (!leadId) return fail(422, { message: 'Select a Lead before saving the quote.', values });
 		try {
 			const response = await supabase.rpc(
 				'save_quote_draft',
 				quoteFormValues(form, leadId) as never
 			);
-			if (response.error) return actionFailure(response.error, 'Could not save quote');
+			if (response.error) return actionFailure(response.error, 'Could not save quote', values);
 			const quoteId = String(record(response.data).quote_id ?? '');
 			if (!quoteId) return fail(500, { message: 'Quote was saved without an identifier.' });
 			throw redirect(303, `/quotes/${quoteId}`);
 		} catch (actionError) {
 			if (actionError && typeof actionError === 'object' && 'status' in actionError)
 				throw actionError;
-			return actionFailure(actionError, 'Could not save quote');
+			return actionFailure(actionError, 'Could not save quote', values);
 		}
 	}
 };
