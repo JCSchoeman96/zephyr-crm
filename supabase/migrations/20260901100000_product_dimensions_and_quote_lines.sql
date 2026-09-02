@@ -859,12 +859,6 @@ begin
 	if jsonb_typeof(v_items) <> 'array' or jsonb_array_length(v_items) > 100 then
 		raise exception using errcode = '22023', message = 'Quote items must be an array of at most 100 items';
 	end if;
-	select * into v_lead from public.leads where id = p_lead_id for update;
-	if not found then raise exception using errcode = 'P0002', message = 'Lead not found'; end if;
-	if v_lead.pipeline_stage not in ('PROPOSAL', 'DECISION') then raise exception using errcode = '22023', message = 'Lead must be in proposal or decision before quoting'; end if;
-	if p_client_id is not null and not exists (select 1 from public.clients where id = p_client_id and source_lead_id = p_lead_id) then
-		raise exception using errcode = '42501', message = 'Quote client association requires the converted Lead client';
-	end if;
 	if not v_new_quote then
 		select * into v_quote from public.quotes where id = p_quote_id for update;
 		if not found then raise exception using errcode = 'P0002', message = 'Quote not found'; end if;
@@ -873,6 +867,12 @@ begin
 		if p_lock_version is null or v_quote.lock_version is distinct from p_lock_version then raise exception using errcode = '40001', message = 'Stale quote lock_version'; end if;
 		old_lock_version := v_quote.lock_version;
 		old_status := v_quote.status;
+	end if;
+	select * into v_lead from public.leads where id = p_lead_id for update;
+	if not found then raise exception using errcode = 'P0002', message = 'Lead not found'; end if;
+	if v_lead.pipeline_stage not in ('PROPOSAL', 'DECISION') then raise exception using errcode = '22023', message = 'Lead must be in proposal or decision before quoting'; end if;
+	if p_client_id is not null and not exists (select 1 from public.clients where id = p_client_id and source_lead_id = p_lead_id) then
+		raise exception using errcode = '42501', message = 'Quote client association requires the converted Lead client';
 	end if;
 
 	-- Lock every Product participating in this save in one deterministic order.

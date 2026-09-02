@@ -18,6 +18,14 @@ const migrationText = readFileSync(
 	'supabase/migrations/20260901100000_product_dimensions_and_quote_lines.sql',
 	'utf8'
 );
+const saveQuoteDraftText = migrationText.slice(
+	migrationText.indexOf('create or replace function public.save_quote_draft('),
+	migrationText.indexOf('create or replace function public.refresh_product_quote_item(')
+);
+const reviseQuoteText = migrationText.slice(
+	migrationText.indexOf('create or replace function public.revise_quote('),
+	migrationText.indexOf('create or replace function private.quote_ready_validation(')
+);
 
 async function expectRpcFailure(name, args, user, label) {
 	const result = await rpc(name, args, anonKey, await signIn(user));
@@ -97,6 +105,26 @@ async function main() {
 	assert(
 		migrationText.includes('order by product_id'),
 		'save_quote_draft must pre-lock Product IDs deterministically'
+	);
+	const saveQuoteLock = saveQuoteDraftText.indexOf(
+		'select * into v_quote from public.quotes where id = p_quote_id for update;'
+	);
+	const saveLeadLock = saveQuoteDraftText.indexOf(
+		'select * into v_lead from public.leads where id = p_lead_id for update;'
+	);
+	const reviseQuoteLock = reviseQuoteText.indexOf(
+		'select * into v_source from public.quotes where id = p_quote_id for update;'
+	);
+	const reviseLeadLock = reviseQuoteText.indexOf(
+		'select * into v_lead from public.leads where id = v_source.lead_id for update;'
+	);
+	assert(
+		saveQuoteLock >= 0 && saveQuoteLock < saveLeadLock,
+		'save_quote_draft must lock an existing Quote before its Lead'
+	);
+	assert(
+		reviseQuoteLock >= 0 && reviseQuoteLock < reviseLeadLock,
+		'revise_quote must lock its Quote before its Lead'
 	);
 	const owner = await createUser('owner', 'dimensions-actions-owner');
 	const sales = await createUser('sales', 'dimensions-actions-sales');
