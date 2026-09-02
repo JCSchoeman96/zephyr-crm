@@ -422,6 +422,9 @@ test('catalogue-first new quotes add Products locally before saving', async ({ p
 		await expect(page.getByLabel('Search catalogue')).toBeVisible();
 		await expect(page.locator('.line-item')).toHaveCount(0);
 		await expect(page.getByText('Custom setup line', { exact: true })).toHaveCount(0);
+		await expect
+			.soft(page.getByLabel('Category').locator('option', { hasText: 'P24 Catalogue First' }))
+			.toHaveCount(1);
 
 		await page.getByLabel('Search catalogue').fill('P24-CATALOGUE-FIRST');
 		const productOption = page
@@ -433,6 +436,18 @@ test('catalogue-first new quotes add Products locally before saving', async ({ p
 
 		await expect(page).toHaveURL(new RegExp(`/quotes/new\\?lead_id=${lead.id}$`));
 		await expect(page.locator('.line-item')).toHaveCount(1);
+		await expect(page.locator('#quote-item-name-0')).toHaveValue('P24 Catalogue First Product');
+
+		await page.getByLabel('Subject').fill('P24 failed new quote');
+		await page.getByLabel('Tax rate (%)').fill('15.1234567');
+		await page.getByRole('button', { name: 'Save draft', exact: true }).click();
+		await page.waitForLoadState('networkidle');
+		await expect(
+			page.getByRole('heading', { name: 'Quote could not be saved', exact: true })
+		).toBeVisible();
+		await expect(page.getByText('tax rate must be a valid decimal', { exact: true })).toBeVisible();
+		await expect(page.locator('.line-item.catalogue-line')).toHaveCount(1);
+		await expect(page.getByText('Catalogue line', { exact: true })).toBeVisible();
 		await expect(page.locator('#quote-item-name-0')).toHaveValue('P24 Catalogue First Product');
 		expect(await readQuotesForLead(lead.id, owner)).toHaveLength(0);
 	} finally {
