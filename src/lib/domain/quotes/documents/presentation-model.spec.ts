@@ -79,15 +79,15 @@ describe('QuotePresentationModel', () => {
 		});
 		expect(model.items).toEqual([
 			{
-					code: 'CAT-001',
-					name: 'Quoted item',
-					description: 'Customer description',
-					quantity: '2.0000',
-					unit: 'each',
-					unitPrice: '6.1700',
-					amount: '999.99',
-					taxable: true,
-					category: { key: 'other', label: 'Other' },
+				code: 'CAT-001',
+				name: 'Quoted item',
+				description: 'Customer description',
+				quantity: '2.0000',
+				unit: 'each',
+				unitPrice: '6.1700',
+				amount: '999.99',
+				taxable: true,
+				category: { key: 'other', label: 'Other' },
 				dimensions: []
 			}
 		]);
@@ -245,7 +245,9 @@ describe('QuotePresentationModel', () => {
 					product_category_code_snapshot: 'SHARED-A',
 					product_category_label_snapshot: 'Shared label'
 				}),
-				item(2, 'Uncategorized line'),
+				item(2, 'Uncategorized line', {
+					product_category_label_snapshot: 'Shared label'
+				}),
 				item(3, 'Second shared label', {
 					product_category_id_snapshot: 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',
 					product_category_code_snapshot: 'SHARED-B',

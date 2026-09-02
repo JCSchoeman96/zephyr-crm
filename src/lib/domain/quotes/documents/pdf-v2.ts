@@ -104,10 +104,12 @@ type LayoutResult = {
 	pages: LayoutPage[];
 	totalsPage: number;
 	overflowCount: number;
+	orphanedCategoryHeadings: number;
 };
 
 export type QuoteDocumentFitness = {
 	overflowCount: number;
+	orphanedCategoryHeadings: number;
 	repeatedTableHeaders: number;
 	pagesWithRepeatedTableHeaders: number;
 	totalsPage: number;
@@ -655,6 +657,18 @@ function addTotals(pages: LayoutPage[], model: QuotePresentationModel): number {
 	return pages.indexOf(page) + 1;
 }
 
+function countOrphanedCategoryHeadings(pages: LayoutPage[]): number {
+	return pages.reduce(
+		(count, page) =>
+			count +
+			page.blocks.filter(
+				(block, index) =>
+					block.kind === 'category-heading' && page.blocks[index + 1]?.kind !== 'item-row'
+			).length,
+		0
+	);
+}
+
 function layoutDocument(
 	model: QuotePresentationModel,
 	regular: PDFFont,
@@ -733,7 +747,12 @@ function layoutDocument(
 			}
 		}
 	}
-	return { pages, totalsPage, overflowCount };
+	return {
+		pages,
+		totalsPage,
+		overflowCount,
+		orphanedCategoryHeadings: countOrphanedCategoryHeadings(pages)
+	};
 }
 
 function colors(model: QuotePresentationModel): Record<ColorName, PdfColor> {
@@ -1264,6 +1283,7 @@ export async function generateProfessionalQuoteDocument(
 		generatorVersion: PROFESSIONAL_QUOTE_GENERATOR_VERSION,
 		fitness: {
 			overflowCount: layout.overflowCount,
+			orphanedCategoryHeadings: layout.orphanedCategoryHeadings,
 			repeatedTableHeaders: Math.max(0, tableHeaderPages - 1),
 			pagesWithRepeatedTableHeaders: Math.max(0, tableHeaderPages - 1),
 			totalsPage: layout.totalsPage,

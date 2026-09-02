@@ -29,7 +29,7 @@ export type QuotePresentationDimension = {
 };
 
 export type QuotePresentationCategory = {
-	key?: string;
+	key: string;
 	label: string;
 };
 
@@ -169,16 +169,15 @@ function customerFacingDimensions(value: unknown): QuotePresentationDimension[] 
 }
 
 function category(
-	labelValue: unknown,
 	idValue: unknown,
-	codeValue: unknown
+	codeValue: unknown,
+	labelValue: unknown
 ): QuotePresentationCategory {
-	const label = nullableText(labelValue) ?? 'Other';
 	const id = nullableText(idValue);
 	const code = nullableText(codeValue);
 	return {
-		key: id ? `id:${id}` : code ? `code:${code}` : label === 'Other' ? 'other' : `label:${label}`,
-		label
+		key: id ? `id:${id}` : code ? `code:${code}` : 'other',
+		label: id || code ? (nullableText(labelValue) ?? 'Other') : 'Other'
 	};
 }
 
@@ -218,14 +217,13 @@ export function groupQuotePresentationItems(
 ): QuotePresentationItemGroup[] {
 	const groups = new Map<string, QuotePresentationItemGroup>();
 	for (const item of items) {
-		const label = item.category.label || 'Other';
-		const key = item.category.key || (label === 'Other' ? 'other' : `label:${label}`);
+		const key = item.category.key;
 		const group = groups.get(key);
 		if (group) {
 			group.items.push(item);
 			continue;
 		}
-		groups.set(key, { key, label, items: [item] });
+		groups.set(key, { key, label: item.category.label || 'Other', items: [item] });
 	}
 	return [...groups.values()];
 }
@@ -302,9 +300,9 @@ export function buildQuotePresentationModel(input: QuotePresentationInput): Quot
 			amount: decimal(item.line_subtotal),
 			taxable: item.taxable,
 			category: category(
-				item.product_category_label_snapshot,
 				item.product_category_id_snapshot,
-				item.product_category_code_snapshot
+				item.product_category_code_snapshot,
+				item.product_category_label_snapshot
 			),
 			dimensions: customerFacingDimensions(item.dimensions)
 		})),
