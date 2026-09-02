@@ -158,7 +158,8 @@ test.describe('P14 role and accessibility regression', () => {
 				}
 				await page.goto('/quotes/new', { waitUntil: 'networkidle' });
 				await expect(page.getByLabel('Subject')).toBeVisible();
-				await expect(page.getByLabel('Name')).toBeVisible();
+				await expect(page.getByLabel('Search catalogue')).toBeVisible();
+				await expect(page.getByRole('button', { name: 'Add line item' })).toBeVisible();
 				await expect(page.getByRole('button', { name: 'Save draft' })).toBeVisible();
 				await page.goto(`/clients/${fixture.client.id}`, { waitUntil: 'networkidle' });
 				await expect(page.getByLabel('Display name')).toBeVisible();
