@@ -518,7 +518,7 @@ async function main() {
 			p_tax_rate: '15',
 			p_valid_until: quote.valid_until,
 			p_currency: quote.currency,
-			p_items: items.map((item, index) => ({
+			p_items: items.map((item) => ({
 				id: item.id,
 				name: item.name,
 				description: item.description,
