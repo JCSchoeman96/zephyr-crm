@@ -7,6 +7,7 @@ import {
 	createStaff,
 	ingestLead,
 	readLead,
+	readQuotesForLead,
 	runCleanup,
 	signIn,
 	type StaffUser
@@ -372,6 +373,68 @@ test('Quote builder searches bounded active Products, preserves custom lines, an
 		await expect(
 			page.getByRole('button', { name: 'Refresh from Catalogue', exact: true })
 		).toHaveCount(0);
+	} finally {
+		await runCleanup([
+			...leadIds.map((leadId) => ({
+				label: 'Lead ' + leadId,
+				run: () => cleanupLeadData(leadId)
+			})),
+			{
+				label: 'Product fixtures',
+				run: async () => cleanupProductFixtures(productIds, categoryIds)
+			},
+			{ label: 'auth user ' + owner.id, run: () => cleanupUser(owner.id) }
+		]);
+	}
+});
+
+test('catalogue-first new quotes add Products locally before saving', async ({ page }) => {
+	test.setTimeout(120_000);
+	const owner = await createStaff('owner', 'p24-catalogue-first');
+	const leadIds: string[] = [];
+	const productIds: string[] = [];
+	const categoryIds: string[] = [];
+
+	try {
+		const category = (await authenticatedRpc(
+			'create_product_category',
+			{ p_code: 'p24-' + Date.now() + '-catalogue-first', p_label: 'P24 Catalogue First' },
+			owner
+		)) as { product_category_id: string };
+		categoryIds.push(category.product_category_id);
+		const product = await createActiveProduct(
+			owner,
+			'P24-CATALOGUE-FIRST',
+			'P24 Catalogue First Product',
+			category.product_category_id
+		);
+		productIds.push(product.id);
+
+		const lead = await ingestLead('p24-catalogue-first');
+		leadIds.push(lead.id);
+		await moveLeadToDecision(lead.id, owner);
+
+		await signIn(page, owner);
+		await page.goto(`/quotes/new?lead_id=${lead.id}`, { waitUntil: 'networkidle' });
+		await expect(
+			page.getByRole('heading', { name: 'Add from catalogue', exact: true })
+		).toBeVisible();
+		await expect(page.getByLabel('Search catalogue')).toBeVisible();
+		await expect(page.locator('.line-item')).toHaveCount(0);
+		await expect(page.getByText('Custom setup line', { exact: true })).toHaveCount(0);
+
+		await page.getByLabel('Search catalogue').fill('P24-CATALOGUE-FIRST');
+		const productOption = page
+			.locator('.product-picker-option')
+			.filter({ hasText: 'P24 Catalogue First Product' });
+		await expect(productOption).toBeVisible();
+		await productOption.getByRole('button', { name: 'Use Product', exact: true }).click();
+		await page.getByRole('button', { name: 'Add Product to quote', exact: true }).click();
+
+		await expect(page).toHaveURL(new RegExp(`/quotes/new\\?lead_id=${lead.id}$`));
+		await expect(page.locator('.line-item')).toHaveCount(1);
+		await expect(page.locator('#quote-item-name-0')).toHaveValue('P24 Catalogue First Product');
+		expect(await readQuotesForLead(lead.id, owner)).toHaveLength(0);
 	} finally {
 		await runCleanup([
 			...leadIds.map((leadId) => ({

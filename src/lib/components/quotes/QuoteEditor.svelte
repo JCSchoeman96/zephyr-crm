@@ -10,6 +10,7 @@
 	import type { QuotePresentationModel } from '$lib/domain/quotes/documents/presentation-model';
 	import { normalizeDimensionValue, type DimensionValue } from '$lib/domain/products/dimensions';
 	import { publicClientConfiguration } from '$lib/config/public-client-config';
+	import type { ProductOption } from '$lib/services/products';
 
 	type EditorItem = {
 		editorKey?: string;
@@ -27,6 +28,7 @@
 		source_product_version?: number | null;
 		source_product_reviewed_version?: number | null;
 		current_product_lock_version?: number | null;
+		product_lock_version?: number | null;
 		is_stale?: boolean;
 		dimensionsEnabled?: boolean;
 		dimensions?: DimensionValue[];
@@ -119,6 +121,7 @@
 					source_product_version: item.source_product_version ?? null,
 					source_product_reviewed_version: item.source_product_reviewed_version ?? null,
 					current_product_lock_version: item.current_product_lock_version ?? null,
+					product_lock_version: item.product_lock_version ?? null,
 					is_stale: item.is_stale ?? false,
 					dimensionsEnabled: Boolean(item.dimensions?.length),
 					dimensions: Array.isArray(item.dimensions) ? item.dimensions : [],
@@ -126,7 +129,7 @@
 					product_category_code_snapshot: item.product_category_code_snapshot ?? null,
 					product_category_label_snapshot: item.product_category_label_snapshot ?? null
 				}))
-			: [{ name: '', description: '', quantity: '1', unit_price: '0', taxable: true }];
+			: [];
 	}
 
 	let items = $state<EditorItem[]>([]);
@@ -144,6 +147,13 @@
 		JSON.stringify(
 			items.map((item) => ({
 				...(item.id ? { id: item.id } : {}),
+				...(item.source_type === 'catalogue' && !item.id
+					? {
+							source_type: 'catalogue',
+							product_id: item.product_id,
+							product_lock_version: item.product_lock_version
+						}
+					: {}),
 				name: item.name,
 				description: item.description,
 				quantity: item.quantity,
@@ -198,8 +208,39 @@
 		});
 	}
 
+	function addCatalogueProduct(product: ProductOption, selectedQuantity: string) {
+		const dimensions = product.dimension_definitions.map((definition) => ({
+			...definition,
+			value: null
+		}));
+		items.push({
+			editorKey: `new-${nextEditorKey++}`,
+			name: product.name,
+			description: product.customer_description ?? '',
+			quantity: product.dimensions_enabled ? '1' : selectedQuantity,
+			unit_price: String(product.unit_price),
+			taxable: product.taxable,
+			source_type: 'catalogue',
+			product_id: product.id,
+			product_lock_version: product.lock_version,
+			product_code_snapshot: product.product_code,
+			unit_label_snapshot: product.unit_label,
+			catalogue_unit_price: product.unit_price,
+			source_product_version: product.lock_version,
+			source_product_reviewed_version: null,
+			current_product_lock_version: product.lock_version,
+			is_stale: false,
+			dimensionsEnabled: dimensions.length > 0,
+			dimensions,
+			product_category_id_snapshot: product.category_id,
+			product_category_label_snapshot:
+				productCategories.find((category) => category.id === product.category_id)?.label ??
+				'Uncategorised'
+		});
+	}
+
 	function removeItem(index: number) {
-		if (items.length > 1) items.splice(index, 1);
+		items.splice(index, 1);
 	}
 
 	function moveItem(index: number, direction: -1 | 1) {
@@ -262,8 +303,14 @@
 				/>
 			</Card>
 
-			{#if quoteId && status === 'draft'}
-				<ProductPicker action={productAction} {quoteId} {currency} categories={productCategories} />
+			{#if status === 'draft'}
+				<ProductPicker
+					action={productAction}
+					{quoteId}
+					{currency}
+					categories={productCategories}
+					onAddProduct={quoteId ? undefined : addCatalogueProduct}
+				/>
 			{/if}
 
 			<Card title="Measurements from enquiry" class="editor-card enquiry-measurements">
@@ -326,7 +373,7 @@
 							bind:item={items[index]}
 							{index}
 							{readonly}
-							removeDisabled={items.length === 1}
+							removeDisabled={false}
 							onRemove={() => removeItem(index)}
 							onMoveUp={() => moveItem(index, -1)}
 							onMoveDown={() => moveItem(index, 1)}
