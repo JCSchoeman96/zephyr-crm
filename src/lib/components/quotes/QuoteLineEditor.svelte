@@ -1,5 +1,6 @@
 <script lang="ts">
 	import Button from '$lib/components/ui/Button.svelte';
+	import type { DimensionValue } from '$lib/domain/products/dimensions';
 
 	export type QuoteEditorItem = {
 		id?: string;
@@ -15,6 +16,9 @@
 		source_product_version?: number | null;
 		current_product_lock_version?: number | null;
 		is_stale?: boolean;
+		dimensionsEnabled?: boolean;
+		dimensions?: DimensionValue[];
+		product_category_label_snapshot?: string | null;
 	};
 
 	let {
@@ -29,7 +33,8 @@
 		moveDownDisabled = false,
 		reviewActions = false,
 		refreshAction = '?/refreshProduct',
-		reviewAction = '?/reviewProduct'
+		reviewAction = '?/reviewProduct',
+		validationMessage = ''
 	}: {
 		item: QuoteEditorItem;
 		index: number;
@@ -43,9 +48,11 @@
 		reviewActions?: boolean;
 		refreshAction?: string;
 		reviewAction?: string;
+		validationMessage?: string;
 	} = $props();
 
 	const isCatalogue = $derived(item.source_type === 'catalogue');
+	const isDimensional = $derived(isCatalogue && item.dimensionsEnabled === true);
 	const canReviewSource = $derived(
 		!readonly && reviewActions && isCatalogue && Boolean(item.id && item.is_stale)
 	);
@@ -90,6 +97,10 @@
 				<strong>{item.product_code_snapshot || 'Code unavailable'}</strong>
 			</div>
 			<div>
+				<span class="field-label">Category</span>
+				<strong>{item.product_category_label_snapshot || 'Uncategorised'}</strong>
+			</div>
+			<div>
 				<span class="field-label">Unit</span>
 				<strong>{item.unit_label_snapshot || 'Unit unavailable'}</strong>
 			</div>
@@ -111,6 +122,38 @@
 				required
 			/>
 		</div>
+		{#if isDimensional}
+			<fieldset class="dimensions-fieldset">
+				<legend>Measurements (mm)</legend>
+				<div class="dimensions-grid">
+					{#each item.dimensions ?? [] as dimension (dimension.key)}
+						<div class="raw-field">
+							<label for={`quote-item-${index}-${dimension.key}`}>
+								{dimension.label}{dimension.required ? ' (required)' : ''}
+							</label>
+							<input
+								id={`quote-item-${index}-${dimension.key}`}
+								class="ui-field__control"
+								type="number"
+								min="0.000001"
+								step="any"
+								inputmode="decimal"
+								value={dimension.value ?? ''}
+								oninput={(event) => {
+									dimension.value = (event.currentTarget as HTMLInputElement).value || null;
+								}}
+								disabled={readonly}
+								required={dimension.required}
+								aria-required={dimension.required ? 'true' : undefined}
+							/>
+						</div>
+					{/each}
+				</div>
+				{#if validationMessage}
+					<p class="dimension-error" role="alert">{validationMessage}</p>
+				{/if}
+			</fieldset>
+		{/if}
 	{:else}
 		<div class="raw-field line-name">
 			<label for={`quote-item-name-${index}`}>Name</label><input
@@ -124,19 +167,29 @@
 	{/if}
 
 	<div class="line-item-grid">
+		{#if isDimensional}
+			<div class="fixed-quantity">
+				<span class="field-label">Quantity</span>
+				<strong>1</strong>
+				<input type="hidden" name={`quote-item-quantity-${index}`} value="1" />
+			</div>
+		{:else}
+			<div class="raw-field">
+				<label for={`quote-item-quantity-${index}`}>Quantity</label><input
+					id={`quote-item-quantity-${index}`}
+					class="ui-field__control"
+					type="text"
+					inputmode="decimal"
+					bind:value={item.quantity}
+					disabled={readonly}
+					required
+				/>
+			</div>
+		{/if}
 		<div class="raw-field">
-			<label for={`quote-item-quantity-${index}`}>Quantity</label><input
-				id={`quote-item-quantity-${index}`}
-				class="ui-field__control"
-				type="text"
-				inputmode="decimal"
-				bind:value={item.quantity}
-				disabled={readonly}
-				required
-			/>
-		</div>
-		<div class="raw-field">
-			<label for={`quote-item-price-${index}`}>Unit price</label><input
+			<label for={`quote-item-price-${index}`}
+				>{isDimensional ? 'Full quoted price' : 'Unit price'}</label
+			><input
 				id={`quote-item-price-${index}`}
 				class="ui-field__control"
 				type="text"
@@ -270,6 +323,34 @@
 		display: grid;
 		gap: var(--space-xs);
 	}
+	.dimensions-fieldset {
+		display: grid;
+		gap: var(--space-sm);
+		margin: 0;
+		padding: var(--space-sm);
+		border: 1px solid var(--color-border-subtle);
+		border-radius: var(--radius-sm);
+	}
+	.dimensions-fieldset legend {
+		padding: 0 var(--space-xs);
+		color: var(--color-text-muted);
+		font-size: var(--font-size-sm);
+	}
+	.dimensions-grid {
+		display: grid;
+		grid-template-columns: repeat(2, minmax(0, 1fr));
+		gap: var(--space-sm);
+	}
+	.fixed-quantity {
+		display: grid;
+		gap: 0.15rem;
+		align-content: start;
+	}
+	.dimension-error {
+		margin: 0;
+		color: var(--color-danger);
+		font-size: var(--font-size-sm);
+	}
 	.line-item-grid {
 		display: grid;
 		grid-template-columns: minmax(8rem, 0.7fr) minmax(9rem, 0.8fr);
@@ -312,6 +393,9 @@
 	}
 	@media (max-width: 620px) {
 		.line-item-grid {
+			grid-template-columns: 1fr;
+		}
+		.dimensions-grid {
 			grid-template-columns: 1fr;
 		}
 		.catalogue-summary {

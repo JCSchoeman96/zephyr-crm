@@ -1,15 +1,23 @@
 import { error, fail, redirect } from '@sveltejs/kit';
 import type { Actions, PageServerLoad } from './$types';
-import { quoteFormValues } from '$lib/server/quote-form';
+import { quoteFormFailureValues, quoteFormValues } from '$lib/server/quote-form';
 import { sendQuote } from '$lib/server/quote-actions';
 import { actionFailureDetails, logActionFailure } from '$lib/server/action-errors';
 import { requireActiveStaff } from '$lib/server/require-auth';
 import { buildQuotePresentationModel } from '$lib/domain/quotes/documents/presentation-model';
+import {
+	extractLeadMeasurements,
+	parseLeadRequestMessage
+} from '$lib/domain/leads/request-details';
 
-function actionFailure(errorValue: unknown, fallback = 'Could not complete Quote action') {
+function actionFailure(
+	errorValue: unknown,
+	fallback = 'Could not complete Quote action',
+	values?: Record<string, string>
+) {
 	const details = actionFailureDetails(errorValue, fallback);
 	logActionFailure(errorValue, details.code);
-	return fail(details.status, { message: details.message, code: details.code });
+	return fail(details.status, { message: details.message, code: details.code, values });
 }
 
 function lockVersion(form: FormData) {
@@ -208,6 +216,9 @@ export const load: PageServerLoad = async (event) => {
 		companyIdentity: settings.get('company_identity'),
 		quoteDefaults: settings.get('quote_defaults')
 	});
+	const leadMeasurements = extractLeadMeasurements(
+		parseLeadRequestMessage(leadResponse.data.message)
+	);
 	return {
 		quote: quoteResponse.data,
 		items: itemsResponse.data ?? [],
@@ -219,6 +230,7 @@ export const load: PageServerLoad = async (event) => {
 		productCategories: categoriesResponse.data ?? [],
 		productSources,
 		presentationModel,
+		leadMeasurements,
 		profile
 	};
 };
@@ -227,14 +239,15 @@ export const actions: Actions = {
 	save: async (event) => {
 		const { supabase } = await requireActiveStaff(event);
 		const form = await event.request.formData();
+		const values = quoteFormFailureValues(form);
 		try {
 			const response = await supabase.rpc(
 				'save_quote_draft',
 				quoteFormValues(form, String(form.get('lead_id') ?? ''), event.params.id) as never
 			);
-			if (response.error) return actionFailure(response.error, 'Could not save Quote');
+			if (response.error) return actionFailure(response.error, 'Could not save Quote', values);
 		} catch (actionError) {
-			return actionFailure(actionError, 'Could not save Quote');
+			return actionFailure(actionError, 'Could not save Quote', values);
 		}
 		throw redirect(303, `/quotes/${event.params.id}`);
 	},

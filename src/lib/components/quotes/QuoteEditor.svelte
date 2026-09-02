@@ -8,9 +8,11 @@
 	import QuoteDocumentPreview from '$lib/components/quotes/QuoteDocumentPreview.svelte';
 	import QuoteLineEditor from '$lib/components/quotes/QuoteLineEditor.svelte';
 	import type { QuotePresentationModel } from '$lib/domain/quotes/documents/presentation-model';
+	import { normalizeDimensionValue, type DimensionValue } from '$lib/domain/products/dimensions';
 	import { publicClientConfiguration } from '$lib/config/public-client-config';
 
 	type EditorItem = {
+		editorKey?: string;
 		id?: string;
 		name: string;
 		description: string;
@@ -26,8 +28,18 @@
 		source_product_reviewed_version?: number | null;
 		current_product_lock_version?: number | null;
 		is_stale?: boolean;
+		dimensionsEnabled?: boolean;
+		dimensions?: DimensionValue[];
+		product_category_id_snapshot?: string | null;
+		product_category_code_snapshot?: string | null;
+		product_category_label_snapshot?: string | null;
 	};
-	type LeadOption = { id: string; label: string };
+	export type QuoteLeadMeasurements = {
+		width: string | null;
+		height: string | null;
+		openings: string | null;
+	};
+	type LeadOption = { id: string; label: string; measurements?: QuoteLeadMeasurements };
 
 	let {
 		action,
@@ -48,6 +60,8 @@
 		readonly = false,
 		presentationModel = null,
 		productCategories = [],
+		leadMeasurements = null,
+		errorMessage = '',
 		productAction = '?/addProduct',
 		refreshAction = '?/refreshProduct',
 		reviewAction = '?/reviewProduct',
@@ -73,6 +87,8 @@
 		quoteNumber?: string;
 		presentationModel?: QuotePresentationModel | null;
 		productCategories?: { id: string; label: string }[];
+		leadMeasurements?: QuoteLeadMeasurements | null;
+		errorMessage?: string;
 		productAction?: string;
 		refreshAction?: string;
 		reviewAction?: string;
@@ -85,9 +101,10 @@
 		return new Date(timestamp).toISOString().slice(0, 10);
 	}
 
-	function normalizeItems(source: Partial<EditorItem>[]) {
+	function normalizeItems(source: Partial<EditorItem>[]): EditorItem[] {
 		return source.length
 			? source.map((item) => ({
+					editorKey: item.editorKey ?? item.id,
 					id: item.id,
 					name: String(item.name ?? ''),
 					description: String(item.description ?? ''),
@@ -102,16 +119,25 @@
 					source_product_version: item.source_product_version ?? null,
 					source_product_reviewed_version: item.source_product_reviewed_version ?? null,
 					current_product_lock_version: item.current_product_lock_version ?? null,
-					is_stale: item.is_stale ?? false
+					is_stale: item.is_stale ?? false,
+					dimensionsEnabled: item.dimensionsEnabled ?? Boolean(item.dimensions?.length),
+					dimensions: Array.isArray(item.dimensions) ? item.dimensions : [],
+					product_category_id_snapshot: item.product_category_id_snapshot ?? null,
+					product_category_code_snapshot: item.product_category_code_snapshot ?? null,
+					product_category_label_snapshot: item.product_category_label_snapshot ?? null
 				}))
 			: [{ name: '', description: '', quantity: '1', unit_price: '0', taxable: true }];
 	}
 
 	let items = $state<EditorItem[]>([]);
+	let nextEditorKey = 0;
 	let itemsInitialized = false;
 	$effect(() => {
 		if (itemsInitialized) return;
-		items = normalizeItems(initialItems);
+		items = normalizeItems(initialItems).map((item, index) => ({
+			...item,
+			editorKey: item.editorKey ?? `new-${index}-${nextEditorKey++}`
+		}));
 		itemsInitialized = true;
 	});
 	let serializedItems = $derived(
@@ -122,14 +148,56 @@
 				description: item.description,
 				quantity: item.quantity,
 				unit_price: item.unit_price,
-				taxable: item.taxable
+				taxable: item.taxable,
+				...(item.dimensionsEnabled && item.dimensions?.length
+					? { dimensions: item.dimensions }
+					: {})
 			}))
 		)
 	);
 	let reviewActions = $derived(!readonly && status === 'draft');
+	let selectedMeasurementLine = $state('');
+	let enquiry = $derived(
+		leadMeasurements ?? leadOptions.find((lead) => lead.id === leadId)?.measurements ?? null
+	);
+	let dimensionalItems = $derived(
+		items
+			.map((item, index) => ({ item, index }))
+			.filter(({ item }) => item.dimensionsEnabled && item.source_type === 'catalogue')
+	);
+
+	function isDimensionReadinessError(message: string | undefined) {
+		return Boolean(message && /required.*product dimensions|dimensions.*required/i.test(message));
+	}
+
+	function applyEnquiryMeasurements() {
+		const target = dimensionalItems.find(
+			({ item, index }) => (item.id ?? item.editorKey ?? `new-${index}`) === selectedMeasurementLine
+		);
+		if (!target || !enquiry) return;
+		target.item.dimensions = (target.item.dimensions ?? []).map((dimension) => {
+			if (dimension.key !== 'width' && dimension.key !== 'height') return dimension;
+			const rawValue = enquiry[dimension.key];
+			if (!rawValue) return dimension;
+			try {
+				return { ...dimension, value: normalizeDimensionValue(rawValue) };
+			} catch {
+				return dimension;
+			}
+		});
+	}
 
 	function addItem() {
-		items.push({ name: '', description: '', quantity: '1', unit_price: '0', taxable: true });
+		items.push({
+			editorKey: `new-${nextEditorKey++}`,
+			name: '',
+			description: '',
+			quantity: '1',
+			unit_price: '0',
+			taxable: true,
+			dimensionsEnabled: false,
+			dimensions: []
+		});
 	}
 
 	function removeItem(index: number) {
@@ -200,9 +268,62 @@
 				<ProductPicker action={productAction} {quoteId} {currency} categories={productCategories} />
 			{/if}
 
+			<Card title="Measurements from enquiry" class="editor-card enquiry-measurements">
+				{#if enquiry?.width || enquiry?.height || enquiry?.openings}
+					<p class="panel-help">
+						These values came from the enquiry. Applying Width or Height copies them into one
+						selected Product line as editable defaults; it does not change the enquiry.
+					</p>
+					<div class="measurement-summary" aria-label="Read-only enquiry measurements">
+						<div>
+							<span>Width</span><strong
+								>{enquiry.width ? `${enquiry.width} mm` : 'Not captured'}</strong
+							>
+						</div>
+						<div>
+							<span>Height</span><strong
+								>{enquiry.height ? `${enquiry.height} mm` : 'Not captured'}</strong
+							>
+						</div>
+						<div><span>Openings</span><strong>{enquiry.openings ?? 'Not captured'}</strong></div>
+					</div>
+					<p class="panel-help">
+						Openings is context only. It never creates or multiplies quote lines.
+					</p>
+					{#if dimensionalItems.length}
+						<div class="apply-measurements">
+							<Select
+								id="measurement-line-target"
+								label="Apply Width/Height to line"
+								bind:value={selectedMeasurementLine}
+							>
+								<option value="">Select a dimensional Product line</option>
+								{#each dimensionalItems as entry, measurementIndex (entry.item.id ?? entry.item.editorKey ?? `measurement-${entry.index}`)}
+									<option value={entry.item.id ?? entry.item.editorKey ?? `new-${entry.index}`}>
+										{entry.item.name || `Product line ${measurementIndex + 1}`}
+									</option>
+								{/each}
+							</Select>
+							<Button
+								type="button"
+								variant="secondary"
+								disabled={!selectedMeasurementLine || (!enquiry?.width && !enquiry?.height)}
+								onclick={applyEnquiryMeasurements}>Apply to line</Button
+							>
+						</div>
+					{:else}
+						<p class="panel-help">Add a dimensional Product line to apply these values.</p>
+					{/if}
+				{:else}
+					<p class="panel-help">
+						No structured Width, Height, or Openings values were captured on this enquiry.
+					</p>
+				{/if}
+			</Card>
+
 			<Card title="Line items" class="editor-card">
 				<div class="line-items" aria-label="Quote line items">
-					{#each items as item, index (item.id ?? `new-${index}`)}
+					{#each items as item, index (item.id ?? item.editorKey ?? `new-${index}`)}
 						<QuoteLineEditor
 							bind:item={items[index]}
 							{index}
@@ -216,6 +337,7 @@
 							{reviewActions}
 							{refreshAction}
 							{reviewAction}
+							validationMessage={isDimensionReadinessError(errorMessage) ? errorMessage : ''}
 						/>
 					{/each}
 				</div>
@@ -282,6 +404,37 @@
 		gap: var(--space-md);
 		margin-bottom: var(--space-md);
 	}
+	:global(.enquiry-measurements) {
+		display: grid;
+		gap: var(--space-sm);
+	}
+	.panel-help {
+		margin: 0;
+		color: var(--color-text-muted);
+		font-size: var(--font-size-sm);
+	}
+	.measurement-summary {
+		display: grid;
+		grid-template-columns: repeat(3, minmax(0, 1fr));
+		gap: var(--space-sm);
+	}
+	.measurement-summary div {
+		display: grid;
+		gap: 0.15rem;
+		padding: var(--space-sm);
+		border-radius: var(--radius-sm);
+		background: var(--color-surface-subtle);
+	}
+	.measurement-summary span {
+		color: var(--color-text-muted);
+		font-size: var(--font-size-xs);
+	}
+	.apply-measurements {
+		display: grid;
+		grid-template-columns: minmax(0, 1fr) auto;
+		gap: var(--space-sm);
+		align-items: end;
+	}
 	.editor-actions {
 		display: flex;
 		align-items: center;
@@ -310,6 +463,12 @@
 	}
 	@media (max-width: 620px) {
 		.editor-grid {
+			grid-template-columns: 1fr;
+		}
+		.measurement-summary {
+			grid-template-columns: 1fr;
+		}
+		.apply-measurements {
 			grid-template-columns: 1fr;
 		}
 	}
