@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { buildQuotePresentationModel } from './presentation-model';
+import { buildQuotePresentationModel, groupQuotePresentationItems } from './presentation-model';
 
 describe('QuotePresentationModel', () => {
 	it('projects server-owned Quote facts and excludes staff-only source data', () => {
@@ -86,7 +86,9 @@ describe('QuotePresentationModel', () => {
 				unit: 'each',
 				unitPrice: '6.1700',
 				amount: '999.99',
-				taxable: true
+				taxable: true,
+				category: { label: 'Other' },
+				dimensions: []
 			}
 		]);
 		expect(model.subtotal).toBe('12.34');
@@ -99,5 +101,102 @@ describe('QuotePresentationModel', () => {
 		expect(serialized).not.toContain('private.pdf');
 		expect(serialized).not.toContain('private registration data');
 		expect(serialized).not.toContain('source_product_reviewed_version');
+	});
+
+	it('groups ordered lines by first-seen category and projects dimension snapshots', () => {
+		const model = buildQuotePresentationModel({
+			quote: {
+				quote_number: 'Q-2026-000043',
+				base_quote_number: 43,
+				revision_number: 1,
+				status: 'ready',
+				created_at: '2026-08-28T10:00:00.000Z',
+				valid_until: null,
+				currency: 'ZAR',
+				subject: 'Sized products',
+				introduction: null,
+				terms: null,
+				tax_label: 'VAT',
+				tax_rate: '15',
+				subtotal: '5500.00',
+				tax_amount: '825.00',
+				total: '6325.00',
+				quote_snapshot: {}
+			},
+			items: [
+				{
+					position: 3,
+					name: 'Custom fitting',
+					description: null,
+					quantity: '1.0000',
+					unit_price: '500.00',
+					line_subtotal: '500.00',
+					taxable: true
+				},
+				{
+					position: 2,
+					name: 'Security Shutters',
+					description: 'Powder-coated shutter',
+					quantity: '1.0000',
+					unit_price: '3000.00',
+					line_subtotal: '3000.00',
+					taxable: true,
+					product_category_label_snapshot: 'Shutters',
+					product_code_snapshot: 'SHUT-001',
+					dimensions: [
+						{ key: 'width', label: 'Width', unit: 'mm', required: true, value: '2500' },
+						{ key: 'height', label: 'Height', unit: 'mm', required: true, value: '1500' }
+					]
+				},
+				{
+					position: 1,
+					name: 'Blockout Blinds 1500 × 1500',
+					description: 'Blockout fabric',
+					quantity: '1.0000',
+					unit_price: '1500.00',
+					line_subtotal: '1500.00',
+					taxable: true,
+					product_category_label_snapshot: 'Blinds',
+					product_code_snapshot: 'BLIND-001',
+					dimensions: [
+						{ key: 'width', label: 'Width', unit: 'mm', required: true, value: '1500' },
+						{ key: 'height', label: 'Height', unit: 'mm', required: true, value: '1500' }
+					]
+				},
+				{
+					position: 4,
+					name: 'Blockout Blinds 1000 × 900',
+					description: 'Blockout fabric',
+					quantity: '1.0000',
+					unit_price: '1000.00',
+					line_subtotal: '1000.00',
+					taxable: true,
+					product_category_label_snapshot: 'Blinds',
+					product_code_snapshot: 'BLIND-001',
+					dimensions: [
+						{ key: 'width', label: 'Width', unit: 'mm', required: true, value: '1000' },
+						{ key: 'height', label: 'Height', unit: 'mm', required: true, value: '900' }
+					]
+				}
+			]
+		});
+
+		const groups = groupQuotePresentationItems(model.items);
+
+		expect(groups.map((group) => group.label)).toEqual(['Blinds', 'Shutters', 'Other']);
+		expect(groups[0]?.items.map((item) => item.name)).toEqual([
+			'Blockout Blinds 1500 × 1500',
+			'Blockout Blinds 1000 × 900'
+		]);
+		expect(groups[1]?.items.map((item) => item.name)).toEqual(['Security Shutters']);
+		expect(groups[2]?.items.map((item) => item.name)).toEqual(['Custom fitting']);
+		expect(model.items[0]?.category).toEqual({ label: 'Blinds' });
+		expect(model.items[0]?.dimensions).toEqual([
+			{ key: 'width', label: 'Width', unit: 'mm', value: '1500' },
+			{ key: 'height', label: 'Height', unit: 'mm', value: '1500' }
+		]);
+		expect(model.items[0]?.amount).toBe('1500.00');
+		expect(groups.every((group) => !('amount' in group))).toBe(true);
+		expect(JSON.stringify(model)).not.toContain('internal_notes');
 	});
 });

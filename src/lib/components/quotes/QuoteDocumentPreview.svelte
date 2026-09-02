@@ -1,9 +1,14 @@
 <script lang="ts">
-	import type { QuotePresentationModel } from '$lib/domain/quotes/documents/presentation-model';
+	import {
+		formatQuotePresentationDimensions,
+		groupQuotePresentationItems,
+		type QuotePresentationModel
+	} from '$lib/domain/quotes/documents/presentation-model';
 	import { companyMonogram } from '$lib/domain/quotes/documents/template-v2';
 
 	let { model }: { model: QuotePresentationModel | null } = $props();
 	let logoFailedFor = $state<string | null>(null);
+	let groups = $derived(model ? groupQuotePresentationItems(model.items) : []);
 
 	function handleLogoError() {
 		logoFailedFor = model?.brand.logoAsset ?? null;
@@ -88,20 +93,30 @@
 					></thead
 				>
 				<tbody>
-					{#each model.items as item, index (index)}
-						<tr>
-							<td data-label="Item">
-								<strong>{item.name}</strong>
-								{#if item.code}<span
-										>{item.code}{#if item.unit}
-											· per {item.unit}{/if}</span
-									>{:else if item.unit}<span>Per {item.unit}</span>{/if}
-								{#if item.description}<small>{item.description}</small>{/if}
-							</td>
-							<td data-label="Qty">{item.quantity}</td>
-							<td data-label="Unit price">{money(item.unitPrice, model.quoteIdentity.currency)}</td>
-							<td data-label="Amount">{money(item.amount, model.quoteIdentity.currency)}</td>
+					{#each groups as group (group.label)}
+						<tr class="category-heading">
+							<th colspan="4" scope="rowgroup">{group.label}</th>
 						</tr>
+						{#each group.items as item, index (index)}
+							<tr class="item-line">
+								<td class="item-description" data-label="Item">
+									<strong>{item.name}</strong>
+									{#if item.code}<span
+											>{item.code}{#if item.unit}
+												· per {item.unit}{/if}</span
+										>{:else if item.unit}<span>Per {item.unit}</span>{/if}
+									{#if item.description}<small>{item.description}</small>{/if}
+									{#if item.dimensions.length}<small class="item-dimensions"
+											>{formatQuotePresentationDimensions(item.dimensions)}</small
+										>{/if}
+								</td>
+								<td data-label="Qty">{item.quantity}</td>
+								<td data-label="Unit price"
+									>{money(item.unitPrice, model.quoteIdentity.currency)}</td
+								>
+								<td data-label="Amount">{money(item.amount, model.quoteIdentity.currency)}</td>
+							</tr>
+						{/each}
 					{/each}
 				</tbody>
 			</table>
@@ -290,6 +305,21 @@
 	.document-items td small {
 		margin-top: 0.2rem;
 	}
+	.document-items .category-heading th {
+		padding-top: var(--space-md);
+		padding-bottom: var(--space-xs);
+		border-bottom: 0;
+		color: var(--color-brand-primary);
+		font-size: var(--font-size-xs);
+		letter-spacing: 0.04em;
+		text-transform: uppercase;
+	}
+	.document-items .item-description {
+		padding-left: calc(var(--space-sm) + var(--space-md));
+	}
+	.document-items .item-dimensions {
+		color: var(--color-brand-primary);
+	}
 	.document-bottom {
 		align-items: end;
 		margin-top: var(--space-lg);
@@ -370,6 +400,11 @@
 			padding: var(--space-sm) 0;
 			border-bottom: 1px solid var(--color-border-subtle);
 		}
+		.document-items .category-heading,
+		.document-items .category-heading th {
+			display: block;
+			width: 100%;
+		}
 		.document-items td {
 			display: grid;
 			grid-template-columns: 7rem minmax(0, 1fr);
@@ -396,6 +431,9 @@
 		.document-items th:first-child,
 		.document-items td:first-child {
 			width: 100%;
+		}
+		.document-items .item-description {
+			padding-left: var(--space-md);
 		}
 		.document-terms {
 			max-width: 100%;

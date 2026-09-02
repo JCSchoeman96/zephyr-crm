@@ -6,7 +6,12 @@ import {
 	type PDFFont,
 	type PDFPage
 } from 'pdf-lib';
-import type { QuotePresentationItem, QuotePresentationModel } from './presentation-model';
+import {
+	formatQuotePresentationDimensions,
+	groupQuotePresentationItems,
+	type QuotePresentationItem,
+	type QuotePresentationModel
+} from './presentation-model';
 import {
 	A4_PAGE,
 	companyMonogram,
@@ -62,6 +67,13 @@ type ItemRowBlock = {
 	showCommercialValues: boolean;
 };
 
+type CategoryHeadingBlock = {
+	kind: 'category-heading';
+	top: number;
+	lines: StyledLine[];
+	height: number;
+};
+
 type TotalsBlock = {
 	kind: 'totals';
 	top: number;
@@ -72,11 +84,13 @@ type TotalsBlock = {
 	total: string;
 };
 
-type DocumentBlock = TextBlock | PartyBlock | TableHeaderBlock | ItemRowBlock | TotalsBlock;
+type DocumentBlock =
+	TextBlock | PartyBlock | TableHeaderBlock | CategoryHeadingBlock | ItemRowBlock | TotalsBlock;
 type DocumentBlockInput =
 	| Omit<TextBlock, 'top'>
 	| Omit<PartyBlock, 'top'>
 	| Omit<TableHeaderBlock, 'top'>
+	| Omit<CategoryHeadingBlock, 'top'>
 	| Omit<ItemRowBlock, 'top'>
 	| Omit<TotalsBlock, 'top'>;
 
@@ -127,6 +141,10 @@ const TABLE_COLUMNS = {
 const ITEM_LINE_HEIGHT = 10.5;
 const ITEM_TOP_PADDING = 8;
 const ITEM_BOTTOM_PADDING = 7;
+const ITEM_DESCRIPTION_INDENT = 8;
+const CATEGORY_HEADING_LINE_HEIGHT = 16;
+const CATEGORY_HEADING_TOP_PADDING = 4;
+const CATEGORY_HEADING_BOTTOM_PADDING = 4;
 const TOTALS_HEIGHT = 92;
 const MAX_INLINE_LOGO_BYTES = 1024 * 1024;
 
@@ -304,7 +322,10 @@ function validateGlyphs(model: QuotePresentationModel, regular: PDFFont, bold: P
 			item.quantity,
 			item.unit,
 			item.unitPrice,
-			item.amount
+			item.amount,
+			item.category.label,
+			...item.dimensions.flatMap((dimension) => [dimension.label, dimension.unit, dimension.value]),
+			formatQuotePresentationDimensions(item.dimensions)
 		]),
 		model.subtotal,
 		model.tax.label,
@@ -446,6 +467,25 @@ function addHeading(pages: LayoutPage[], value: string, regular: PDFFont, bold: 
 	void bold;
 }
 
+function addCategoryHeading(pages: LayoutPage[], value: string, bold: PDFFont): void {
+	const lines = styleLine(
+		value,
+		{
+			size: 8.7,
+			lineHeight: CATEGORY_HEADING_LINE_HEIGHT,
+			font: 'bold',
+			color: 'primary'
+		},
+		bold,
+		DOCUMENT_CONTENT.right - TABLE_COLUMNS.description.x - ITEM_DESCRIPTION_INDENT
+	);
+	const height =
+		CATEGORY_HEADING_TOP_PADDING +
+		CATEGORY_HEADING_BOTTOM_PADDING +
+		lines.length * CATEGORY_HEADING_LINE_HEIGHT;
+	placeBlock(pages, { kind: 'category-heading', lines, height }, height, true);
+}
+
 function addWrappedParagraph(
 	pages: LayoutPage[],
 	value: string,
@@ -515,7 +555,7 @@ function itemSegments(
 				color: 'ink'
 			},
 			bold,
-			TABLE_COLUMNS.description.width - 6
+			TABLE_COLUMNS.description.width - 6 - ITEM_DESCRIPTION_INDENT
 		),
 		...(item.description
 			? styleLine(
@@ -527,7 +567,20 @@ function itemSegments(
 						color: 'muted'
 					},
 					regular,
-					TABLE_COLUMNS.description.width - 6
+					TABLE_COLUMNS.description.width - 6 - ITEM_DESCRIPTION_INDENT
+				)
+			: []),
+		...(item.dimensions.length
+			? styleLine(
+					formatQuotePresentationDimensions(item.dimensions),
+					{
+						size: 7.6,
+						lineHeight: ITEM_LINE_HEIGHT,
+						font: 'regular',
+						color: 'primary'
+					},
+					regular,
+					TABLE_COLUMNS.description.width - 6 - ITEM_DESCRIPTION_INDENT
 				)
 			: [])
 	];
@@ -627,8 +680,11 @@ function layoutDocument(
 
 	addHeading(pages, 'LINE ITEMS', regular, bold);
 	addTableHeader(pages);
-	for (const item of model.items)
-		itemSegments(item, model.quoteIdentity.currency, regular, bold, pages);
+	for (const group of groupQuotePresentationItems(model.items)) {
+		addCategoryHeading(pages, group.label, bold);
+		for (const item of group.items)
+			itemSegments(item, model.quoteIdentity.currency, regular, bold, pages);
+	}
 
 	const totalsPage = addTotals(pages, model);
 	if (model.terms) {
@@ -650,9 +706,11 @@ function layoutDocument(
 						? Math.max(block.left.length, block.right.length) * 12
 						: block.kind === 'table-header'
 							? TABLE_HEADER_HEIGHT
-							: block.kind === 'item-row'
+							: block.kind === 'category-heading'
 								? block.height
-								: TOTALS_HEIGHT;
+								: block.kind === 'item-row'
+									? block.height
+									: TOTALS_HEIGHT;
 			if (
 				block.top > DOCUMENT_CONTENT.top + 0.01 ||
 				block.top - height < DOCUMENT_CONTENT.bottom - 0.01
@@ -801,6 +859,39 @@ function drawFittedRight(
 	});
 }
 
+function drawCategoryHeading(
+	page: PDFPage,
+	block: CategoryHeadingBlock,
+	fonts: { regular: PDFFont; bold: PDFFont },
+	palette: Record<ColorName, PdfColor>
+): void {
+	let y = block.top - CATEGORY_HEADING_TOP_PADDING;
+	for (const line of block.lines) {
+		if (line.text) {
+			page.drawText(line.text, {
+				x: TABLE_COLUMNS.description.x + ITEM_DESCRIPTION_INDENT,
+				y: y - line.size,
+				size: line.size,
+				font: fontsFor(line.font, fonts),
+				color: palette[line.color]
+			});
+		}
+		y -= line.lineHeight;
+	}
+	page.drawLine({
+		start: {
+			x: TABLE_COLUMNS.description.x + ITEM_DESCRIPTION_INDENT,
+			y: block.top - block.height + CATEGORY_HEADING_BOTTOM_PADDING
+		},
+		end: {
+			x: DOCUMENT_CONTENT.right,
+			y: block.top - block.height + CATEGORY_HEADING_BOTTOM_PADDING
+		},
+		thickness: 0.35,
+		color: palette.muted
+	});
+}
+
 function drawItemRow(
 	page: PDFPage,
 	block: ItemRowBlock,
@@ -822,7 +913,7 @@ function drawItemRow(
 	for (const line of block.descriptionLines) {
 		if (line.text) {
 			page.drawText(line.text, {
-				x: TABLE_COLUMNS.description.x,
+				x: TABLE_COLUMNS.description.x + ITEM_DESCRIPTION_INDENT,
 				y: y - line.size,
 				size: line.size,
 				font: fontsFor(line.font, fonts),
@@ -1066,6 +1157,9 @@ function drawPage(
 			case 'table-header':
 				drawTableHeader(page, block, fonts, palette);
 				break;
+			case 'category-heading':
+				drawCategoryHeading(page, block, fonts, palette);
+				break;
 			case 'item-row':
 				drawItemRow(page, block, fonts, palette);
 				break;
@@ -1090,10 +1184,13 @@ function contentFor(model: QuotePresentationModel, layout: LayoutResult): string
 		...model.recipient.addressLines.map((line) => `Recipient address: ${line}`),
 		`Subject: ${model.subject}`,
 		model.introduction ? `Introduction: ${model.introduction}` : '',
-		...model.items.map(
-			(item) =>
-				`Item: ${item.code || 'custom'} ${item.name} ${item.quantity} ${item.unit || ''} ${item.unitPrice} ${item.amount}`
-		),
+		...groupQuotePresentationItems(model.items).flatMap((group) => [
+			`Category: ${group.label}`,
+			...group.items.map((item) => {
+				const dimensions = formatQuotePresentationDimensions(item.dimensions);
+				return `Item: ${item.code || 'custom'} ${item.name} ${item.quantity} ${item.unit || ''} ${item.unitPrice} ${item.amount}${dimensions ? ` Dimensions: ${dimensions}` : ''}`;
+			})
+		]),
 		`Subtotal: ${model.subtotal}`,
 		`${model.tax.label} (${model.tax.rate}%): ${model.tax.amount}`,
 		`Total: ${model.total}`,

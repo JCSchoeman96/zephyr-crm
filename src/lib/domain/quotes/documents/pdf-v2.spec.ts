@@ -43,7 +43,9 @@ function fixture(itemCount = 1): QuotePresentationModel {
 			unit: 'month',
 			unitPrice: '100.00',
 			amount: '100.00',
-			taxable: true
+			taxable: true,
+			category: { label: 'Other' },
+			dimensions: []
 		})),
 		subtotal: String(itemCount * 100) + '.00',
 		tax: { label: 'VAT', rate: '15.000000', amount: String(itemCount * 15) + '.00' },
@@ -67,6 +69,74 @@ function fixture(itemCount = 1): QuotePresentationModel {
 }
 
 describe('professional Quote PDF Template v2', () => {
+	it('renders first-seen category headings and customer-facing dimensions deterministically', async () => {
+		const model = fixture();
+		model.items = [
+			{
+				...model.items[0],
+				code: 'BLIND-001',
+				name: 'Blockout blind',
+				description: 'Blackout fabric',
+				category: { label: 'Blinds' },
+				dimensions: [
+					{ key: 'width', label: 'Width', unit: 'mm', value: '1500' },
+					{ key: 'height', label: 'Height', unit: 'mm', value: '1500' }
+				]
+			},
+			{
+				...model.items[0],
+				code: 'SHUT-001',
+				name: 'Security shutter',
+				category: { label: 'Shutters' },
+				dimensions: [{ key: 'width', label: 'Width', unit: 'mm', value: '2500' }]
+			},
+			{
+				...model.items[0],
+				code: 'BLIND-002',
+				name: 'Roller blind',
+				category: { label: 'Blinds' },
+				dimensions: [{ key: 'height', label: 'Height', unit: 'mm', value: '900' }]
+			},
+			{
+				...model.items[0],
+				code: null,
+				name: 'Custom fitting',
+				category: { label: 'Other' },
+				dimensions: []
+			}
+		];
+
+		const first = await generateProfessionalQuoteDocument(model);
+		const second = await generateProfessionalQuoteDocument(structuredClone(model));
+
+		expect(first.hash).toBe(second.hash);
+		expect([...first.bytes]).toEqual([...second.bytes]);
+		expect(first.content.indexOf('Category: Blinds')).toBeLessThan(
+			first.content.indexOf('Category: Shutters')
+		);
+		expect(first.content.indexOf('Category: Shutters')).toBeLessThan(
+			first.content.indexOf('Category: Other')
+		);
+		expect(first.content).toContain('Dimensions: Width: 1500 mm × Height: 1500 mm');
+		expect(first.content).toContain('Dimensions: Width: 2500 mm');
+		expect(first.content).toContain('Item: BLIND-001 Blockout blind 1.0000 month 100.00 100.00');
+		expect(first.content).not.toContain('internal_notes');
+		expect(first.content).not.toContain('private/');
+	});
+
+	it('validates category and dimension text with the approved PDF fonts', async () => {
+		const model = fixture();
+		model.items[0] = {
+			...model.items[0],
+			category: { label: 'Blinds 💼' },
+			dimensions: [{ key: 'width', label: 'Width', unit: 'mm', value: '1500' }]
+		};
+
+		await expect(generateProfessionalQuoteDocument(model)).rejects.toThrow(
+			/cannot be represented/i
+		);
+	});
+
 	it('renders the canonical model as deterministic branded A4 PDF bytes', async () => {
 		const first = await generateProfessionalQuoteDocument(fixture());
 		const second = await generateProfessionalQuoteDocument(structuredClone(fixture()));

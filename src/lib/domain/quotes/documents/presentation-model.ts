@@ -21,6 +21,17 @@ export type QuotePresentationSeller = QuotePresentationParty & {
 	registrationDetails: string | null;
 };
 
+export type QuotePresentationDimension = {
+	key: string;
+	label: string;
+	unit: string;
+	value: string | null;
+};
+
+export type QuotePresentationCategory = {
+	label: string;
+};
+
 export type QuotePresentationItem = {
 	code: string | null;
 	name: string;
@@ -30,6 +41,13 @@ export type QuotePresentationItem = {
 	unitPrice: string;
 	amount: string;
 	taxable: boolean;
+	category: QuotePresentationCategory;
+	dimensions: QuotePresentationDimension[];
+};
+
+export type QuotePresentationItemGroup = {
+	label: string;
+	items: QuotePresentationItem[];
 };
 
 export type QuotePresentationModel = {
@@ -93,6 +111,10 @@ export type QuotePresentationItemInput = {
 	unit_label_snapshot?: string | null;
 	catalogue_unit_price?: string | number | null;
 	source_product_reviewed_version?: number | null;
+	dimensions?: unknown;
+	product_category_id_snapshot?: string | null;
+	product_category_code_snapshot?: string | null;
+	product_category_label_snapshot?: string | null;
 };
 
 export type QuotePresentationInput = {
@@ -121,6 +143,33 @@ function decimal(value: unknown): string {
 	return text(value);
 }
 
+const supportedDimensionKeys = new Set(['width', 'height', 'length', 'depth']);
+
+function customerFacingDimensions(value: unknown): QuotePresentationDimension[] {
+	if (!Array.isArray(value)) return [];
+	const seenKeys = new Set<string>();
+	return value.flatMap((candidate) => {
+		const source = record(candidate);
+		const key = typeof source.key === 'string' ? source.key.trim() : '';
+		const label = typeof source.label === 'string' ? source.label.trim() : '';
+		const unit = typeof source.unit === 'string' ? source.unit.trim() : '';
+		if (!key || !supportedDimensionKeys.has(key) || !label || unit !== 'mm') return [];
+		if (seenKeys.has(key)) return [];
+
+		const rawValue = source.value;
+		if (rawValue !== null && typeof rawValue !== 'string') return [];
+		const normalizedValue = rawValue === null ? null : rawValue.trim();
+		if (rawValue !== null && !normalizedValue) return [];
+
+		seenKeys.add(key);
+		return [{ key, label, unit, value: normalizedValue }];
+	});
+}
+
+function category(value: unknown): QuotePresentationCategory {
+	return { label: nullableText(value) ?? 'Other' };
+}
+
 function addressLines(value: JsonRecord): string[] {
 	const listed = value.address_lines;
 	if (Array.isArray(listed)) return listed.map(text).filter(Boolean);
@@ -142,6 +191,30 @@ function party(value: unknown): QuotePresentationParty {
 		email: nullableText(source.email),
 		phone: nullableText(source.phone)
 	};
+}
+
+export function formatQuotePresentationDimensions(
+	dimensions: QuotePresentationDimension[]
+): string {
+	return dimensions
+		.map((dimension) => `${dimension.label}: ${dimension.value ?? '—'} ${dimension.unit}`)
+		.join(' × ');
+}
+
+export function groupQuotePresentationItems(
+	items: QuotePresentationItem[]
+): QuotePresentationItemGroup[] {
+	const groups = new Map<string, QuotePresentationItemGroup>();
+	for (const item of items) {
+		const label = item.category.label || 'Other';
+		const group = groups.get(label);
+		if (group) {
+			group.items.push(item);
+			continue;
+		}
+		groups.set(label, { label, items: [item] });
+	}
+	return [...groups.values()];
 }
 
 function seller(value: unknown, fallbackBrand: QuotePresentationBrand): QuotePresentationSeller {
@@ -214,7 +287,9 @@ export function buildQuotePresentationModel(input: QuotePresentationInput): Quot
 			unit: nullableText(item.unit_label_snapshot),
 			unitPrice: decimal(item.unit_price),
 			amount: decimal(item.line_subtotal),
-			taxable: item.taxable
+			taxable: item.taxable,
+			category: category(item.product_category_label_snapshot),
+			dimensions: customerFacingDimensions(item.dimensions)
 		})),
 		subtotal: decimal(value('subtotal', input.quote.subtotal)),
 		tax: {
