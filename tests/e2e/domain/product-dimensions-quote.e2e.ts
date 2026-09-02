@@ -149,9 +149,7 @@ async function createDimensionalProduct(
 
 async function addProductLine(
 	page: import('@playwright/test').Page,
-	productName: string,
-	leadId: string,
-	user: StaffUser
+	productName: string
 ): Promise<void> {
 	await page.getByLabel('Search catalogue').fill(productName);
 	const option = page.locator('.product-picker-option').filter({ hasText: productName });
@@ -159,10 +157,6 @@ async function addProductLine(
 	await option.getByRole('button', { name: 'Use Product', exact: true }).click();
 	await page.getByRole('button', { name: 'Add Product to quote', exact: true }).click();
 	await page.waitForLoadState('networkidle');
-	const quotes = await readQuotesForLead(leadId, user);
-	if (!quotes.some((quote) => quote.status === 'draft')) {
-		throw new Error(`Adding ${productName} did not leave a draft Quote available.`);
-	}
 }
 
 async function saveDraft(page: import('@playwright/test').Page): Promise<void> {
@@ -176,6 +170,12 @@ function dimensionLine(
 	index: number
 ): import('@playwright/test').Locator {
 	return lines.nth(index);
+}
+
+function quoteIdFromUrl(url: string): string {
+	const match = new URL(url).pathname.match(/^\/quotes\/([0-9a-f-]{36})$/i);
+	if (!match) throw new Error(`Quote detail URL was not reached: ${url}`);
+	return match[1];
 }
 
 test('Product dimensions stay independent from enquiry through quote presentation and lifecycle', async ({
@@ -236,32 +236,6 @@ test('Product dimensions stay independent from enquiry through quote presentatio
 		const leadId = await ingestStructuredLead('quote journey');
 		leadIds.push(leadId);
 		await moveLeadToDecision(leadId, owner);
-		const draft = (await authenticatedRpc(
-			'save_quote_draft',
-			{
-				p_quote_id: null,
-				p_lock_version: null,
-				p_lead_id: leadId,
-				p_client_id: null,
-				p_subject: 'Window covering quote',
-				p_introduction: 'Dimensions browser journey',
-				p_terms: 'Quote terms',
-				p_tax_label: 'VAT',
-				p_tax_rate: '15',
-				p_valid_until: '2099-12-31',
-				p_currency: 'ZAR',
-				p_items: [
-					{
-						name: 'Temporary setup line',
-						description: 'Removed after the first catalogue line is added',
-						quantity: '1',
-						unit_price: '1',
-						taxable: true
-					}
-				]
-			},
-			owner
-		)) as { quote_id: string };
 
 		await expect(
 			authenticatedRpc(
@@ -295,18 +269,20 @@ test('Product dimensions stay independent from enquiry through quote presentatio
 		).rejects.toThrow(/Custom Quote item 1 cannot use Product dimensions/);
 
 		await signIn(page, owner);
-		await page.goto(`/quotes/${draft.quote_id}`, { waitUntil: 'networkidle' });
+		await page.goto(`/quotes/new?lead_id=${leadId}`, { waitUntil: 'networkidle' });
 		await expect(
 			page.getByRole('heading', { name: 'Add from catalogue', exact: true })
 		).toBeVisible();
+		await expect(page.locator('.line-item')).toHaveCount(0);
 
-		await addProductLine(page, 'Blockout Blinds', leadId, owner);
-		const temporaryLine = page.locator('.line-item').first();
-		await expect(temporaryLine.getByLabel('Name')).toHaveValue('Temporary setup line');
-		await temporaryLine.getByRole('button', { name: 'Remove', exact: true }).click();
+		await addProductLine(page, 'Blockout Blinds');
+		await addProductLine(page, 'Blockout Blinds');
+		await addProductLine(page, 'Security Shutters');
+		await expect(page.getByText('Temporary setup line', { exact: true })).toHaveCount(0);
+		await expect(page.locator('.line-item')).toHaveCount(3);
+		await page.getByLabel('Subject').fill('Window covering quote');
 		await saveDraft(page);
-		await addProductLine(page, 'Blockout Blinds', leadId, owner);
-		await addProductLine(page, 'Security Shutters', leadId, owner);
+		const draft = { quote_id: quoteIdFromUrl(page.url()) };
 
 		let blindsLines = page.locator('.line-item').filter({ hasText: blockoutCode });
 		let shuttersLine = page.locator('.line-item').filter({ hasText: shutterCode });
