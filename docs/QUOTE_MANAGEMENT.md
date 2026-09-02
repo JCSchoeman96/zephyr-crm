@@ -40,6 +40,37 @@ Saving a draft captures the current company identity setting alongside the quote
 
 Line item controls and preview totals are intentionally useful before saving, but every save and ready transition is recalculated in PostgreSQL. A stale form submission returns a visible conflict message.
 
+## Catalogue-first quote creation
+
+`/quotes/new` shows `Add from catalogue` before a Quote ID exists. `QuoteEditor`
+keeps Product selections pending in memory until `Save draft`; selecting a
+Product creates neither a temporary line nor an auto-created database draft.
+`Save draft` sends the header and pending lines to the existing
+`save_quote_draft` action, then the new Quote redirects to `/quotes/:id`.
+
+For a saved draft, the picker continues to use the existing `addProduct` action
+and trusted `add_product_quote_item` boundary. A failed new-Quote save can use
+display metadata in `quote_failure_rehydration_catalogue_display` to rehydrate
+pending catalogue rows, but Product code, unit, category, catalogue price,
+source versions, and totals from that metadata are not server truth.
+
+A draft may have zero, one, or many lines. `Add line item` remains the separate
+custom-line path. The Lead's `Quick custom quote` shortcut remains a separate
+custom-only form. Selecting the same Product repeatedly creates independent
+lines, so each opening or size can keep its own dimensions and commercial
+values.
+
+`Mark ready` still requires at least one line, complete required Product
+dimensions, and an explicit resolution of every stale Product source review.
+Dimensional lines remain quantity `1` with a manually entered full quoted
+price. Dimensions do not trigger pricing formulas.
+
+For a pending catalogue line, the hidden `items` value carries only
+`source_type = catalogue`, `product_id`, `product_lock_version`, editable
+commercial fields (`description`, `quantity`, `unit_price`, and `taxable`), and
+the submitted dimension definitions and values. The save boundary resolves
+Product names and snapshots server-side and recalculates totals.
+
 ## Dimensional Product lines
 
 Products may opt into an ordered set of `Width`, `Height`, `Length`, and/or

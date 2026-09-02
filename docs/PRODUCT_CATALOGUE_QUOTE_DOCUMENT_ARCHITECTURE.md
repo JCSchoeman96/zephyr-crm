@@ -236,6 +236,41 @@ quoted value is `unit_price`; v1.5 has no discount engine. The database remains
 authoritative for line subtotal, Quote subtotal, tax, and total under
 `docs/MONEY_CONTRACT.md`.
 
+### Catalogue-first quote creation
+
+`/quotes/new` shows `Add from catalogue` before a Quote ID exists. `QuoteEditor`
+keeps each selected Product in a pending in-memory line list. `Add Product to
+quote` updates that list only. It does not create a temporary custom line,
+QuoteItem, or database draft. `Save draft` is the first persistence event and
+sends the header and current lines through `save_quote_draft`.
+
+If a new-Quote save fails, the form may rehydrate Product code, unit, category,
+catalogue price, and source-version display values so the pending line remains
+visible. Those values are failure-rehydration metadata only. They are not server
+truth. The trusted action re-fetches the Product by ID and expected lock,
+validates it, and derives the Product and category snapshots and totals.
+
+After a Quote ID exists, the picker keeps its saved-draft path. It submits the
+existing `addProduct` action backed by the trusted `add_product_quote_item`
+boundary. A draft may have zero, one, or many lines. `Add line item` remains the
+separate custom-line path, and the Lead's `Quick custom quote` shortcut remains
+a separate custom-only form. Selecting the same Product more than once creates
+independent lines, so different openings or sizes can have separate dimensions
+and commercial values.
+
+For a pending catalogue line, the new-Quote `items` contract carries only
+`source_type = catalogue`, `product_id`, `product_lock_version`, editable
+commercial fields (`description`, `quantity`, `unit_price`, and `taxable`), and
+the submitted dimension definitions and values. It does not author
+Product/category snapshots, catalogue metadata, or calculated totals. The
+Product name is read-only in the catalogue line and the server resolves it
+from Product identity. Dimensional lines keep quantity `1` and use a manually
+entered full quoted price. Dimensions do not feed a pricing formula.
+
+Mark Ready remains a server gate. It requires at least one line, complete
+required Product dimensions, and an explicit resolution of every stale Product
+source review.
+
 Each actual Product/opening is a separate QuoteItem, including two lines for
 the same Product when their sizes differ. `Openings` from a Lead is context and
 does not multiply or duplicate lines. ProductCategory is a flat, non-priced
