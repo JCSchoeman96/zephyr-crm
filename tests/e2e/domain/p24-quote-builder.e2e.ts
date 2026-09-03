@@ -1,4 +1,5 @@
 import { execFileSync } from 'node:child_process';
+import { randomUUID } from 'node:crypto';
 import { expect, test } from '@playwright/test';
 import {
 	authenticatedRpc,
@@ -7,6 +8,7 @@ import {
 	createStaff,
 	ingestLead,
 	readLead,
+	readQuotesForLead,
 	runCleanup,
 	signIn,
 	type StaffUser
@@ -105,6 +107,62 @@ async function searchProducts(
 		const response = await fetch(path);
 		return { status: response.status, body: (await response.json()) as SearchBody };
 	}, query);
+}
+
+type PersistedQuoteItem = {
+	id: string;
+	position: number;
+	name: string;
+	quantity: string | number;
+	source_type: string;
+	product_id: string | null;
+	product_code_snapshot: string | null;
+	unit_label_snapshot: string | null;
+	catalogue_unit_price: string | number | null;
+	source_product_version: string | number | null;
+	product_category_id_snapshot: string | null;
+	product_category_code_snapshot: string | null;
+	product_category_label_snapshot: string | null;
+};
+
+function readQuoteItems(quoteId: string): PersistedQuoteItem[] {
+	if (!/^[0-9a-f-]{36}$/i.test(quoteId)) throw new Error('Invalid Quote ID for item read.');
+	const query = `
+		select coalesce(jsonb_agg(to_jsonb(item) order by item.position), '[]'::jsonb)
+		from (
+			select id, position, name, quantity, source_type, product_id,
+				product_code_snapshot, unit_label_snapshot, catalogue_unit_price,
+				source_product_version, product_category_id_snapshot,
+				product_category_code_snapshot, product_category_label_snapshot
+			from public.quote_items
+			where quote_id = '${quoteId}'::uuid
+			order by position asc
+		) as item;
+	`;
+	const output = execFileSync(
+		'psql',
+		[localDatabaseUrl(), '-X', '-v', 'ON_ERROR_STOP=1', '-At', '-c', query],
+		{ encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] }
+	);
+	return JSON.parse(output.trim() || '[]') as PersistedQuoteItem[];
+}
+
+function quoteIdFromUrl(url: string): string {
+	const match = new URL(url).pathname.match(/^\/quotes\/([0-9a-f-]{36})$/i);
+	if (!match) throw new Error('Quote detail URL was not reached: ' + url);
+	return match[1];
+}
+
+async function addCatalogueProduct(
+	page: import('@playwright/test').Page,
+	searchTerm: string,
+	productName: string
+): Promise<void> {
+	await page.getByLabel('Search catalogue').fill(searchTerm);
+	const productOption = page.locator('.product-picker-option').filter({ hasText: productName });
+	await expect(productOption).toBeVisible();
+	await productOption.getByRole('button', { name: 'Use Product', exact: true }).click();
+	await page.getByRole('button', { name: 'Add Product to quote', exact: true }).click();
 }
 
 test('Quote builder searches bounded active Products, preserves custom lines, and adds a catalogue line', async ({
@@ -372,6 +430,288 @@ test('Quote builder searches bounded active Products, preserves custom lines, an
 		await expect(
 			page.getByRole('button', { name: 'Refresh from Catalogue', exact: true })
 		).toHaveCount(0);
+	} finally {
+		await runCleanup([
+			...leadIds.map((leadId) => ({
+				label: 'Lead ' + leadId,
+				run: () => cleanupLeadData(leadId)
+			})),
+			{
+				label: 'Product fixtures',
+				run: async () => cleanupProductFixtures(productIds, categoryIds)
+			},
+			{ label: 'auth user ' + owner.id, run: () => cleanupUser(owner.id) }
+		]);
+	}
+});
+
+test('new quotes can save an empty draft but cannot be marked ready without a line', async ({
+	page
+}) => {
+	test.setTimeout(120_000);
+	const owner = await createStaff('owner', 'p24-empty-draft');
+	const leadIds: string[] = [];
+
+	try {
+		const lead = await ingestLead('p24-empty-draft');
+		leadIds.push(lead.id);
+		await moveLeadToDecision(lead.id, owner);
+
+		await signIn(page, owner);
+		await page.goto(`/quotes/new?lead_id=${lead.id}`, { waitUntil: 'networkidle' });
+		await expect(
+			page.getByRole('heading', { name: 'Add from catalogue', exact: true })
+		).toBeVisible();
+		await expect(page.locator('.line-item')).toHaveCount(0);
+
+		await page.getByLabel('Subject').fill('P24 empty draft');
+		const saveNavigation = page.waitForNavigation({ waitUntil: 'networkidle' });
+		await page.getByRole('button', { name: 'Save draft', exact: true }).click();
+		await saveNavigation;
+
+		const quoteId = quoteIdFromUrl(page.url());
+		await expect(page).toHaveURL(new RegExp(`/quotes/${quoteId}$`));
+		await expect(page.locator('.line-item')).toHaveCount(0);
+		await expect(
+			page.getByRole('heading', { name: 'Add from catalogue', exact: true })
+		).toBeVisible();
+		const quotes = await readQuotesForLead(lead.id, owner);
+		expect(quotes).toHaveLength(1);
+		expect(quotes[0]).toMatchObject({ id: quoteId, status: 'draft' });
+		expect(await readQuoteItems(quoteId)).toHaveLength(0);
+
+		const markReadyForm = page.locator('form[action="?/markReady"]');
+		const lockVersion = Number(
+			await markReadyForm.locator('input[name="lock_version"]').inputValue()
+		);
+		await page.getByRole('button', { name: 'Mark ready', exact: true }).click();
+		await expect(page.getByRole('alert')).toContainText('Could not mark Quote ready');
+		await expect(
+			authenticatedRpc(
+				'mark_quote_ready',
+				{ p_quote_id: quoteId, p_lock_version: lockVersion },
+				owner
+			)
+		).rejects.toThrow(/A ready Quote requires at least one line item/);
+		expect(await readQuotesForLead(lead.id, owner)).toEqual(
+			expect.arrayContaining([expect.objectContaining({ id: quoteId, status: 'draft' })])
+		);
+		await expect(
+			page.getByRole('heading', { name: 'Add from catalogue', exact: true })
+		).toBeVisible();
+		await expect(page.locator('.line-item')).toHaveCount(0);
+	} finally {
+		await runCleanup([
+			...leadIds.map((leadId) => ({
+				label: 'Lead ' + leadId,
+				run: () => cleanupLeadData(leadId)
+			})),
+			{ label: 'auth user ' + owner.id, run: () => cleanupUser(owner.id) }
+		]);
+	}
+});
+
+test('catalogue-first new quotes add Products locally before saving', async ({ page }) => {
+	test.setTimeout(120_000);
+	const owner = await createStaff('owner', 'p24-catalogue-first');
+	const leadIds: string[] = [];
+	const productIds: string[] = [];
+	const categoryIds: string[] = [];
+
+	try {
+		const category = (await authenticatedRpc(
+			'create_product_category',
+			{ p_code: 'p24-' + Date.now() + '-catalogue-first', p_label: 'P24 Catalogue First' },
+			owner
+		)) as { product_category_id: string };
+		categoryIds.push(category.product_category_id);
+		const product = await createActiveProduct(
+			owner,
+			'P24-CATALOGUE-FIRST',
+			'P24 Catalogue First Product',
+			category.product_category_id
+		);
+		productIds.push(product.id);
+
+		const lead = await ingestLead('p24-catalogue-first');
+		leadIds.push(lead.id);
+		await moveLeadToDecision(lead.id, owner);
+
+		await signIn(page, owner);
+		await page.goto(`/quotes/new?lead_id=${lead.id}`, { waitUntil: 'networkidle' });
+		await expect(
+			page.getByRole('heading', { name: 'Add from catalogue', exact: true })
+		).toBeVisible();
+		await expect(page.getByLabel('Search catalogue')).toBeVisible();
+		await expect(page.locator('.line-item')).toHaveCount(0);
+		await expect(page.getByText('Custom setup line', { exact: true })).toHaveCount(0);
+		await expect
+			.soft(page.getByLabel('Category').locator('option', { hasText: 'P24 Catalogue First' }))
+			.toHaveCount(1);
+
+		await page.getByLabel('Search catalogue').fill('P24-CATALOGUE-FIRST');
+		const productOption = page
+			.locator('.product-picker-option')
+			.filter({ hasText: 'P24 Catalogue First Product' });
+		await expect(productOption).toBeVisible();
+		await productOption.getByRole('button', { name: 'Use Product', exact: true }).click();
+		await page.getByRole('button', { name: 'Add Product to quote', exact: true }).click();
+
+		await expect(page).toHaveURL(new RegExp(`/quotes/new\\?lead_id=${lead.id}$`));
+		await expect(page.locator('.line-item')).toHaveCount(1);
+		await expect(page.locator('#quote-item-name-0')).toHaveValue('P24 Catalogue First Product');
+
+		await page.getByLabel('Subject').fill('P24 failed new quote');
+		await page.getByLabel('Tax rate (%)').fill('15.1234567');
+		await page.getByRole('button', { name: 'Save draft', exact: true }).click();
+		await page.waitForLoadState('networkidle');
+		await expect(
+			page.getByRole('heading', { name: 'Quote could not be saved', exact: true })
+		).toBeVisible();
+		await expect(page.getByText('tax rate must be a valid decimal', { exact: true })).toBeVisible();
+		const pendingLine = page.locator('.line-item.catalogue-line');
+		await expect(pendingLine).toHaveCount(1);
+		await expect(page.getByText('Catalogue line', { exact: true })).toBeVisible();
+		await expect(page.locator('#quote-item-name-0')).toHaveValue('P24 Catalogue First Product');
+		await expect(pendingLine.getByText('P24-CATALOGUE-FIRST', { exact: true })).toBeVisible();
+		await expect(pendingLine.getByText('hour', { exact: true })).toBeVisible();
+		await expect(pendingLine.getByText('P24 Catalogue First', { exact: true })).toBeVisible();
+		await expect(pendingLine.getByText('125.5', { exact: true })).toBeVisible();
+		await expect(pendingLine.getByText(String(product.lockVersion), { exact: true })).toBeVisible();
+		expect(await readQuotesForLead(lead.id, owner)).toHaveLength(0);
+	} finally {
+		await runCleanup([
+			...leadIds.map((leadId) => ({
+				label: 'Lead ' + leadId,
+				run: () => cleanupLeadData(leadId)
+			})),
+			{
+				label: 'Product fixtures',
+				run: async () => cleanupProductFixtures(productIds, categoryIds)
+			},
+			{ label: 'auth user ' + owner.id, run: () => cleanupUser(owner.id) }
+		]);
+	}
+});
+
+test('catalogue-first new quotes persist multiple and repeated Products without custom lines', async ({
+	page
+}) => {
+	test.setTimeout(180_000);
+	const owner = await createStaff('owner', `p24-catalogue-save-${randomUUID().slice(0, 8)}`);
+	const leadIds: string[] = [];
+	const productIds: string[] = [];
+	const categoryIds: string[] = [];
+
+	try {
+		const suffix = randomUUID().slice(0, 8).toUpperCase();
+		const category = (await authenticatedRpc(
+			'create_product_category',
+			{ p_code: `p24-${Date.now()}-${suffix.toLowerCase()}`, p_label: `P24 Catalogue ${suffix}` },
+			owner
+		)) as { product_category_id: string };
+		categoryIds.push(category.product_category_id);
+
+		const firstCode = `P24-CATALOGUE-A-${suffix}`;
+		const firstName = 'P24 Catalogue First Product A';
+		const firstProduct = await createActiveProduct(
+			owner,
+			firstCode,
+			firstName,
+			category.product_category_id
+		);
+		productIds.push(firstProduct.id);
+		const secondCode = `P24-CATALOGUE-B-${suffix}`;
+		const secondName = 'P24 Catalogue First Product B';
+		const secondProduct = await createActiveProduct(
+			owner,
+			secondCode,
+			secondName,
+			category.product_category_id
+		);
+		productIds.push(secondProduct.id);
+
+		const firstLead = await ingestLead('p24-catalogue-save');
+		leadIds.push(firstLead.id);
+		await moveLeadToDecision(firstLead.id, owner);
+
+		await signIn(page, owner);
+		await page.goto(`/quotes/new?lead_id=${firstLead.id}`, { waitUntil: 'networkidle' });
+		await expect(page.locator('.line-item')).toHaveCount(0);
+		await addCatalogueProduct(page, firstCode, firstName);
+		await addCatalogueProduct(page, secondCode, secondName);
+		await expect(page.locator('.line-item')).toHaveCount(2);
+		await expect(page.locator('.line-item.catalogue-line')).toHaveCount(2);
+		await expect(page.getByText('Custom setup line', { exact: true })).toHaveCount(0);
+
+		await page.getByLabel('Subject').fill('P24 catalogue-only quote');
+		const firstSaveNavigation = page.waitForNavigation({ waitUntil: 'networkidle' });
+		await page.getByRole('button', { name: 'Save draft', exact: true }).click();
+		await firstSaveNavigation;
+		const firstQuoteId = quoteIdFromUrl(page.url());
+		await expect(page.locator('.line-item.catalogue-line')).toHaveCount(2);
+		await expect(page.getByText('Catalogue line', { exact: true })).toHaveCount(2);
+		for (const product of [
+			{ code: firstCode, name: firstName },
+			{ code: secondCode, name: secondName }
+		]) {
+			const line = page.locator('.line-item.catalogue-line').filter({ hasText: product.code });
+			await expect(line).toHaveCount(1);
+			await expect(line.getByLabel('Name')).toHaveValue(product.name);
+			await expect(line).toContainText(product.code);
+			await expect(line).toContainText(`P24 Catalogue ${suffix}`);
+			await expect(line).toContainText('hour');
+			await expect(line).toContainText('125.5');
+		}
+
+		const persistedItems = await readQuoteItems(firstQuoteId);
+		expect(persistedItems).toHaveLength(2);
+		for (const [item, product, code, name] of [
+			[persistedItems[0], firstProduct, firstCode, firstName],
+			[persistedItems[1], secondProduct, secondCode, secondName]
+		] as const) {
+			expect(item).toMatchObject({
+				source_type: 'catalogue',
+				product_id: product.id,
+				product_code_snapshot: code,
+				unit_label_snapshot: 'hour',
+				product_category_id_snapshot: category.product_category_id,
+				product_category_label_snapshot: `P24 Catalogue ${suffix}`,
+				name
+			});
+			expect(Number(item.catalogue_unit_price)).toBe(125.5);
+			expect(Number(item.source_product_version)).toBe(product.lockVersion);
+		}
+
+		const repeatedLead = await ingestLead('p24-catalogue-repeat');
+		leadIds.push(repeatedLead.id);
+		await moveLeadToDecision(repeatedLead.id, owner);
+		await page.goto(`/quotes/new?lead_id=${repeatedLead.id}`, { waitUntil: 'networkidle' });
+		await expect(page.locator('.line-item')).toHaveCount(0);
+		await addCatalogueProduct(page, firstCode, firstName);
+		await addCatalogueProduct(page, firstCode, firstName);
+		await expect(page.locator('.line-item.catalogue-line')).toHaveCount(2);
+		await page.locator('#quote-item-quantity-0').fill('2');
+		await page.locator('#quote-item-quantity-1').fill('3');
+		await page.getByLabel('Subject').fill('P24 repeated catalogue quote');
+		const repeatedSaveNavigation = page.waitForNavigation({ waitUntil: 'networkidle' });
+		await page.getByRole('button', { name: 'Save draft', exact: true }).click();
+		await repeatedSaveNavigation;
+		const repeatedQuoteId = quoteIdFromUrl(page.url());
+		await expect(page.locator('.line-item.catalogue-line')).toHaveCount(2);
+		await expect(page.locator('#quote-item-quantity-0')).toHaveValue('2');
+		await expect(page.locator('#quote-item-quantity-1')).toHaveValue('3');
+
+		const repeatedItems = await readQuoteItems(repeatedQuoteId);
+		expect(repeatedItems).toHaveLength(2);
+		expect(new Set(repeatedItems.map((item) => item.id)).size).toBe(2);
+		expect(repeatedItems.map((item) => item.position)).toEqual([1, 2]);
+		expect(repeatedItems.map((item) => Number(item.quantity))).toEqual([2, 3]);
+		expect(
+			repeatedItems.every(
+				(item) => item.source_type === 'catalogue' && item.product_id === firstProduct.id
+			)
+		).toBe(true);
 	} finally {
 		await runCleanup([
 			...leadIds.map((leadId) => ({

@@ -12,17 +12,19 @@
 	type ProductCategory = { id: string; label: string };
 
 	let {
-		action,
-		quoteId,
+		action = undefined,
+		quoteId = null,
 		currency,
 		categories = [],
-		disabled = false
+		disabled = false,
+		onAddProduct
 	}: {
-		action: string;
-		quoteId: string;
+		action?: string;
+		quoteId?: string | null;
 		currency: string;
 		categories?: ProductCategory[];
 		disabled?: boolean;
+		onAddProduct?: (product: ProductOption, quantity: string) => void;
 	} = $props();
 
 	let query = $state('');
@@ -106,6 +108,13 @@
 
 	function goToPage(nextPage: number) {
 		page = Math.min(Math.max(1, nextPage), pagination.totalPages);
+	}
+
+	function addProductLocally() {
+		if (!selectedProduct) return;
+		onAddProduct?.(selectedProduct, selectedProduct.dimensions_enabled ? '1' : quantity);
+		selectedProduct = null;
+		quantity = '1';
 	}
 </script>
 
@@ -218,9 +227,13 @@
 						required
 					/>
 				{/if}
-				<input type="hidden" name="product_id" value={selectedProduct.id} />
-				<input type="hidden" name="product_lock_version" value={selectedProduct.lock_version} />
-				<Button type="submit" formaction={action}>Add Product to quote</Button>
+				{#if quoteId}
+					<input type="hidden" name="product_id" value={selectedProduct.id} />
+					<input type="hidden" name="product_lock_version" value={selectedProduct.lock_version} />
+					<Button type="submit" formaction={action}>Add Product to quote</Button>
+				{:else}
+					<Button type="button" onclick={addProductLocally}>Add Product to quote</Button>
+				{/if}
 			</div>
 		</div>
 	{/if}

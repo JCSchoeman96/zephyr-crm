@@ -8,6 +8,9 @@ export type QuoteFormItem = {
 	unit_price: string;
 	taxable: boolean;
 	dimensions?: DimensionValue[];
+	source_type?: 'catalogue';
+	product_id?: string;
+	product_lock_version?: number;
 };
 
 const quantityPattern = /^(?:0|[1-9]\d*)(?:\.\d{1,4})?$/;
@@ -103,9 +106,7 @@ export function parseQuoteItems(form: FormData): QuoteFormItem[] {
 			throw new Error(`Quote line ${index + 1} tax flag is invalid`);
 		const dimensions =
 			record.dimensions === undefined ? undefined : parseDimensionValues(record.dimensions, index);
-		if (record.source_type === 'custom' && dimensions && dimensions.length > 0)
-			throw new Error(`Quote line ${index + 1} custom items cannot have dimensions`);
-		return {
+		const parsedItem = {
 			...(id ? { id } : {}),
 			name,
 			description: String(record.description ?? '').trim(),
@@ -114,6 +115,34 @@ export function parseQuoteItems(form: FormData): QuoteFormItem[] {
 			taxable: record.taxable,
 			...(dimensions ? { dimensions } : {})
 		};
+		if (record.source_type === 'catalogue') {
+			const productId = String(record.product_id ?? '').trim();
+			if (!uuidPattern.test(productId))
+				throw new Error(`Quote line ${index + 1} Product identifier is invalid`);
+			const rawProductLockVersion = record.product_lock_version;
+			const productLockVersion =
+				typeof rawProductLockVersion === 'number'
+					? rawProductLockVersion
+					: typeof rawProductLockVersion === 'string' && /^\d+$/.test(rawProductLockVersion.trim())
+						? Number(rawProductLockVersion.trim())
+						: Number.NaN;
+			if (!Number.isInteger(productLockVersion) || productLockVersion < 1)
+				throw new Error(`Quote line ${index + 1} Product lock version is invalid`);
+			return {
+				...parsedItem,
+				source_type: 'catalogue' as const,
+				product_id: productId,
+				product_lock_version: productLockVersion
+			};
+		}
+		if (
+			Object.prototype.hasOwnProperty.call(record, 'product_id') ||
+			Object.prototype.hasOwnProperty.call(record, 'product_lock_version')
+		)
+			throw new Error(`Quote line ${index + 1} custom items cannot use Product identity`);
+		if (record.source_type === 'custom' && dimensions && dimensions.length > 0)
+			throw new Error(`Quote line ${index + 1} custom items cannot have dimensions`);
+		return parsedItem;
 	});
 }
 
@@ -129,7 +158,8 @@ export function quoteFormFailureValues(form: FormData): Record<string, string> {
 		'valid_until',
 		'currency',
 		'lock_version',
-		'items'
+		'items',
+		'quote_failure_rehydration_catalogue_display'
 	];
 	return Object.fromEntries(
 		names.filter((name) => form.has(name)).map((name) => [name, String(form.get(name) ?? '')])

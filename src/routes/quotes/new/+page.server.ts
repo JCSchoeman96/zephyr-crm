@@ -25,26 +25,39 @@ function actionFailure(cause: unknown, fallback: string, values?: Record<string,
 
 export const load: PageServerLoad = async (event) => {
 	const { supabase, profile } = await requireActiveStaff(event);
-	const [leadResponse, clientResponse, quoteDefaultsResponse] = await Promise.all([
-		supabase
-			.from('leads')
-			.select('id,lead_number,first_name,last_name,company,pipeline_stage,message')
-			.in('pipeline_stage', ['PROPOSAL', 'DECISION'])
-			.order('updated_at', { ascending: false })
-			.limit(100),
-		supabase
-			.from('clients')
-			.select('id,display_name,company_name')
-			.eq('status', 'active')
-			.order('display_name')
-			.limit(100),
-		supabase
-			.from('app_settings')
-			.select('setting_value')
-			.eq('setting_key', 'quote_defaults')
-			.maybeSingle()
-	]);
-	if (leadResponse.error || clientResponse.error || quoteDefaultsResponse.error)
+	const [leadResponse, clientResponse, quoteDefaultsResponse, productCategoriesResponse] =
+		await Promise.all([
+			supabase
+				.from('leads')
+				.select('id,lead_number,first_name,last_name,company,pipeline_stage,message')
+				.in('pipeline_stage', ['PROPOSAL', 'DECISION'])
+				.order('updated_at', { ascending: false })
+				.limit(100),
+			supabase
+				.from('clients')
+				.select('id,display_name,company_name')
+				.eq('status', 'active')
+				.order('display_name')
+				.limit(100),
+			supabase
+				.from('app_settings')
+				.select('setting_value')
+				.eq('setting_key', 'quote_defaults')
+				.maybeSingle(),
+			supabase
+				.from('product_categories')
+				.select('id,label')
+				.eq('status', 'active')
+				.order('sort_order', { ascending: true })
+				.order('label', { ascending: true })
+				.limit(100)
+		]);
+	if (
+		leadResponse.error ||
+		clientResponse.error ||
+		quoteDefaultsResponse.error ||
+		productCategoriesResponse.error
+	)
 		throw redirect(303, '/quotes');
 	const leads = leadResponse.data ?? [];
 	const requestedLeadId = event.url.searchParams.get('lead_id')?.trim() ?? '';
@@ -61,6 +74,10 @@ export const load: PageServerLoad = async (event) => {
 		clients: (clientResponse.data ?? []).map((client) => ({
 			id: client.id,
 			label: client.display_name || client.company_name || 'Unnamed client'
+		})),
+		productCategories: (productCategoriesResponse.data ?? []).map((category) => ({
+			id: category.id,
+			label: category.label
 		})),
 		quoteDefaults: normalizeQuoteDefaults(quoteDefaultsResponse.data?.setting_value),
 		selectedLeadId,
