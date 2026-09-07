@@ -29,6 +29,7 @@ test.describe('canonical Quote acceptance browser journey', () => {
 			await page.locator('#quote-item-name-0').fill('P14 implementation');
 			await page.locator('#quote-item-quantity-0').fill('2');
 			await page.locator('#quote-item-price-0').fill('1250');
+			await page.locator('#quote-tax-rate').fill('15');
 			await page.getByRole('button', { name: 'Save draft' }).click();
 			await page.waitForURL(/\/quotes\/[0-9a-f-]+$/);
 			await page.getByRole('button', { name: 'Add custom item' }).click();

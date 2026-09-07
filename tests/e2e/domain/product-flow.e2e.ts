@@ -9,7 +9,7 @@ test('keeps the primary product flow labelled and within the viewport', async ({
 		await page.setViewportSize({ width: 390, height: 844 });
 		await gotoAndWaitForHeading(page, `/leads/${lead.id}`, 'P14 Browser Harness');
 		await expect(page.getByRole('navigation', { name: 'Primary navigation' })).toBeVisible();
-		await expect(page.getByRole('link', { name: 'Dashboard' })).toBeVisible();
+		await expect(page.getByRole('link', { name: 'Home', exact: true })).toBeVisible();
 		await expect(page.getByRole('heading', { name: 'P14 Browser Harness' })).toBeVisible();
 		const dimensions = await page.evaluate(() => ({
 			viewport: window.innerWidth,

@@ -27,6 +27,17 @@ async function openLostForm(page: Page) {
 	return form;
 }
 
+async function openReopenForm(page: Page) {
+	const disclosure = page.locator('details.management-disclosure');
+	await expect(disclosure).toBeVisible();
+	if (!(await disclosure.evaluate((element) => (element as HTMLDetailsElement).open))) {
+		await disclosure.locator('summary').click();
+	}
+	const form = disclosure.locator('form[action="?/reopen"]');
+	await expect(form).toBeVisible();
+	return form;
+}
+
 test.describe('canonical Lost browser journey', () => {
 	test('requires loss/reopen evidence and rejects stale or unauthorized actions', async ({
 		page,
@@ -73,8 +84,7 @@ test.describe('canonical Lost browser journey', () => {
 			await gotoAndWaitForHeading(salesPage, `/leads/${lead.id}`, 'P14 Browser Lost');
 			await expect(salesPage.locator('form[action="?/reopen"]')).toHaveCount(0);
 
-			const ownerReopenForm = page.locator('form[action="?/reopen"]');
-			await expect(ownerReopenForm).toBeVisible();
+			const ownerReopenForm = await openReopenForm(page);
 			await ownerReopenForm.getByRole('button', { name: 'Reopen enquiry', exact: true }).click();
 			expect((await readLead(lead.id, user))?.pipeline_stage).toBe('LOST');
 
@@ -89,18 +99,18 @@ test.describe('canonical Lost browser journey', () => {
 				},
 				user
 			);
-			const freshReopenForm = freshOwnerPage.locator('form[action="?/reopen"]');
-			await expect(freshReopenForm).toBeVisible();
+			const freshReopenForm = await openReopenForm(freshOwnerPage);
 			await freshReopenForm
 				.getByLabel('Why are you reopening it?')
 				.fill('P14 owner administrative review');
 			await freshReopenForm.getByRole('button', { name: 'Reopen enquiry', exact: true }).click();
 			await expect(freshOwnerPage.getByRole('alert')).toContainText(/reload|conflict|stale/i);
 			await reloadAndWaitForHeading(freshOwnerPage, 'P14 Browser Lost');
-			await freshReopenForm
+			const reloadedReopenForm = await openReopenForm(freshOwnerPage);
+			await reloadedReopenForm
 				.getByLabel('Why are you reopening it?')
 				.fill('P14 owner administrative review');
-			await freshReopenForm.getByRole('button', { name: 'Reopen enquiry', exact: true }).click();
+			await reloadedReopenForm.getByRole('button', { name: 'Reopen enquiry', exact: true }).click();
 			await expect(freshOwnerPage.getByText('Reviewing details', { exact: true })).toBeVisible();
 			expect((await readLead(lead.id, user))?.pipeline_stage).toBe('QUALIFICATION');
 

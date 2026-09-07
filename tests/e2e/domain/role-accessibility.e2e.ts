@@ -44,6 +44,7 @@ test.describe('P14 role and accessibility regression', () => {
 		page,
 		browser
 	}) => {
+		test.setTimeout(90_000);
 		const fixture = await createConvertedClientFixture('sales-role');
 		const sales = await createStaff('sales', 'sales-role');
 		const lostLead = await ingestLead('sales-lost');
@@ -51,7 +52,12 @@ test.describe('P14 role and accessibility regression', () => {
 		try {
 			await signIn(page, sales);
 			await page.goto(`/clients/${fixture.client.id}`, { waitUntil: 'networkidle' });
+			await page.getByRole('link', { name: 'Maintenance' }).click();
+			const editDetails = page.locator('details.edit-disclosure');
+			await editDetails.locator('summary').click();
 			await expect(page.getByRole('button', { name: 'Save customer details' })).toBeVisible();
+			const statusActions = page.locator('details.admin-disclosure');
+			await statusActions.locator('summary').click();
 			await expect(
 				page.getByLabel('Change status').locator('option[value="archived"]')
 			).toHaveCount(0);
@@ -70,6 +76,9 @@ test.describe('P14 role and accessibility regression', () => {
 			await page.getByLabel('Display name').fill('P14 stale detail attempt');
 			await page.getByRole('button', { name: 'Save customer details' }).click();
 			await expect(page.getByRole('alert')).toContainText(/changed elsewhere.*reload/i);
+			if (!(await editDetails.evaluate((element) => (element as HTMLDetailsElement).open))) {
+				await editDetails.locator('summary').click();
+			}
 			await expect(page.getByLabel('Display name')).toHaveValue('P14 stale detail attempt');
 
 			const currentClient = await readClientForLead(fixture.lead.id, fixture.owner);
@@ -84,12 +93,21 @@ test.describe('P14 role and accessibility regression', () => {
 				},
 				fixture.owner
 			);
+			if (!(await statusActions.evaluate((element) => (element as HTMLDetailsElement).open))) {
+				await statusActions.locator('summary').click();
+			}
 			await page.getByLabel('Change status').selectOption('inactive');
 			await page
 				.getByLabel('Reason (required for archive/restore)')
 				.fill('P14 stale status attempt');
 			await page.getByRole('button', { name: 'Save status' }).click();
 			await expect(page.getByRole('alert')).toContainText(/changed elsewhere.*reload/i);
+			if (!(await editDetails.evaluate((element) => (element as HTMLDetailsElement).open))) {
+				await editDetails.locator('summary').click();
+			}
+			if (!(await statusActions.evaluate((element) => (element as HTMLDetailsElement).open))) {
+				await statusActions.locator('summary').click();
+			}
 			await expect(page.getByLabel('Display name')).toHaveValue(originalDisplayName);
 			await expect(page.getByLabel('Change status')).toHaveValue('inactive');
 			await expect(page.getByLabel('Reason (required for archive/restore)')).toHaveValue(
@@ -113,13 +131,14 @@ test.describe('P14 role and accessibility regression', () => {
 			await signIn(ownerPage, fixture.owner);
 			await signInWithAal2(ownerPage, fixture.owner);
 			await ownerPage.goto(`/leads/${lostLead.id}`, { waitUntil: 'networkidle' });
+			await ownerPage.locator('details.management-disclosure summary').click();
 			await ownerPage
 				.getByLabel('Why are you reopening it?')
 				.fill('P14 owner administrative review');
 			await ownerPage.getByRole('button', { name: 'Reopen enquiry' }).click();
 			await expect(ownerPage.getByText('Reviewing details', { exact: true })).toBeVisible();
 			await ownerPage.goto('/operations', { waitUntil: 'networkidle' });
-			await expect(ownerPage.getByRole('heading', { name: 'Operations' })).toBeVisible();
+			await expect(ownerPage.getByRole('heading', { name: 'System Health' })).toBeVisible();
 		} finally {
 			await ownerContext?.close();
 			await cleanupLead(fixture.lead.id, fixture.owner.id);
@@ -162,6 +181,8 @@ test.describe('P14 role and accessibility regression', () => {
 				await expect(page.getByRole('button', { name: 'Add custom item' })).toBeVisible();
 				await expect(page.getByRole('button', { name: 'Save draft' })).toBeVisible();
 				await page.goto(`/clients/${fixture.client.id}`, { waitUntil: 'networkidle' });
+				await page.getByRole('link', { name: 'Maintenance' }).click();
+				await page.locator('details.edit-disclosure summary').click();
 				await expect(page.getByLabel('Display name')).toBeVisible();
 				await expect(page.getByRole('button', { name: 'Save customer details' })).toBeVisible();
 			}
