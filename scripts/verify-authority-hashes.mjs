@@ -18,6 +18,8 @@ const rootAuthorityFiles = [
 	'docs/hardening/ZEPHYR_CRM_P14_HARDENING_AND_IMPROVEMENT_AUTHORITY_v1.0.0.md'
 ];
 const normativeDocs = [
+	'docs/goals/ZEPHYR_GUIDED_WORKFLOW_UX_OVERHAUL_GOAL.md',
+	'docs/superpowers/specs/2026-09-07-guided-workflow-shell-design.md',
 	'docs/ARCHITECTURE.md',
 	'docs/DOMAIN_MODEL.md',
 	'docs/STATE_MACHINES.md',

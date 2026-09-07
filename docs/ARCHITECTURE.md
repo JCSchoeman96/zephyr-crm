@@ -12,6 +12,23 @@ scope.
 
 ## Product boundary
 
+### Guided workflow presentation amendment, 2026-09-07
+
+The authorized goal in `docs/goals/ZEPHYR_GUIDED_WORKFLOW_UX_OVERHAUL_GOAL.md`
+and its design in
+`docs/superpowers/specs/2026-09-07-guided-workflow-shell-design.md`
+supersede the historical Dashboard-only presentation below. `/` is operational
+Home, `/reports` hosts existing analytics, `/settings` hosts existing business
+configuration, and `/operations` presents System Health.
+
+Reports and Settings are now separate presentation routes only. No new bounded
+domain, persistence authority, permission model, metric definition, or business
+capability is introduced.
+
+The design records the corresponding navigation, Quote creation and defaults
+presentation amendments. All domain, security, concurrency, document, Product,
+Fulfilment and release authorities remain in force.
+
 Zephyr CRM is a focused sales-workflow system for small businesses. Its bounded workflow is:
 
 ```text

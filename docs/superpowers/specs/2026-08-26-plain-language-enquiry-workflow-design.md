@@ -1,5 +1,12 @@
 # Plain-language enquiry workflow
 
+Presentation amendment, 2026-09-07: vocabulary principles remain in force.
+The authorized guided workflow goal and
+`docs/superpowers/specs/2026-09-07-guided-workflow-shell-design.md` supersede
+the navigation and next-action topology below. The current sent Quote owns
+customer responses and the atomic Customer/Fulfilment handoff. This amendment
+does not change domain states, transition guards or permissions.
+
 ## Goal
 
 Make Zephyr CRM understandable to staff who do not use sales or software

@@ -1,5 +1,13 @@
 # Zephyr CRM v1.5.1 Operational Polish Design
 
+Presentation amendment, 2026-09-07: the authorized guided workflow goal and
+`docs/superpowers/specs/2026-09-07-guided-workflow-shell-design.md` supersede
+the visible Quick custom quote form and placement of Quote defaults in
+Operations. The Builder supplies custom items, Settings supplies existing
+defaults, and System Health supplies diagnostics. The old action remains
+compatible. Input validation, AAL2, snapshots and every domain/security
+assertion remain unchanged. The original evidence below is historical.
+
 ## Goal
 
 Resolve OA-01 through OA-05 from the v1.5 operational acceptance review while

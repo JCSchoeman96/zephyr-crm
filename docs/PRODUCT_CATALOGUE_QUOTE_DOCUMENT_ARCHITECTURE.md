@@ -238,6 +238,13 @@ authoritative for line subtotal, Quote subtotal, tax, and total under
 
 ### Catalogue-first quote creation
 
+Presentation amendment, 2026-09-07: the guided workflow goal and
+`docs/superpowers/specs/2026-09-07-guided-workflow-shell-design.md` supersede
+the visible Quick custom quote shortcut described below. `/quotes/new` is the
+sole ordinary creation path for catalogue and custom items. The compatibility
+server action remains. Pending-line persistence, snapshots, dimensions, money,
+readiness and all trusted mutation semantics in this section are unchanged.
+
 `/quotes/new` shows `Add from catalogue` before a Quote ID exists. `QuoteEditor`
 keeps each selected Product in a pending in-memory line list. `Add Product to
 quote` updates that list only. It does not create a temporary custom line,

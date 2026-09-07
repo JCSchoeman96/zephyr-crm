@@ -114,7 +114,22 @@ if (existsSync(resolve(root, localStatePath))) {
 			state.completed_phases.includes(phase)
 		);
 	const v150IsSuccessor = v150PhaseLoopSuccessor || v150TerminalSuccessor;
-	assert(v140IsActive || v150IsSuccessor, 'v1.4.0 state has no valid active or successor roadmap');
+	const guidedGoal = 'docs/goals/ZEPHYR_GUIDED_WORKFLOW_UX_OVERHAUL_GOAL.md';
+	const guidedDesign = 'docs/superpowers/specs/2026-09-07-guided-workflow-shell-design.md';
+	const guidedSuccessor =
+		state.roadmap === guidedGoal &&
+		state.roadmap_version === 'guided-workflow-2026-09-07' &&
+		state.architecture === 'docs/ARCHITECTURE.md' &&
+		state.roadmap_sha256 === sha256(guidedGoal) &&
+		state.authority_sha256?.[guidedDesign] === sha256(guidedDesign) &&
+		state.architecture_sha256 === registry.files['docs/ARCHITECTURE.md'] &&
+		['PHASE_LOOP', 'FINAL_PROJECT_VALIDATION', 'COMPLETE'].includes(state.execution_stage) &&
+		state.ordered_phases?.includes(state.current_phase) &&
+		(state.current_phase === 'FINAL' || /^ZUX-\d{2}$/.test(state.current_phase ?? ''));
+	assert(
+		v140IsActive || v150IsSuccessor || guidedSuccessor,
+		'v1.4.0 state has no valid active or successor roadmap'
+	);
 	for (const path of requiredFiles) {
 		assert(
 			state.authority_sha256?.[path] === registry.files[path],
