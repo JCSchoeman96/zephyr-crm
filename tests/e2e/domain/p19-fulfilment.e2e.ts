@@ -90,7 +90,10 @@ test.describe('P19 Fulfilment work queues', () => {
 			await page.getByLabel('Work type').selectOption('installation');
 			await page.getByLabel('Notes', { exact: true }).fill('P19 browser installation');
 			await submitFormButton(page.getByRole('button', { name: 'Add work step' }));
-			await expect(page.getByText('Awaiting schedule', { exact: true })).toBeVisible();
+			await expect(page.getByRole('heading', { name: 'Installation', exact: true })).toBeVisible();
+			await expect(
+				page.locator('.step-card [data-tone]').filter({ hasText: /^Awaiting schedule$/ })
+			).toBeVisible({ timeout: 15_000 });
 			await page.getByLabel('Schedule for').fill('2099-01-01T09:00');
 			await submitFormButton(page.getByRole('button', { name: 'Schedule installation' }));
 			await expect(page.locator('[data-tone]').filter({ hasText: /^Scheduled$/ })).toBeVisible();
