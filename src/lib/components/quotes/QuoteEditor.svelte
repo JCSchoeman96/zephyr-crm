@@ -401,6 +401,17 @@
 				>
 			</Card>
 
+			<div class="totals-controls">
+				<Input
+					id="quote-tax-rate"
+					name="tax_rate"
+					label="Tax rate (%)"
+					bind:value={taxRate}
+					inputmode="decimal"
+					required
+				/>
+			</div>
+
 			<details class="quote-settings">
 				<summary>Introduction, terms, and validity</summary>
 				<div class="quote-settings-body">
@@ -414,14 +425,6 @@
 							required
 						/>
 						<Input id="quote-tax-label" name="tax_label" label="Tax label" bind:value={taxLabel} />
-						<Input
-							id="quote-tax-rate"
-							name="tax_rate"
-							label="Tax rate (%)"
-							bind:value={taxRate}
-							inputmode="decimal"
-							required
-						/>
 						<Input
 							id="quote-valid-until"
 							name="valid_until"
@@ -536,6 +539,9 @@
 		display: grid;
 		gap: var(--space-md);
 		margin-top: var(--space-md);
+	}
+	.totals-controls {
+		max-width: 12rem;
 	}
 	:global(.quote-preview-card) {
 		position: sticky;
