@@ -258,18 +258,28 @@ async function main() {
 	});
 
 	detail = await getPage(`/leads/${leadId}`);
-	const quoteId = hiddenValue(detail, 'quote_id');
-	const quoteLock = hiddenValue(detail, 'lock_version', 1);
-	await postForm(`/leads/${leadId}?/sendQuote`, { quote_id: quoteId, lock_version: quoteLock });
+	if (!detail.includes('Tracer bullet quote')) {
+		throw new Error(
+			`Enquiry page missing quote subject. snippet=${detail.slice(detail.indexOf('Quotes'), detail.indexOf('Quotes') + 800)}`
+		);
+	}
+	const quoteId = detail.match(/quotes\/([0-9a-f-]{36})/i)?.[1];
+	if (!quoteId)
+		throw new Error(
+			`Could not find created Quote link on Enquiry page. hasSubject=${detail.includes('Tracer bullet quote')}`
+		);
+	let quotePage = await getPage(`/quotes/${quoteId}`);
+	const quoteLock = hiddenValue(quotePage, 'lock_version');
+	await postForm(`/quotes/${quoteId}?/markReady`, { lock_version: quoteLock });
+	quotePage = await getPage(`/quotes/${quoteId}`);
+	const readyLock = hiddenValue(quotePage, 'lock_version');
+	await postForm(`/quotes/${quoteId}?/send`, { lock_version: readyLock });
 	detail = await getPage(`/leads/${leadId}`);
-	if (
-		!detail.includes('Submitted') ||
-		!detail.includes('waiting_on_client') ||
-		!detail.includes('Follow-up task created')
-	) {
+	if (!detail.includes('Waiting for customer') || !detail.includes('Record customer response')) {
 		throw new Error('SendPulse contract did not complete the Quote → Task workflow');
 	}
-	const sentQuoteLock = hiddenValue(detail, 'lock_version', 1);
+	quotePage = await getPage(`/quotes/${quoteId}`);
+	const sentQuoteLock = hiddenValue(quotePage, 'lock_version');
 	await postForm(`/quotes/${quoteId}?/accept`, {
 		lock_version: sentQuoteLock,
 		acceptance_source: 'tracer_test',
