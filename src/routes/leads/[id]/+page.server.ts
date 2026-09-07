@@ -29,7 +29,9 @@ export const load: PageServerLoad = async (event) => {
 		taskResponse,
 		activityResponse,
 		reasonResponse,
-		staffResponse
+		staffResponse,
+		currentQuoteResponse,
+		fulfilmentResponse
 	] = await Promise.all([
 		supabase.from('leads').select('*').eq('id', event.params.id).maybeSingle(),
 		supabase
@@ -57,7 +59,24 @@ export const load: PageServerLoad = async (event) => {
 			.eq('status', 'active')
 			.in('role', ['owner', 'admin', 'sales'])
 			.order('full_name')
-			.limit(100)
+			.limit(100),
+		supabase
+			.from('quotes')
+			.select('id,status,subject,quote_number')
+			.eq('lead_id', event.params.id)
+			.in('status', ['draft', 'ready', 'sent', 'accepted'])
+			.order('created_at', { ascending: false })
+			.order('revision_number', { ascending: false })
+			.order('id')
+			.limit(1)
+			.maybeSingle(),
+		supabase
+			.from('fulfilment_cases')
+			.select('id,status')
+			.eq('lead_id', event.params.id)
+			.order('created_at', { ascending: false })
+			.order('id')
+			.limit(20)
 	]);
 	if (leadResponse.error) throw error(500, 'Could not load Lead details');
 	if (!leadResponse.data) throw error(404, 'Lead not found');
@@ -66,12 +85,16 @@ export const load: PageServerLoad = async (event) => {
 		taskResponse.error ||
 		activityResponse.error ||
 		reasonResponse.error ||
-		staffResponse.error
+		staffResponse.error ||
+		currentQuoteResponse.error ||
+		fulfilmentResponse.error
 	) {
 		throw error(500, 'Could not load lead details');
 	}
 	return {
 		lead: leadResponse.data,
+		currentQuote: currentQuoteResponse.data,
+		fulfilments: fulfilmentResponse.data ?? [],
 		quotes: quoteResponse.data ?? [],
 		tasks: taskResponse.data ?? [],
 		activities: activityResponse.data ?? [],
