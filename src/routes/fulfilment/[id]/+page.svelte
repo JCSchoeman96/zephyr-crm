@@ -24,6 +24,10 @@
 		taskStatusLabel,
 		taskTypeLabel
 	} from '$lib/domain/presentation/labels';
+	import {
+		fulfilmentNextActions,
+		fulfilmentOutstandingRequirements
+	} from '$lib/domain/presentation/fulfilment-next-step';
 	import RealtimeStatus from '$lib/realtime/RealtimeStatus.svelte';
 	import { publicClientConfiguration } from '$lib/config/public-client-config';
 	import { utcIsoToLocalDateTime, utcIsoToLocalLabel } from '$lib/time/zoned-datetime';
@@ -32,6 +36,20 @@
 	const canMutate = $derived(data.profile.role !== 'viewer');
 	const canCorrect = $derived(['owner', 'admin'].includes(data.profile.role));
 	const hasTruncatedHistory = $derived(Object.values(data.detail.truncated).some(Boolean));
+	const nextActions = $derived(
+		fulfilmentNextActions({
+			caseStatus: data.detail.case.status,
+			steps: data.detail.steps,
+			payments: data.detail.payments
+		})
+	);
+	const outstandingRequirements = $derived(
+		fulfilmentOutstandingRequirements({
+			caseStatus: data.detail.case.status,
+			steps: data.detail.steps,
+			payments: data.detail.payments
+		})
+	);
 
 	function dateTime(value: string | null) {
 		return value
@@ -98,13 +116,13 @@
 
 <svelte:head>
 	<title>Fulfilment #{data.detail.case.fulfilment_number} | Zephyr CRM</title>
-	<meta name="description" content="Canonical Fulfilment case detail and operational history" />
+	<meta name="description" content="Fulfilment case detail and operational history" />
 </svelte:head>
 
 <AppShell userEmail={data.auth.user?.email} userRole={data.auth.profile?.role}>
 	<PageHeader
 		title={`Fulfilment #${data.detail.case.fulfilment_number}`}
-		description="One accepted sale, one canonical operational record."
+		description="What must happen to complete this accepted sale."
 	>
 		{#snippet actions()}
 			<RealtimeStatus
@@ -121,7 +139,7 @@
 		{/snippet}
 	</PageHeader>
 
-	<a class="back-link" href={resolve('/fulfilment')}>← Back to Fulfilment queues</a>
+	<a class="back-link" href={resolve('/fulfilment')}>← Back to Fulfilment</a>
 	{#if form?.message}<ErrorState
 			title="Fulfilment action could not be completed"
 			message={form.message}
@@ -134,11 +152,33 @@
 	{/if}
 	{#if navigating.to}<LoadingState message="Refreshing Fulfilment case…" />{/if}
 
+	<section aria-label="Fulfilment next actions" class="detail-section">
+		<Card title="Next actions">
+			{#if nextActions.length === 0}
+				<p class="muted">No ordinary next actions for this fulfilment.</p>
+			{:else}
+				<ul class="next-action-list">
+					{#each nextActions as action (action.key + action.label)}
+						<li>{action.label}</li>
+					{/each}
+				</ul>
+			{/if}
+			{#if data.detail.case.status === 'open' && outstandingRequirements.length > 0}
+				<p class="readiness-note">Before this fulfilment can be completed:</p>
+				<ul class="next-action-list">
+					{#each outstandingRequirements as requirement (requirement)}
+						<li>{requirement}</li>
+					{/each}
+				</ul>
+			{/if}
+		</Card>
+	</section>
+
 	<section aria-labelledby="overview-heading" class="detail-section">
 		<div class="section-heading">
 			<div>
 				<h2 id="overview-heading">Overview</h2>
-				<p>The customer and accepted quote remain unchanged in Fulfilment.</p>
+				<p>The customer and accepted quote stay linked to this fulfilment.</p>
 			</div>
 			<Badge tone={caseTone(data.detail.case.status)}
 				>{fulfilmentCaseStatusLabel(data.detail.case.status)}</Badge
@@ -194,28 +234,19 @@
 				</div>
 			</div>
 			<p class="read-only-note">
-				Commercial values are displayed from the accepted immutable Quote. Fulfilment does not edit
-				Quote totals, items, or payment amounts.
+				Commercial values come from the accepted quote. Fulfilment does not change quote totals,
+				items, or payment amounts.
 			</p>
 			{#if data.detail.case.cancel_reason}<p class="case-reason">
 					<strong>Cancellation reason:</strong>
 					{data.detail.case.cancel_reason}
 				</p>{/if}
 			<div class="case-actions">
-				{#if canMutate && data.detail.case.status === 'open'}
+				{#if canMutate && data.detail.case.status === 'open' && outstandingRequirements.length === 0}
 					<form method="POST" action="?/completeCase">
 						<input type="hidden" name="lock_version" value={data.detail.case.lock_version} />
 						<Button type="submit">Complete fulfilment</Button>
 					</form>
-				{/if}
-				{#if canMutate && canCorrect && data.detail.case.status === 'open'}
-					<form method="POST" action="?/cancelCase" class="inline-reason-form">
-						<input type="hidden" name="lock_version" value={data.detail.case.lock_version} />
-						<Input id="case-cancel-reason" name="reason" label="Cancellation reason" required />
-						<Button type="submit" variant="danger">Cancel case</Button>
-					</form>
-				{:else if data.detail.case.status === 'open'}
-					<span class="muted">Only authorized administrators can cancel an open fulfilment.</span>
 				{/if}
 			</div>
 		</Card>
@@ -224,8 +255,8 @@
 	<section aria-labelledby="work-heading" class="detail-section">
 		<div class="section-heading">
 			<div>
-				<h2 id="work-heading">Work</h2>
-				<p>Installation, courier, and pickup steps have independent state and locks.</p>
+				<h2 id="work-heading">Active work</h2>
+				<p>Installation, delivery, and collection steps for this accepted sale.</p>
 			</div>
 		</div>
 		{#if canMutate && data.detail.case.status === 'open'}
@@ -238,8 +269,8 @@
 					<input type="hidden" name="lock_version" value={data.detail.case.lock_version} />
 					<Select id="new-step-type" name="type" label="Work type" required>
 						<option value="installation">Installation</option>
-						<option value="courier">Courier</option>
-						<option value="pickup">Pickup</option>
+						<option value="courier">Delivery</option>
+						<option value="pickup">Collection</option>
 					</Select>
 					<Input id="new-step-notes" name="notes" label="Notes" />
 					<Input id="new-step-tracking" name="tracking_reference" label="Tracking reference" />
@@ -341,7 +372,7 @@
 											label="Tracking reference"
 										/>
 										<Input id={`dispatch-notes-${step.id}`} name="notes" label="Dispatch notes" />
-										<Button type="submit" size="sm">Dispatch courier</Button>
+										<Button type="submit" size="sm">Dispatch delivery</Button>
 									</form>
 								{:else if step.type === 'courier' && step.status === 'dispatched'}
 									<form method="POST" action="?/completeStep">
@@ -616,6 +647,17 @@
 			</ol>
 		{/if}
 	</section>
+
+	{#if canMutate && canCorrect && data.detail.case.status === 'open'}
+		<details class="admin-disclosure">
+			<summary>Administrative actions</summary>
+			<form method="POST" action="?/cancelCase" class="inline-reason-form">
+				<input type="hidden" name="lock_version" value={data.detail.case.lock_version} />
+				<Input id="case-cancel-reason" name="reason" label="Cancellation reason" required />
+				<Button type="submit" variant="danger">Cancel fulfilment</Button>
+			</form>
+		</details>
+	{/if}
 </AppShell>
 
 <style>
@@ -623,6 +665,22 @@
 	.section-heading a,
 	a {
 		color: var(--color-brand-primary);
+	}
+	.next-action-list {
+		margin: var(--space-sm) 0 0;
+		padding-left: 1.2rem;
+	}
+	.readiness-note {
+		margin: var(--space-md) 0 0;
+		font-weight: var(--font-weight-semibold);
+	}
+	.admin-disclosure {
+		margin-top: var(--space-xl);
+	}
+	.admin-disclosure > summary {
+		cursor: pointer;
+		margin-bottom: var(--space-md);
+		font-weight: var(--font-weight-semibold);
 	}
 	.back-link {
 		display: inline-block;

@@ -156,7 +156,7 @@ test.describe('v1.5.1 operational polish', () => {
 		}
 	});
 
-	test('shows the canonical Quote Builder entry point beside the quick custom journey', async ({
+	test('shows the canonical Quote Builder as the ordinary quote-creation path', async ({
 		page
 	}) => {
 		const user = await createStaff('owner', 'v151-builder-entry');
@@ -165,13 +165,10 @@ test.describe('v1.5.1 operational polish', () => {
 			await moveLeadToProposal(lead.id, user);
 			await signIn(page, user);
 			await page.goto(`/leads/${lead.id}`, { waitUntil: 'networkidle' });
-			const card = page.locator('.quote-create-card');
-			await expect(card.getByRole('heading', { name: 'Create a simple quote' })).toBeVisible();
-			const builderLink = card.getByRole('link', { name: 'Open Quote Builder' });
-			await expect(builderLink).toHaveAttribute('href', `/quotes/new?lead_id=${lead.id}`);
-			await expect(card).toContainText(/catalogue Products/i);
-			await expect(card.getByLabel('Line item')).toBeVisible();
-			await expect(card.getByRole('button', { name: 'Create quote' })).toBeVisible();
+			const createQuote = page.getByRole('link', { name: 'Create quote', exact: true });
+			await expect(createQuote).toHaveAttribute('href', `/quotes/new?lead_id=${lead.id}`);
+			await expect(page.getByRole('heading', { name: 'Create a simple quote' })).toHaveCount(0);
+			await expect(page.getByLabel('Line item')).toHaveCount(0);
 		} finally {
 			await cleanupLead(lead.id, user.id);
 		}
@@ -182,7 +179,7 @@ test.describe('v1.5.1 operational polish', () => {
 		const originalQuoteDefaults = readStoredQuoteDefaults();
 		try {
 			await signInWithAal2(page, user);
-			await page.goto('/operations', { waitUntil: 'networkidle' });
+			await page.goto('/settings', { waitUntil: 'networkidle' });
 			const form = page.locator('form[action="?/saveQuoteDefaults"]');
 			await expect(form).toBeVisible();
 			for (const label of [
@@ -209,7 +206,7 @@ test.describe('v1.5.1 operational polish', () => {
 			await form.getByLabel('Terms', { exact: true }).fill('Disposable customer-facing terms.');
 			await form.getByLabel('Bank details', { exact: true }).fill(disposableBankDetails);
 			await form.getByRole('button', { name: 'Save Quote defaults' }).click();
-			await page.waitForURL(/\/operations\?saved=quote-defaults$/);
+			await page.waitForURL(/\/settings\?saved=quote-defaults$/);
 			await expect(page.getByText('Quote defaults saved.', { exact: true })).toBeVisible();
 		} finally {
 			restoreStoredQuoteDefaults(originalQuoteDefaults);
@@ -224,7 +221,7 @@ test.describe('v1.5.1 operational polish', () => {
 		try {
 			await moveLeadToDecision(lead.id, user);
 			await signInWithAal2(page, user);
-			await page.goto('/operations', { waitUntil: 'networkidle' });
+			await page.goto('/settings', { waitUntil: 'networkidle' });
 			const operationsForm = page.locator('form[action="?/saveQuoteDefaults"]');
 			await operationsForm.getByLabel('Quote prefix', { exact: true }).fill('OPS-');
 			await operationsForm.getByLabel('Tax label', { exact: true }).fill('Service tax');
@@ -235,7 +232,7 @@ test.describe('v1.5.1 operational polish', () => {
 				.fill('Server-owned customer-facing terms.');
 			await operationsForm.getByLabel('Bank details', { exact: true }).fill('');
 			await operationsForm.getByRole('button', { name: 'Save Quote defaults' }).click();
-			await page.waitForURL(/\/operations\?saved=quote-defaults$/);
+			await page.waitForURL(/\/settings\?saved=quote-defaults$/);
 
 			await page.goto(`/quotes/new?lead_id=${lead.id}`, { waitUntil: 'networkidle' });
 			await expect(page.getByRole('heading', { name: 'New quote', exact: true })).toBeVisible();

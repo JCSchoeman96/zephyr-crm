@@ -3,6 +3,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import type { Database, Tables } from '$lib/types/database';
 import {
 	deriveFulfilmentQueues,
+	fulfilmentQueueKeys,
 	isTaskOverdue,
 	type FulfilmentCase,
 	type FulfilmentPayment,
@@ -137,10 +138,10 @@ function nextWork(row: FulfilmentQueueRow) {
 	if (activeStep) {
 		const labels: Record<string, string> = {
 			awaiting_schedule: 'Schedule installation',
-			scheduled: 'Installation scheduled',
-			awaiting_dispatch: 'Dispatch courier',
+			scheduled: 'Complete installation',
+			awaiting_dispatch: 'Dispatch delivery',
 			dispatched: 'Confirm delivery',
-			preparing: 'Prepare pickup',
+			preparing: 'Mark ready for collection',
 			ready_for_collection: 'Confirm collection'
 		};
 		return labels[activeStep.status] ?? 'Review work';
@@ -292,6 +293,30 @@ export async function loadFulfilmentQueues(
 		context.leads,
 		context.quotes
 	);
+}
+
+export type FulfilmentWorkspaceView = {
+	view: FulfilmentQueueKey;
+	counts: Record<FulfilmentQueueKey, number>;
+	queue: FulfilmentQueueView;
+};
+
+export async function loadFulfilmentWorkspace(
+	supabase: FulfilmentReadClient,
+	params: URLSearchParams
+): Promise<FulfilmentWorkspaceView> {
+	const requested = params.get('view') ?? 'needs_planning';
+	const view: FulfilmentQueueKey = fulfilmentQueueKeys.includes(requested as FulfilmentQueueKey)
+		? (requested as FulfilmentQueueKey)
+		: 'needs_planning';
+	const queues = await loadFulfilmentQueues(supabase);
+	return {
+		view,
+		counts: Object.fromEntries(
+			fulfilmentQueueKeys.map((key) => [key, queues[key].rows.length])
+		) as Record<FulfilmentQueueKey, number>,
+		queue: queues[view]
+	};
 }
 
 export async function loadFulfilmentDetail(
