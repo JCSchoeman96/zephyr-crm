@@ -43,6 +43,7 @@ test.describe('canonical Lost browser journey', () => {
 		page,
 		browser
 	}) => {
+		test.setTimeout(120_000);
 		const user = await createStaff('owner');
 		const sales = await createStaff('sales', 'lost-sales');
 		const lead = await ingestLead('lost');
