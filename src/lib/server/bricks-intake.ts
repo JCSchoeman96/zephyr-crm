@@ -145,8 +145,19 @@ export async function handleBricksIntake(event: RequestEvent) {
 		if (error) throw new BricksIntakeError(error.message, 422, { formId, externalId, payload });
 		return data;
 	} catch (error) {
+		const intakeError = error instanceof BricksIntakeError ? error : undefined;
+		console.warn(
+			JSON.stringify({
+				event: 'bricks_intake_failure',
+				status: intakeError?.status ?? 500,
+				message: error instanceof Error ? error.message : 'Intake failed',
+				formId: intakeError?.context?.formId ?? '',
+				externalIdPresent: Boolean(intakeError?.context?.externalId),
+				payloadKeys: Object.keys(intakeError?.context?.payload ?? {}).sort()
+			})
+		);
 		await recordOperationalEvent({
-			severity: error instanceof BricksIntakeError && error.status < 500 ? 'warning' : 'error',
+			severity: intakeError && intakeError.status < 500 ? 'warning' : 'error',
 			source: 'bricks',
 			eventType: 'intake_failure',
 			message: error instanceof Error ? error.message : 'Intake failed'
