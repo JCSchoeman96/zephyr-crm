@@ -1947,7 +1947,7 @@
       "proof": {
         "command": "bun run test:p8:documents",
         "source": "scripts/test-p8-documents.mjs",
-        "assertion": "\tassert(\n\t\tdocumentHash === currentQuote.document_hash,\n\t\t'Stored document hash does not match the private artifact'\n\t);"
+        "assertion": "\tassert(\n\t\tObject.prototype.hasOwnProperty.call(currentQuote.quote_snapshot ?? {}, 'bank_details'),\n\t\t'Ready Quote did not freeze bank details for document generation'\n\t);"
       }
     },
     {
@@ -3288,12 +3288,12 @@
     {
       "id": "P14-T32",
       "title": "Navigation/internal route capability truth",
-      "criterion": "Reports/Settings dead capabilities are absent, visible internal links resolve, and Component Lab is 404 unless explicitly enabled.",
+      "criterion": "Guided workflow exposes Reports as a primary destination, keeps Settings/System Health owner/admin-only, resolves visible internal links, and keeps Component Lab 404 unless explicitly enabled.",
       "classification": "AUTOMATED",
       "proof": {
         "command": "bun run test:p14:navigation",
         "source": "scripts/test-p14-navigation.mjs",
-        "assertion": "assert.match(reports, /error\\(404/);"
+        "assertion": "assert(navigation.includes(\"href: '/reports'\"));"
       }
     },
     {

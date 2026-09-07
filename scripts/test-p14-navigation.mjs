@@ -8,10 +8,7 @@ const home = readFileSync('src/routes/+page.svelte', 'utf8');
 const reports = readFileSync('src/routes/reports/+page.server.ts', 'utf8');
 const componentLabGate = readFileSync('src/routes/system/+page.server.ts', 'utf8');
 
-assert(
-	navigation.includes("href: '/reports'"),
-	'Reports must be a primary guided-workflow destination.'
-);
+assert(navigation.includes("href: '/reports'"));
 assert(
 	navigation.includes("href: '/settings'"),
 	'Settings must remain an owner/admin administration capability.'
