@@ -83,6 +83,47 @@ describe('Bricks payload adapter', () => {
 		expect(result.payload.message).not.toContain('ignored-file-metadata');
 	});
 
+	it('accepts Bricks webhook envelope fields and ignores the copied element ID', () => {
+		const result = normalizeBricksPayload(
+			{
+				'form-field-bkkmsp': externalId,
+				'form-field-dan_name': 'Envelope',
+				'form-field-dan_email': 'envelope@example.test',
+				action: 'bricks_form_submit',
+				loopId: '109',
+				postId: '109',
+				formId: 'erzlms',
+				recaptchaToken: '',
+				nonce: 'nonce-value',
+				referrer: 'http://localhost:10049/contact-us/',
+				urlParams: '{"":"undefined"}'
+			},
+			expectedFormId
+		);
+
+		expect(result.formId).toBe(expectedFormId);
+		expect(result.unknownFields).toEqual([]);
+	});
+
+	it('accepts Bricks JSON radio fields without the array suffix', () => {
+		const result = normalizeBricksPayload(
+			{
+				'form-field-bkkmsp': externalId,
+				'form-field-dan_name': 'Radio',
+				'form-field-dan_email': 'radio@example.test',
+				'form-field-dan_installation': 'install',
+				'form-field-dan_timing': 'asap',
+				'form-field-dan_contact_method': 'email'
+			},
+			expectedFormId
+		);
+
+		expect(result.unknownFields).toEqual([]);
+		expect(result.payload.message).toContain('Installation: install');
+		expect(result.payload.message).toContain('Timing: asap');
+		expect(result.payload.message).toContain('Contact method: email');
+	});
+
 	it('omits empty optional raw fields instead of adding empty labels', () => {
 		const result = normalizeBricksPayload(
 			{

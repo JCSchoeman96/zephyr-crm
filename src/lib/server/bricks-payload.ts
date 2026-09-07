@@ -31,6 +31,15 @@ const canonicalFields = new Set([
 	'source'
 ]);
 
+const bricksEnvelopeFields = new Set([
+	'action',
+	'loopId',
+	'postId',
+	'recaptchaToken',
+	'nonce',
+	'urlParams'
+]);
+
 const rawFieldNames = {
 	'form-field-bkkmsp': 'external_submission_id',
 	'form-field-dan_name': 'first_name',
@@ -46,8 +55,11 @@ const rawFieldNames = {
 	'form-field-dan_height_mm': 'height_mm',
 	'form-field-dan_openings_count': 'openings_count',
 	'form-field-dan_installation[]': 'installation',
+	'form-field-dan_installation': 'installation',
 	'form-field-dan_timing[]': 'timing',
+	'form-field-dan_timing': 'timing',
 	'form-field-dan_contact_method[]': 'contact_method',
+	'form-field-dan_contact_method': 'contact_method',
 	'form-field-rcbtvz': 'affiliate_id',
 	'form-field-ctlhqn': 'utm_source',
 	'form-field-jrezxg': 'utm_medium',
@@ -60,7 +72,7 @@ const rawFieldNames = {
 } as const;
 
 const rawFields = new Set(Object.keys(rawFieldNames));
-const allowedFields = new Set([...canonicalFields, ...rawFields]);
+const allowedFields = new Set([...canonicalFields, ...bricksEnvelopeFields, ...rawFields]);
 
 const qualificationFields = [
 	['form-field-dan_town', 'Town/area'],
@@ -98,7 +110,7 @@ function qualificationMessage(payload: BricksPayload): string {
 	const notes = firstValue(payload, 'message', 'form-field-dan_message');
 	if (notes) parts.push(`Notes: ${notes}`);
 	for (const [key, label] of qualificationFields) {
-		const value = firstValue(payload, key);
+		const value = firstValue(payload, key, key.endsWith('[]') ? key.slice(0, -2) : key);
 		if (value) parts.push(`${label}: ${value}`);
 	}
 	return parts.join(' | ');
@@ -122,7 +134,9 @@ export function normalizeBricksPayload(
 ): NormalizedBricksPayload {
 	const rawMode = Object.keys(rawPayload).some((key) => rawFields.has(key));
 	const formId =
-		firstValue(rawPayload, 'form_id', 'formId') || headerFormId || (rawMode ? expectedFormId : '');
+		firstValue(rawPayload, 'form_id') ||
+		headerFormId ||
+		(rawMode ? expectedFormId : firstValue(rawPayload, 'formId'));
 	const externalId = firstValue(
 		rawPayload,
 		'external_submission_id',
