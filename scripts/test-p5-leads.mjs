@@ -868,7 +868,9 @@ async function testIndexes() {
 	`);
 	sql('analyze public.leads');
 	const updatedPlan = explain('select id from public.leads order by updated_at desc, id limit 25');
-	const stageOnlyPlan = explain("select id from public.leads where pipeline_stage = 'NEW' limit 25");
+	const stageOnlyPlan = explain(
+		"select id from public.leads where pipeline_stage = 'NEW' limit 25"
+	);
 	const stagePlan = explain(
 		"select id from public.leads where pipeline_stage = 'NEW' order by updated_at desc limit 25"
 	);
