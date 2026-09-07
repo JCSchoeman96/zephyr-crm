@@ -310,24 +310,7 @@
 						</Select>
 					{:else}<input type="hidden" name="client_id" value={clientId} />{/if}
 				</div>
-				<div class="editor-grid">
-					<Input id="quote-subject" name="subject" label="Subject" bind:value={subject} required />
-					<Input
-						id="quote-currency"
-						name="currency"
-						label="Currency"
-						bind:value={currency}
-						maxlength={3}
-						required
-					/>
-				</div>
-				<Textarea
-					id="quote-introduction"
-					name="introduction"
-					label="Introduction"
-					rows={3}
-					bind:value={introduction}
-				/>
+				<Input id="quote-subject" name="subject" label="Subject" bind:value={subject} required />
 			</Card>
 
 			{#if status === 'draft'}
@@ -393,7 +376,7 @@
 				{/if}
 			</Card>
 
-			<Card title="Line items" class="editor-card">
+			<Card title="Quote items" class="editor-card">
 				<div class="line-items" aria-label="Quote line items">
 					{#each items as item, index (item.id ?? item.editorKey ?? `new-${index}`)}
 						<QuoteLineEditor
@@ -413,33 +396,53 @@
 						/>
 					{/each}
 				</div>
-				<Button type="button" variant="secondary" size="sm" onclick={addItem}>Add line item</Button>
+				<Button type="button" variant="secondary" size="sm" onclick={addItem}
+					>Add custom item</Button
+				>
 			</Card>
 
-			<Card title="Terms and validity" class="editor-card">
-				<div class="editor-grid">
-					<Input id="quote-tax-label" name="tax_label" label="Tax label" bind:value={taxLabel} />
-					<Input
-						id="quote-tax-rate"
-						name="tax_rate"
-						label="Tax rate (%)"
-						bind:value={taxRate}
-						inputmode="decimal"
-						required
+			<details class="quote-settings">
+				<summary>Introduction, terms, and validity</summary>
+				<div class="quote-settings-body">
+					<div class="editor-grid">
+						<Input
+							id="quote-currency"
+							name="currency"
+							label="Currency"
+							bind:value={currency}
+							maxlength={3}
+							required
+						/>
+						<Input id="quote-tax-label" name="tax_label" label="Tax label" bind:value={taxLabel} />
+						<Input
+							id="quote-tax-rate"
+							name="tax_rate"
+							label="Tax rate (%)"
+							bind:value={taxRate}
+							inputmode="decimal"
+							required
+						/>
+						<Input
+							id="quote-valid-until"
+							name="valid_until"
+							label="Valid until"
+							type="date"
+							bind:value={validUntil}
+						/>
+					</div>
+					<Textarea
+						id="quote-introduction"
+						name="introduction"
+						label="Introduction"
+						rows={3}
+						bind:value={introduction}
 					/>
-					<Input
-						id="quote-valid-until"
-						name="valid_until"
-						label="Valid until"
-						type="date"
-						bind:value={validUntil}
-					/>
+					<Textarea id="quote-terms" name="terms" label="Terms" rows={4} bind:value={terms} />
 				</div>
-				<Textarea id="quote-terms" name="terms" label="Terms" rows={4} bind:value={terms} />
-			</Card>
+			</details>
 			<div class="editor-actions">
 				<Button type="submit">Save draft</Button>
-				<span>Totals are recalculated by PostgreSQL when saved or marked ready.</span>
+				<span>Totals are recalculated by PostgreSQL when saved or reviewed.</span>
 			</div>
 		</form>
 	{/if}
@@ -516,6 +519,23 @@
 	.editor-actions span {
 		color: var(--color-text-muted);
 		font-size: var(--font-size-xs);
+	}
+	.quote-settings {
+		padding: var(--space-md);
+		border: 1px solid var(--color-border-subtle);
+		border-radius: var(--radius-md);
+		background: var(--color-surface);
+	}
+	.quote-settings > summary {
+		cursor: pointer;
+		color: var(--color-text-muted);
+		font-size: var(--font-size-sm);
+		font-weight: 600;
+	}
+	.quote-settings-body {
+		display: grid;
+		gap: var(--space-md);
+		margin-top: var(--space-md);
 	}
 	:global(.quote-preview-card) {
 		position: sticky;

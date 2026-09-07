@@ -13,6 +13,7 @@
 	import Select from '$lib/components/ui/Select.svelte';
 	import Textarea from '$lib/components/ui/Textarea.svelte';
 	import { activityEventLabel, quoteStatusLabel } from '$lib/domain/presentation/labels';
+	import { quoteNextStep } from '$lib/domain/presentation/quote-next-step';
 	import {
 		DIMENSION_KEYS,
 		normalizeDimensionValue,
@@ -21,6 +22,8 @@
 	} from '$lib/domain/products/dimensions';
 
 	let { data, form }: { data: PageData; form: ActionData } = $props();
+	const nextStep = $derived(quoteNextStep(data.quote.status));
+	let sentOutcome = $state<'accepted' | 'changes' | 'declined' | ''>('');
 
 	function hasAttachedDocument() {
 		return Boolean(
@@ -32,6 +35,17 @@
 		return (
 			data.quote.status === 'draft' || (data.quote.status === 'ready' && !hasAttachedDocument())
 		);
+	}
+
+	function sentRecipient() {
+		const latest = data.outboundMessages[0];
+		if (latest) return recipientEmail(latest.recipient_snapshot);
+		return data.client?.email || data.lead.email || 'recipient unavailable';
+	}
+
+	function sentTime() {
+		if (data.quote.sent_at) return new Date(data.quote.sent_at).toLocaleString('en-ZA');
+		return 'time unavailable';
 	}
 
 	function quoteNumber() {
@@ -226,6 +240,87 @@
 			message={form.message}
 		/>{/if}
 
+	{#if nextStep === 'respond'}
+		<section class="quote-next-step" aria-label="Quote next step">
+			<Card title="Waiting for customer">
+				<dl class="waiting-meta">
+					<div>
+						<dt>Sent to</dt>
+						<dd>{sentRecipient()}</dd>
+					</div>
+					<div>
+						<dt>Sent</dt>
+						<dd>{sentTime()}</dd>
+					</div>
+				</dl>
+				<fieldset class="outcome-fieldset">
+					<legend>What happened?</legend>
+					<label class="outcome-option"
+						><input type="radio" name="sent_outcome" value="accepted" bind:group={sentOutcome} />
+						Customer accepted</label
+					>
+					<label class="outcome-option"
+						><input type="radio" name="sent_outcome" value="changes" bind:group={sentOutcome} />
+						Customer wants changes</label
+					>
+					<label class="outcome-option"
+						><input type="radio" name="sent_outcome" value="declined" bind:group={sentOutcome} />
+						Customer declined</label
+					>
+				</fieldset>
+				{#if sentOutcome === 'accepted'}
+					<form method="POST" action="?/accept" class="decision-form">
+						<input type="hidden" name="lock_version" value={data.quote.lock_version} />
+						<Input
+							id="acceptance-source"
+							name="acceptance_source"
+							label="Acceptance source"
+							placeholder="Email, phone call, or other source"
+							maxlength={120}
+							required
+						/>
+						<Textarea
+							id="acceptance-evidence"
+							name="acceptance_evidence"
+							label="Acceptance evidence"
+							rows={3}
+							maxlength={2000}
+							required
+						/>
+						<Button type="submit">Customer accepted</Button>
+					</form>
+				{:else if sentOutcome === 'changes'}
+					<form method="POST" action="?/revise" class="decision-form">
+						<input type="hidden" name="lock_version" value={data.quote.lock_version} />
+						<p class="muted">Creates a new draft revision from this sent quote.</p>
+						<Button type="submit" variant="secondary">Customer wants changes</Button>
+					</form>
+				{:else if sentOutcome === 'declined'}
+					<form method="POST" action="?/decline" class="decision-form">
+						<input type="hidden" name="lock_version" value={data.quote.lock_version} />
+						<Select id="quote-lost-reason" name="lost_reason_id" label="Lost reason" required>
+							<option value="">Select a reason</option>
+							{#each data.lostReasons as reason (reason.id)}
+								<option value={reason.id}>{reason.label}</option>
+							{/each}
+						</Select>
+						<Textarea id="quote-lost-notes" name="lost_notes" label="Lost notes" rows={3} />
+						<Button type="submit" variant="danger">Customer declined</Button>
+					</form>
+				{/if}
+				<details class="secondary-actions">
+					<summary>Other actions</summary>
+					<form method="POST" action="?/cancel" class="cancel-form">
+						<input type="hidden" name="lock_version" value={data.quote.lock_version} /><Button
+							type="submit"
+							variant="danger">Cancel quote</Button
+						>
+					</form>
+				</details>
+			</Card>
+		</section>
+	{/if}
+
 	{#if canEditQuote()}
 		<QuoteEditor
 			action="?/save"
@@ -272,67 +367,32 @@
 		/>
 	{/if}
 
-	<div class="quote-actions">
-		{#if data.quote.status === 'draft'}
-			<form method="POST" action="?/markReady">
-				<input type="hidden" name="lock_version" value={data.quote.lock_version} /><Button
-					type="submit">Mark ready</Button
-				>
-			</form>
-		{:else if data.quote.status === 'ready'}
-			<form method="POST" action="?/send">
-				<input type="hidden" name="lock_version" value={data.quote.lock_version} /><Button
-					type="submit">Send quote</Button
-				>
-			</form>
-		{:else if data.quote.status === 'sent'}
-			<form method="POST" action="?/revise">
-				<input type="hidden" name="lock_version" value={data.quote.lock_version} /><Button
-					type="submit"
-					variant="secondary">Create revision</Button
-				>
-			</form>
-			<div class="decision-forms">
-				<form method="POST" action="?/accept" class="decision-form">
-					<input type="hidden" name="lock_version" value={data.quote.lock_version} />
-					<Input
-						id="acceptance-source"
-						name="acceptance_source"
-						label="Acceptance source"
-						placeholder="Email, phone call, or other source"
-						maxlength={120}
-						required
-					/>
-					<Textarea
-						id="acceptance-evidence"
-						name="acceptance_evidence"
-						label="Acceptance evidence"
-						rows={3}
-						maxlength={2000}
-						required
-					/>
-					<Button type="submit">Accept sale</Button>
-				</form>
-				<form method="POST" action="?/decline" class="decision-form">
-					<input type="hidden" name="lock_version" value={data.quote.lock_version} />
-					<Select id="quote-lost-reason" name="lost_reason_id" label="Lost reason" required>
-						<option value="">Select a reason</option>
-						{#each data.lostReasons as reason (reason.id)}
-							<option value={reason.id}>{reason.label}</option>
-						{/each}
-					</Select>
-					<Textarea id="quote-lost-notes" name="lost_notes" label="Lost notes" rows={3} />
-					<Button type="submit" variant="danger">Decline quote</Button>
-				</form>
-			</div>
-			<form method="POST" action="?/cancel">
-				<input type="hidden" name="lock_version" value={data.quote.lock_version} /><Button
-					type="submit"
-					variant="ghost">Cancel quote</Button
-				>
-			</form>
-		{/if}
-	</div>
+	{#if nextStep === 'review' || nextStep === 'send'}
+		<section class="quote-next-step" aria-label="Quote next step">
+			{#if nextStep === 'review'}
+				<Card title="Next step">
+					<p>Check the items and totals, then review this quote when it is ready to send.</p>
+					<form method="POST" action="?/markReady">
+						<input type="hidden" name="lock_version" value={data.quote.lock_version} /><Button
+							type="submit">Review quote</Button
+						>
+					</form>
+				</Card>
+			{:else}
+				<Card title="Ready to send">
+					<p>Check what the customer will receive, then send this quote.</p>
+					{#if canEditQuote()}
+						<p class="muted">You can still edit this quote before sending.</p>
+					{/if}
+					<form method="POST" action="?/send">
+						<input type="hidden" name="lock_version" value={data.quote.lock_version} /><Button
+							type="submit">Send quote</Button
+						>
+					</form>
+				</Card>
+			{/if}
+		</section>
+	{/if}
 
 	<div class="detail-grid">
 		<Card title="Commercial snapshot"
@@ -401,31 +461,70 @@
 </AppShell>
 
 <style>
-	.quote-actions {
-		display: flex;
-		flex-wrap: wrap;
-		gap: var(--space-sm);
+	.quote-next-step {
 		margin: var(--space-lg) 0;
 	}
-	.quote-actions form {
+	.quote-next-step form {
 		display: inline-flex;
 	}
-	.decision-forms {
+	.waiting-meta {
 		display: grid;
-		grid-template-columns: repeat(2, minmax(260px, 1fr));
-		gap: var(--space-md);
-		flex-basis: 100%;
+		gap: var(--space-sm);
+		margin: 0 0 var(--space-md);
+	}
+	.waiting-meta div {
+		display: flex;
+		justify-content: space-between;
+		gap: var(--space-lg);
+	}
+	.waiting-meta dt {
+		color: var(--color-text-muted);
+		font-size: var(--font-size-sm);
+	}
+	.waiting-meta dd {
+		margin: 0;
+		font-size: var(--font-size-sm);
+		text-align: right;
+	}
+	.outcome-fieldset {
+		display: grid;
+		gap: var(--space-sm);
+		margin: 0 0 var(--space-md);
+		padding: 0;
+		border: 0;
+	}
+	.outcome-fieldset legend {
+		margin-bottom: var(--space-sm);
+		font-weight: 600;
+	}
+	.outcome-option {
+		display: flex;
+		align-items: center;
+		gap: var(--space-sm);
+		font-size: var(--font-size-sm);
 	}
 	.decision-form {
 		display: grid !important;
 		gap: var(--space-sm);
 		align-content: start;
+		margin-bottom: var(--space-md);
 		padding: var(--space-md);
 		border: 1px solid var(--color-border-subtle);
 		border-radius: var(--radius-md);
 	}
 	.decision-form :global(.ui-button) {
 		justify-self: start;
+	}
+	.secondary-actions {
+		margin-top: var(--space-md);
+	}
+	.secondary-actions > summary {
+		cursor: pointer;
+		color: var(--color-text-muted);
+		font-size: var(--font-size-sm);
+	}
+	.cancel-form {
+		margin-top: var(--space-sm);
 	}
 	.detail-grid {
 		display: grid;
@@ -510,9 +609,6 @@
 		font-size: var(--font-size-sm);
 	}
 	@media (max-width: 760px) {
-		.decision-forms {
-			grid-template-columns: 1fr;
-		}
 		.detail-grid {
 			grid-template-columns: 1fr;
 		}

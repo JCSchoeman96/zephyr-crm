@@ -371,7 +371,7 @@ test('Quote builder searches bounded active Products, preserves custom lines, an
 			page.getByRole('button', { name: 'Keep Quoted Values', exact: true })
 		).toBeVisible();
 
-		await page.getByRole('button', { name: 'Mark ready', exact: true }).click();
+		await page.getByRole('button', { name: 'Review quote', exact: true }).click();
 		await expect(
 			page.getByText('Quote has unresolved Product source changes', { exact: true })
 		).toBeVisible();
@@ -423,7 +423,7 @@ test('Quote builder searches bounded active Products, preserves custom lines, an
 		await expect(productLine.locator('#quote-item-price-0')).toHaveValue('111.11');
 		await expect(productLine).toContainText('125.5');
 
-		await page.getByRole('button', { name: 'Mark ready', exact: true }).click();
+		await page.getByRole('button', { name: 'Review quote', exact: true }).click();
 		await page.waitForLoadState('networkidle');
 		await expect(page.getByRole('button', { name: 'Send quote', exact: true })).toBeVisible();
 		await expect(page.getByRole('button', { name: 'Save draft', exact: true })).toHaveCount(1);
@@ -484,7 +484,7 @@ test('new quotes can save an empty draft but cannot be marked ready without a li
 		const lockVersion = Number(
 			await markReadyForm.locator('input[name="lock_version"]').inputValue()
 		);
-		await page.getByRole('button', { name: 'Mark ready', exact: true }).click();
+		await page.getByRole('button', { name: 'Review quote', exact: true }).click();
 		await expect(page.getByRole('alert')).toContainText('Could not mark Quote ready');
 		await expect(
 			authenticatedRpc(
