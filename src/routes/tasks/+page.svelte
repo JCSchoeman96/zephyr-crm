@@ -22,6 +22,7 @@
 
 	let { data, form }: { data: PageData; form: ActionData } = $props();
 	const canMutate = $derived(data.profile.role !== 'viewer');
+	const createOpen = $derived(Boolean(data.preselect.contextType && data.preselect.contextId));
 	let contextType = $state('lead');
 
 	function dateTime(value: string | null) {
@@ -49,6 +50,8 @@
 			...(data.filters.overdue ? [['overdue', 'true']] : []),
 			...(data.filters.dueToday ? [['due', 'today']] : []),
 			...(data.filters.search ? [['search', data.filters.search]] : []),
+			...(data.preselect.contextType ? [['context_type', data.preselect.contextType]] : []),
+			...(data.preselect.contextId ? [['context_id', data.preselect.contextId]] : []),
 			...(page > 1 ? [['page', String(page)]] : [])
 		];
 		return `?${params.map(([key, value]) => `${encodeURIComponent(key)}=${encodeURIComponent(value)}`).join('&')}`;
@@ -73,15 +76,25 @@
 		}
 		return 'No context';
 	}
+
+	function contextHref(task: PageData['tasks'][number]) {
+		if (task.quote_id) return `/quotes/${task.quote_id}` as const;
+		if (task.client_id) return `/clients/${task.client_id}` as const;
+		if (task.lead_id) return `/leads/${task.lead_id}` as const;
+		return null;
+	}
 </script>
 
 <svelte:head>
 	<title>Follow-ups | Zephyr CRM</title>
-	<meta name="description" content="Keep track of what needs to happen next" />
+	<meta name="description" content="Show all open work that must not be forgotten" />
 </svelte:head>
 
 <AppShell userEmail={data.auth.user?.email} userRole={data.auth.profile?.role}>
-	<PageHeader title="Follow-ups" description="Keep track of what needs to happen next.">
+	<PageHeader
+		title="Follow-ups"
+		description="Show all open work that must not be forgotten. Prefer adding follow-ups from an Enquiry, Customer, or Fulfilment record."
+	>
 		{#snippet actions()}<RealtimeStatus
 				scope="tasks"
 				tables={['tasks', 'leads', 'quotes']}
@@ -110,76 +123,89 @@
 	</Card>
 
 	{#if canMutate}
-		<Card class="create-card">
-			<h2>Add follow-up action</h2>
-			<p class="muted">Write down the next action so nothing is forgotten.</p>
-			<form method="POST" action="?/create" class="create-form">
-				<Select
-					id="task-context-type"
-					name="context_type"
-					label="Context type"
-					bind:value={contextType}
-				>
-					<option value="lead">Enquiry</option><option value="client">Customer</option><option
-						value="quote">Quote</option
+		<details class="create-disclosure" open={createOpen}>
+			<summary>Add follow-up without a record open</summary>
+			<Card class="create-card">
+				<h2>Add follow-up action</h2>
+				<p class="muted">
+					Use this only when you are not already on the related Enquiry, Customer, Quote, or
+					Fulfilment page.
+				</p>
+				<form method="POST" action="?/create" class="create-form">
+					{#if createOpen}
+						<input type="hidden" name="context_type" value={data.preselect.contextType} />
+						<input type="hidden" name="context_id" value={data.preselect.contextId} />
+						<p class="muted">This follow-up will be linked to the record you came from.</p>
+					{:else}
+						<Select
+							id="task-context-type"
+							name="context_type"
+							label="Context type"
+							bind:value={contextType}
+						>
+							<option value="lead">Enquiry</option><option value="client">Customer</option><option
+								value="quote">Quote</option
+							>
+						</Select>
+						{#if contextType === 'lead'}
+							<Select id="task-context-lead" name="context_id" label="Enquiry" required
+								><option value="">Select an enquiry</option
+								>{#each data.leads as lead (lead.id)}<option value={lead.id}
+										>Enquiry {lead.lead_number ?? ''} · {lead.first_name}
+										{lead.last_name} · {leadStageLabel(lead.pipeline_stage)}</option
+									>{/each}</Select
+							>
+						{:else if contextType === 'client'}
+							<Select id="task-context-client" name="context_id" label="Customer" required
+								><option value="">Select a customer</option
+								>{#each data.clients as client (client.id)}<option value={client.id}
+										>Customer {client.client_number} · {client.display_name}</option
+									>{/each}</Select
+							>
+						{:else}
+							<Select id="task-context-quote" name="context_id" label="Quote" required
+								><option value="">Select a quote</option
+								>{#each data.quotes as quote (quote.id)}<option value={quote.id}
+										>{quote.quote_number ?? 'Quote'} · {quote.subject} · {quoteStatusLabel(
+											quote.status
+										)}</option
+									>{/each}</Select
+							>
+						{/if}
+					{/if}
+					<Select id="task-type" name="type" label="Action type"
+						><option value="custom">Other follow-up</option><option value="review_lead"
+							>Review enquiry</option
+						><option value="call_client">Call customer</option><option value="prepare_quote"
+							>Prepare quote</option
+						><option value="send_quote">Send quote</option><option value="follow_up"
+							>Follow up</option
+						><option value="confirm_acceptance">Confirm customer</option></Select
 					>
-				</Select>
-				{#if contextType === 'lead'}
-					<Select id="task-context-lead" name="context_id" label="Enquiry" required
-						><option value="">Select an enquiry</option>{#each data.leads as lead (lead.id)}<option
-								value={lead.id}
-								>Enquiry {lead.lead_number ?? ''} · {lead.first_name}
-								{lead.last_name} · {leadStageLabel(lead.pipeline_stage)}</option
+					<Input id="task-title" name="title" label="What needs to happen?" required />
+					<Input id="task-description" name="description" label="Notes (optional)" />
+					<Input
+						id="task-due"
+						name="due_at"
+						label="Due date"
+						type="datetime-local"
+						hint={dateTimeHint}
+					/>
+					<Select id="task-assignee" name="assigned_to" label="Person responsible"
+						><option value="">Unassigned</option>{#each data.staff as member (member.id)}<option
+								value={member.id}>{member.full_name || member.email}</option
 							>{/each}</Select
 					>
-				{:else if contextType === 'client'}
-					<Select id="task-context-client" name="context_id" label="Customer" required
-						><option value="">Select a customer</option
-						>{#each data.clients as client (client.id)}<option value={client.id}
-								>Customer {client.client_number} · {client.display_name}</option
-							>{/each}</Select
-					>
-				{:else}
-					<Select id="task-context-quote" name="context_id" label="Quote" required
-						><option value="">Select a quote</option>{#each data.quotes as quote (quote.id)}<option
-								value={quote.id}
-								>{quote.quote_number ?? 'Quote'} · {quote.subject} · {quoteStatusLabel(
-									quote.status
-								)}</option
-							>{/each}</Select
-					>
-				{/if}
-				<Select id="task-type" name="type" label="Action type"
-					><option value="custom">Other follow-up</option><option value="review_lead"
-						>Review enquiry</option
-					><option value="call_client">Call customer</option><option value="prepare_quote"
-						>Prepare quote</option
-					><option value="send_quote">Send quote</option><option value="follow_up">Follow up</option
-					><option value="confirm_acceptance">Confirm customer</option></Select
-				>
-				<Input id="task-title" name="title" label="What needs to happen?" required />
-				<Input id="task-description" name="description" label="Notes (optional)" />
-				<Input
-					id="task-due"
-					name="due_at"
-					label="Due date"
-					type="datetime-local"
-					hint={dateTimeHint}
-				/>
-				<Select id="task-assignee" name="assigned_to" label="Person responsible"
-					><option value="">Unassigned</option>{#each data.staff as member (member.id)}<option
-							value={member.id}>{member.full_name || member.email}</option
-						>{/each}</Select
-				>
-				<Button type="submit" size="sm">Add follow-up action</Button>
-			</form>
-		</Card>
+					<Button type="submit" size="sm">Add follow-up action</Button>
+				</form>
+			</Card>
+		</details>
 	{/if}
 
 	{#if data.tasks.length === 0}
 		<EmptyState
 			title="No follow-ups match this view"
-			message="Schedule the next action or adjust the filters."
+			message="Schedule the next action from a record page, or adjust the filters."
 		/>
 	{:else}
 		<Card class="tasks-card">
@@ -189,21 +215,12 @@
 						><tr><th>Action</th><th>Type</th><th>Due</th><th>Status</th><th>Actions</th></tr></thead
 					><tbody>
 						{#each data.tasks as task (task.id)}
+							{@const openHref = contextHref(task)}
 							<tr>
 								<td>
 									<strong>{task.title}</strong>
-									{#if task.quote_id}
-										<a class="task-context" href={resolve(`/quotes/${task.quote_id}`)}
-											>{contextLabel(task)}</a
-										>
-									{:else if task.client_id}
-										<a class="task-context" href={resolve(`/clients/${task.client_id}`)}
-											>{contextLabel(task)}</a
-										>
-									{:else if task.lead_id}
-										<a class="task-context" href={resolve(`/leads/${task.lead_id}`)}
-											>{contextLabel(task)}</a
-										>
+									{#if openHref}
+										<a class="task-context" href={resolve(openHref)}>{contextLabel(task)}</a>
 									{:else}<span>{contextLabel(task)}</span>{/if}
 								</td>
 								<td>{taskTypeLabel(task.type ?? 'custom')}</td><td>{dateTime(task.due_at)}</td><td
@@ -211,8 +228,9 @@
 										>{task.is_overdue ? 'Overdue' : taskStatusLabel(task.status ?? 'open')}</Badge
 									></td
 								>
-								<td
-									>{#if canMutate && task.status === 'open'}<div class="task-actions">
+								<td>
+									{#if canMutate && task.status === 'open'}
+										<div class="task-actions">
 											<form method="POST" action="?/complete">
 												<input type="hidden" name="task_id" value={task.id} /><input
 													type="hidden"
@@ -220,28 +238,40 @@
 													value={task.lock_version}
 												/><Button type="submit" size="sm">Complete</Button>
 											</form>
-											<form method="POST" action="?/reschedule" class="reschedule-form">
-												<input type="hidden" name="task_id" value={task.id} /><input
-													type="hidden"
-													name="lock_version"
-													value={task.lock_version}
-												/><Input
-													id={`due-${task.id}`}
-													name="due_at"
-													label="New due date"
-													type="datetime-local"
-													hint={dateTimeHint}
-												/><Button type="submit" size="sm" variant="secondary">Reschedule</Button>
-											</form>
-											<form method="POST" action="?/cancel">
-												<input type="hidden" name="task_id" value={task.id} /><input
-													type="hidden"
-													name="lock_version"
-													value={task.lock_version}
-												/><Button type="submit" size="sm" variant="danger">Cancel</Button>
-											</form>
-										</div>{:else}<span class="muted">View only</span>{/if}</td
-								>
+											{#if openHref}
+												<a
+													class="ui-button ui-button--secondary ui-button--sm"
+													href={resolve(openHref)}>Open</a
+												>
+											{/if}
+											<details class="task-more">
+												<summary>More…</summary>
+												<form method="POST" action="?/reschedule" class="reschedule-form">
+													<input type="hidden" name="task_id" value={task.id} /><input
+														type="hidden"
+														name="lock_version"
+														value={task.lock_version}
+													/><Input
+														id={`due-${task.id}`}
+														name="due_at"
+														label="New due date"
+														type="datetime-local"
+														hint={dateTimeHint}
+													/><Button type="submit" size="sm" variant="secondary">Reschedule</Button>
+												</form>
+												<form method="POST" action="?/cancel">
+													<input type="hidden" name="task_id" value={task.id} /><input
+														type="hidden"
+														name="lock_version"
+														value={task.lock_version}
+													/><Button type="submit" size="sm" variant="danger">Cancel</Button>
+												</form>
+											</details>
+										</div>
+									{:else if openHref}
+										<a class="task-context" href={resolve(openHref)}>Open</a>
+									{:else}<span class="muted">View only</span>{/if}
+								</td>
 							</tr>
 						{/each}
 					</tbody>
@@ -270,6 +300,19 @@
 	:global(.filters-card),
 	:global(.create-card) {
 		margin-bottom: var(--space-lg);
+	}
+	.create-disclosure {
+		margin-bottom: var(--space-lg);
+	}
+	.create-disclosure > summary,
+	.task-more > summary {
+		cursor: pointer;
+		color: var(--color-text-muted);
+		font-size: var(--font-size-sm);
+		font-weight: var(--font-weight-semibold);
+	}
+	.create-disclosure > summary {
+		margin-bottom: var(--space-sm);
 	}
 	.filters-form,
 	.create-form {
@@ -359,14 +402,25 @@
 		font-size: var(--font-size-xs);
 	}
 	.task-actions {
-		display: grid;
+		display: flex;
+		flex-wrap: wrap;
+		align-items: start;
 		gap: var(--space-sm);
 		min-width: 15rem;
+	}
+	.task-more {
+		display: grid;
+		gap: var(--space-sm);
+		width: 100%;
+	}
+	.task-more[open] {
+		margin-top: var(--space-xs);
 	}
 	.reschedule-form {
 		display: flex;
 		align-items: end;
 		gap: var(--space-xs);
+		flex-wrap: wrap;
 	}
 	.sr-only {
 		position: absolute;

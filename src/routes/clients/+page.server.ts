@@ -45,23 +45,11 @@ export const load: PageServerLoad = async (event) => {
 	if (status) clientsQuery = clientsQuery.eq('status', status);
 
 	const { data: clients, count, error: clientsError } = await clientsQuery;
-	if (clientsError) throw error(500, 'Could not load the client list');
-
-	const sourceLeadIds = (clients ?? [])
-		.map((client) => client.source_lead_id)
-		.filter((id): id is string => Boolean(id));
-	const sourceResponse = sourceLeadIds.length
-		? await supabase
-				.from('leads')
-				.select('id,lead_number,first_name,last_name')
-				.in('id', sourceLeadIds)
-		: { data: [], error: null };
-	if (sourceResponse.error) throw error(500, 'Could not load source lead links');
+	if (clientsError) throw error(500, 'Could not load the customer list');
 
 	const total = count ?? 0;
 	return {
 		clients: clients ?? [],
-		sourceLeads: sourceResponse.data ?? [],
 		profile,
 		filters: { q: search, type, status },
 		pagination: {

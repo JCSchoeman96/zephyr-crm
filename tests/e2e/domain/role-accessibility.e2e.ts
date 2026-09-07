@@ -26,7 +26,7 @@ test.describe('P14 role and accessibility regression', () => {
 				.getByText('You can view this enquiry, but you do not have permission to change it.')
 				.first();
 			await expect(readOnlyMessage).toBeVisible();
-			await expect(page.getByRole('button', { name: 'Start Qualification' })).toHaveCount(0);
+			await expect(page.getByRole('button', { name: 'Review enquiry' })).toHaveCount(0);
 
 			await page.goto('/tasks', { waitUntil: 'networkidle' });
 			await expect(page.getByRole('heading', { name: 'Follow-ups', exact: true })).toBeVisible();
@@ -159,7 +159,7 @@ test.describe('P14 role and accessibility regression', () => {
 				await page.goto('/quotes/new', { waitUntil: 'networkidle' });
 				await expect(page.getByLabel('Subject')).toBeVisible();
 				await expect(page.getByLabel('Search catalogue')).toBeVisible();
-				await expect(page.getByRole('button', { name: 'Add line item' })).toBeVisible();
+				await expect(page.getByRole('button', { name: 'Add custom item' })).toBeVisible();
 				await expect(page.getByRole('button', { name: 'Save draft' })).toBeVisible();
 				await page.goto(`/clients/${fixture.client.id}`, { waitUntil: 'networkidle' });
 				await expect(page.getByLabel('Display name')).toBeVisible();

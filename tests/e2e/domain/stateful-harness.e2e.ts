@@ -10,14 +10,14 @@ test.describe('stateful local browser harness', () => {
 			await page.goto(`/leads/${lead.id}`, { waitUntil: 'networkidle' });
 			await expect(page.getByRole('heading', { name: 'P14 Browser Harness' })).toBeVisible();
 			await expect(page.getByText('New enquiry', { exact: true })).toBeVisible();
-			await page.getByRole('button', { name: 'Start Qualification' }).click();
-			await expect(page.getByRole('button', { name: 'Ready for Quote' })).toBeVisible();
+			await page.getByRole('button', { name: 'Review enquiry' }).click();
+			await expect(page.getByRole('button', { name: 'Ready for quote' })).toBeVisible();
 			await expect
 				.poll(async () => (await readLead(lead.id, user))?.pipeline_stage)
 				.toBe('QUALIFICATION');
 			await page.reload({ waitUntil: 'networkidle' });
 			await expect(page.getByText('Reviewing details', { exact: true })).toBeVisible();
-			await expect(page.getByRole('button', { name: 'Ready for Quote' })).toBeVisible();
+			await expect(page.getByRole('button', { name: 'Ready for quote' })).toBeVisible();
 		} finally {
 			await cleanupLead(lead.id, user.id);
 		}

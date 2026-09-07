@@ -11,6 +11,7 @@
 	import LoadingState from '$lib/components/ui/LoadingState.svelte';
 	import PageHeader from '$lib/components/ui/PageHeader.svelte';
 	import Select from '$lib/components/ui/Select.svelte';
+	import { clientStatusLabel, clientTypeLabel } from '$lib/domain/presentation/labels';
 
 	let { data }: { data: PageData } = $props();
 
@@ -23,11 +24,18 @@
 	}
 
 	function clientName(client: PageData['clients'][number]) {
-		return client.display_name || client.company_name || 'Unnamed client';
+		return client.display_name || client.company_name || 'Unnamed customer';
 	}
 
-	function sourceLead(sourceLeadId: string | null) {
-		return data.sourceLeads.find((lead) => lead.id === sourceLeadId);
+	function contactSummary(client: PageData['clients'][number]) {
+		return client.email ?? client.phone ?? 'No contact detail';
+	}
+
+	function usefulSummary(client: PageData['clients'][number]) {
+		const parts = [clientTypeLabel(client.type)];
+		if (client.company_name && client.type === 'company') parts.push(client.company_name);
+		else if (client.phone && client.email) parts.push(client.phone);
+		return parts.join(' · ');
 	}
 
 	function pageQuery(page: number) {
@@ -43,22 +51,22 @@
 </script>
 
 <svelte:head>
-	<title>Clients | Zephyr CRM</title>
-	<meta name="description" content="Review converted Zephyr CRM clients and their source leads" />
+	<title>Customers | Zephyr CRM</title>
+	<meta name="description" content="Review customers and their contact details" />
 </svelte:head>
 
 <AppShell userEmail={data.auth.user?.email} userRole={data.auth.profile?.role}>
 	<PageHeader
-		title="Clients"
-		description="Recognized customers remain traceable to the enquiry that created them."
+		title="Customers"
+		description="People and companies you have converted from accepted quotes."
 	/>
 
 	{#if navigating.to}
-		<LoadingState message="Loading clients…" />
+		<LoadingState message="Loading customers…" />
 	{/if}
 
 	<Card class="filters-card">
-		<form method="GET" class="filters-form" aria-label="Filter clients">
+		<form method="GET" class="filters-form" aria-label="Filter customers">
 			<Input
 				id="client-search"
 				name="q"
@@ -86,58 +94,47 @@
 
 	<div class="list-summary" aria-live="polite">
 		<span>
-			{#if data.pagination.total === 0}No matching clients{:else}Showing {data.clients.length} of {data
-					.pagination.total} clients{/if}
+			{#if data.pagination.total === 0}No matching customers{:else}Showing {data.clients.length} of
+				{data.pagination.total} customers{/if}
 		</span>
 		<span>Page {data.pagination.page} of {data.pagination.totalPages}</span>
 	</div>
 
 	{#if data.clients.length === 0}
 		<EmptyState
-			title={hasFilters ? 'No matching clients' : 'No clients yet'}
+			title={hasFilters ? 'No matching customers' : 'No customers yet'}
 			message={hasFilters
 				? 'Try a different search or filter combination.'
-				: 'A client appears here after a customer accepts a quote.'}
+				: 'Customers appear here after a quote is accepted.'}
 		/>
 	{:else}
 		<Card class="clients-card">
 			<div class="clients-table-wrap">
 				<table class="clients-table">
-					<caption class="sr-only">Client list</caption>
+					<caption class="sr-only">Customer list</caption>
 					<thead>
 						<tr>
-							<th scope="col">Client</th>
-							<th scope="col">Type</th>
+							<th scope="col">Customer</th>
 							<th scope="col">Contact</th>
 							<th scope="col">Status</th>
-							<th scope="col">Source enquiry</th>
+							<th scope="col">Summary</th>
 						</tr>
 					</thead>
 					<tbody>
 						{#each data.clients as client (client.id)}
-							{@const lead = sourceLead(client.source_lead_id)}
 							<tr>
 								<td>
 									<a class="client-link" href={resolve(`/clients/${client.id}`)}
 										>{clientName(client)}</a
 									>
-									<span>#{client.client_number}</span>
+									<span>Customer #{client.client_number}</span>
 								</td>
-								<td>{client.type}</td>
-								<td>{client.email ?? client.phone ?? 'No contact detail'}</td>
-								<td><Badge tone={clientTone(client.status)}>{client.status}</Badge></td>
-								<td>
-									{#if lead}
-										<a class="source-link" href={resolve(`/leads/${lead.id}`)}>
-											Enquiry #{lead.lead_number} · {lead.first_name}
-											{lead.last_name}
-										</a>
-									{:else if client.source_lead_id}
-										<a class="source-link" href={resolve(`/leads/${client.source_lead_id}`)}
-											>View source enquiry</a
-										>
-									{:else}—{/if}
-								</td>
+								<td>{contactSummary(client)}</td>
+								<td
+									><Badge tone={clientTone(client.status)}>{clientStatusLabel(client.status)}</Badge
+									></td
+								>
+								<td>{usefulSummary(client)}</td>
 							</tr>
 						{/each}
 					</tbody>
@@ -147,7 +144,7 @@
 	{/if}
 
 	{#if data.pagination.totalPages > 1}
-		<nav class="pagination" aria-label="Client list pages">
+		<nav class="pagination" aria-label="Customer list pages">
 			<a
 				class:disabled={data.pagination.page <= 1}
 				aria-disabled={data.pagination.page <= 1}
@@ -203,7 +200,7 @@
 	}
 	.clients-table {
 		width: 100%;
-		min-width: 58rem;
+		min-width: 48rem;
 		border-collapse: collapse;
 	}
 	.clients-table th,
@@ -234,13 +231,11 @@
 		font-size: var(--font-size-xs);
 		font-weight: var(--font-weight-regular);
 	}
-	.client-link,
-	.source-link {
+	.client-link {
 		color: var(--color-brand-primary);
 		text-decoration: none;
 	}
-	.client-link:hover,
-	.source-link:hover {
+	.client-link:hover {
 		text-decoration: underline;
 	}
 	.pagination {

@@ -18,6 +18,8 @@ test('keeps the primary product flow labelled and within the viewport', async ({
 		expect(dimensions.document).toBeLessThanOrEqual(dimensions.viewport);
 
 		await gotoAndWaitForHeading(page, '/tasks', 'Follow-ups');
+		const createDisclosure = page.locator('details.create-disclosure');
+		await createDisclosure.locator('summary').click();
 		const createForm = page.locator('form.create-form');
 		const taskTable = page.locator('table.tasks-table');
 		const taskRow = (title: string) => taskTable.locator('tbody tr').filter({ hasText: title });
@@ -33,6 +35,10 @@ test('keeps the primary product flow labelled and within the viewport', async ({
 		await expect(createForm.getByLabel('Quote')).toBeVisible();
 
 		for (const title of [completeTitle, cancelTitle]) {
+			await gotoAndWaitForHeading(page, '/tasks', 'Follow-ups');
+			await createDisclosure.evaluate((el) => {
+				(el as HTMLDetailsElement).open = true;
+			});
 			await createForm.getByLabel('Context type').selectOption('lead');
 			await createForm.getByLabel('Enquiry').selectOption(lead.id);
 			await createForm.getByLabel('What needs to happen?').fill(title);
@@ -70,6 +76,7 @@ test('keeps the primary product flow labelled and within the viewport', async ({
 		const cancelRow = taskRow(cancelTitle);
 		await expect(cancelRow).toHaveCount(1);
 		await expect(cancelRow).toBeVisible();
+		await cancelRow.locator('details.task-more summary').click();
 		await cancelRow.getByRole('button', { name: 'Cancel', exact: true }).click();
 		await gotoAndWaitForHeading(
 			page,

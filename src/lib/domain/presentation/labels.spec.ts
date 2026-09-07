@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import {
 	activityEventLabel,
+	clientStatusLabel,
+	clientTypeLabel,
 	fulfilmentCaseStatusLabel,
 	fulfilmentPaymentStatusLabel,
 	fulfilmentPaymentTypeLabel,
@@ -44,10 +46,22 @@ describe('presentation labels', () => {
 		expect(taskTypeLabel('unexpected')).toBe('Other follow-up');
 	});
 
+	it('translates customer status and type without raw enum values', () => {
+		expect(clientStatusLabel('active')).toBe('Active');
+		expect(clientStatusLabel('inactive')).toBe('Inactive');
+		expect(clientStatusLabel('archived')).toBe('Archived');
+		expect(clientStatusLabel('unexpected')).toBe('Status unavailable');
+		expect(clientTypeLabel('individual')).toBe('Individual');
+		expect(clientTypeLabel('company')).toBe('Company');
+		expect(clientTypeLabel('unexpected')).toBe('Customer');
+	});
+
 	it('translates fulfilment work and history labels', () => {
 		expect(fulfilmentCaseStatusLabel('open')).toBe('Open');
 		expect(fulfilmentCaseStatusLabel('completed')).toBe('Completed');
 		expect(fulfilmentStepTypeLabel('installation')).toBe('Installation');
+		expect(fulfilmentStepTypeLabel('courier')).toBe('Delivery');
+		expect(fulfilmentStepTypeLabel('pickup')).toBe('Collection');
 		expect(fulfilmentStepStatusLabel('awaiting_schedule')).toBe('Awaiting schedule');
 		expect(fulfilmentStepStatusLabel('ready_for_collection')).toBe('Ready for collection');
 		expect(fulfilmentPaymentTypeLabel('final_balance')).toBe('Final balance');

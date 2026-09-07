@@ -28,9 +28,11 @@
 		parseLeadRequestMessage,
 		shouldExpandLeadRequestDetails
 	} from '$lib/domain/leads/request-details';
+	import { publicClientConfiguration } from '$lib/config/public-client-config';
 
 	let { data, form }: { data: PageData; form: ActionData } = $props();
 	const canMutate = $derived(data.profile.role !== 'viewer');
+	const dateTimeHint = `Times use ${publicClientConfiguration.locale.timezone}`;
 	const nextStep = $derived(
 		enquiryNextStep(
 			data.lead.pipeline_stage,
@@ -96,7 +98,7 @@
 	<nav class="detail-nav" aria-label="Enquiry detail sections">
 		<a href={resolve(`/leads/${data.lead.id}#overview`)}>Overview</a>
 		<a href={resolve(`/leads/${data.lead.id}#quotes`)}>Quotes</a>
-		<a href={resolve(`/leads/${data.lead.id}#tasks`)}>Follow-up actions</a>
+		<a href={resolve(`/leads/${data.lead.id}#follow-ups`)}>Follow-up actions</a>
 		<a href={resolve(`/leads/${data.lead.id}#activity`)}>History</a>
 	</nav>
 
@@ -276,13 +278,41 @@
 	</div>
 
 	<div class="lower-grid">
-		<div id="tasks" class="anchor-section">
+		<div id="follow-ups" class="anchor-section">
 			<Card>
 				<SectionHeader
 					title="Follow-up actions"
 					description="Keep track of what needs to happen next."
 				/>
-				{#if data.tasks.length === 0}<p class="muted">No tasks yet.</p>{:else}<ul
+				{#if canMutate}
+					<form method="POST" action="?/followUp" class="stack-form follow-up-create">
+						<Input
+							id="enquiry-follow-up-title"
+							name="title"
+							label="What needs to happen?"
+							required
+						/>
+						<Select id="enquiry-follow-up-type" name="type" label="Action type" value="follow_up">
+							<option value="follow_up">Follow up</option>
+							<option value="call_client">Call customer</option>
+							<option value="review_lead">Review enquiry</option>
+							<option value="custom">Other follow-up</option>
+						</Select>
+						<Input
+							id="enquiry-follow-up-due"
+							name="due_at"
+							label="Due date"
+							type="datetime-local"
+							hint={dateTimeHint}
+						/>
+						<Input id="enquiry-follow-up-notes" name="description" label="Notes (optional)" />
+						<div class="follow-up-actions">
+							<Button type="submit" size="sm">Add follow-up</Button>
+							<a class="muted-link" href={resolve('/tasks')}>Open all follow-ups</a>
+						</div>
+					</form>
+				{/if}
+				{#if data.tasks.length === 0}<p class="muted">No follow-ups yet.</p>{:else}<ul
 						class="plain-list"
 					>
 						{#each data.tasks as task (task.id)}<li>
@@ -616,6 +646,21 @@
 	.success-note,
 	.muted {
 		margin: 0;
+		color: var(--color-text-muted);
+		font-size: var(--font-size-sm);
+	}
+	.follow-up-create {
+		margin-bottom: var(--space-lg);
+		padding-bottom: var(--space-lg);
+		border-bottom: 1px solid var(--color-border-subtle);
+	}
+	.follow-up-actions {
+		display: flex;
+		align-items: center;
+		flex-wrap: wrap;
+		gap: var(--space-md);
+	}
+	.muted-link {
 		color: var(--color-text-muted);
 		font-size: var(--font-size-sm);
 	}

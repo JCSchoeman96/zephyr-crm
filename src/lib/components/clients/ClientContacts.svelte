@@ -46,7 +46,7 @@
 	{:else}
 		<div class="contacts-table-wrap">
 			<table class="contacts-table">
-				<caption class="sr-only">Client contacts</caption>
+				<caption class="sr-only">Customer contacts</caption>
 				<thead>
 					<tr>
 						<th scope="col">Name</th><th scope="col">Contact</th><th scope="col">Role</th><th

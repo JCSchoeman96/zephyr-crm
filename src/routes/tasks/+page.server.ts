@@ -31,6 +31,9 @@ function lockVersion(form: FormData) {
 	return value;
 }
 
+const contextTypes = ['lead', 'client', 'quote'] as const;
+const uuidPattern = /^[0-9a-f-]{36}$/i;
+
 export const load: PageServerLoad = async (event) => {
 	const { supabase, profile } = await requireActiveStaff(event);
 	const requestedStatus = event.url.searchParams.get('status');
@@ -41,6 +44,16 @@ export const load: PageServerLoad = async (event) => {
 	const overdue = event.url.searchParams.get('overdue') === 'true';
 	const dueToday = event.url.searchParams.get('due') === 'today';
 	const search = event.url.searchParams.get('search')?.trim().slice(0, 120) ?? '';
+	const requestedContextType = event.url.searchParams.get('context_type');
+	const requestedContextId = event.url.searchParams.get('context_id')?.trim() ?? '';
+	const preselect = {
+		contextType:
+			requestedContextType &&
+			contextTypes.includes(requestedContextType as (typeof contextTypes)[number])
+				? (requestedContextType as (typeof contextTypes)[number])
+				: '',
+		contextId: uuidPattern.test(requestedContextId) ? requestedContextId : ''
+	};
 	const requestedPage = Number(event.url.searchParams.get('page') ?? '1');
 	const page = Number.isInteger(requestedPage) && requestedPage > 0 ? requestedPage : 1;
 	const offset = (page - 1) * taskQueueLimit;
@@ -137,6 +150,7 @@ export const load: PageServerLoad = async (event) => {
 		quotes: mergeById(quotesResponse.data ?? [], taskQuotesResponse.data ?? []),
 		staff: staffResponse.data ?? [],
 		filters: { status, overdue, dueToday, search },
+		preselect,
 		pagination: { page, hasMore: taskPage.hasMore }
 	};
 };

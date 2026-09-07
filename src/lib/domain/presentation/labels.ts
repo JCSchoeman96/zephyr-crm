@@ -57,6 +57,17 @@ const taskStatusLabels: Record<string, string> = {
 	cancelled: 'Cancelled'
 };
 
+const clientStatusLabels: Record<string, string> = {
+	active: 'Active',
+	inactive: 'Inactive',
+	archived: 'Archived'
+};
+
+const clientTypeLabels: Record<string, string> = {
+	individual: 'Individual',
+	company: 'Company'
+};
+
 const fulfilmentCaseStatusLabels: Record<string, string> = {
 	open: 'Open',
 	completed: 'Completed',
@@ -65,8 +76,8 @@ const fulfilmentCaseStatusLabels: Record<string, string> = {
 
 const fulfilmentStepTypeLabels: Record<string, string> = {
 	installation: 'Installation',
-	courier: 'Courier delivery',
-	pickup: 'Pickup'
+	courier: 'Delivery',
+	pickup: 'Collection'
 };
 
 const fulfilmentStepStatusLabels: Record<string, string> = {
@@ -168,6 +179,14 @@ export function taskTypeLabel(type: string) {
 
 export function taskStatusLabel(status: string) {
 	return taskStatusLabels[status] ?? 'Status unavailable';
+}
+
+export function clientStatusLabel(status: string) {
+	return clientStatusLabels[status] ?? 'Status unavailable';
+}
+
+export function clientTypeLabel(type: string) {
+	return clientTypeLabels[type] ?? 'Customer';
 }
 
 export function fulfilmentCaseStatusLabel(status: string) {
