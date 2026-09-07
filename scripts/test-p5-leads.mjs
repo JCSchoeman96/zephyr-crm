@@ -858,8 +858,8 @@ async function testIndexes() {
 		select
 			'${planPrefix}-' || series::text,
 			'Plan', series::text, '${prefix}-plan@example.test',
-			case when series % 3 = 0 then 'NEW' else 'QUALIFICATION' end,
-			case when series % 3 = 0 then 'waiting_on_us' else 'none' end,
+			case when series % 20 = 0 then 'NEW' else 'QUALIFICATION' end,
+			case when series % 20 = 0 then 'waiting_on_us' else 'none' end,
 			'${users[0].id}'::uuid,
 			now() - (series || ' minutes')::interval,
 			now() - (series || ' minutes')::interval,
@@ -868,6 +868,7 @@ async function testIndexes() {
 	`);
 	sql('analyze public.leads');
 	const updatedPlan = explain('select id from public.leads order by updated_at desc, id limit 25');
+	const stageOnlyPlan = explain("select id from public.leads where pipeline_stage = 'NEW' limit 25");
 	const stagePlan = explain(
 		"select id from public.leads where pipeline_stage = 'NEW' order by updated_at desc limit 25"
 	);
@@ -889,8 +890,12 @@ async function testIndexes() {
 		'Default updated Lead list did not use the updated_at index'
 	);
 	assert(
-		stagePlan.includes('leads_pipeline_stage_idx'),
+		stageOnlyPlan.includes('leads_pipeline_stage_idx'),
 		'Stage-filtered Lead list did not use the stage index'
+	);
+	assert(
+		stagePlan.includes('leads_pipeline_stage_idx'),
+		'Stage-ordered Lead list did not use the composite stage index'
 	);
 	assert(
 		attentionPlan.includes('leads_attention_state_idx'),
