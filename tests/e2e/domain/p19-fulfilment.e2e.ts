@@ -66,14 +66,22 @@ test.describe('P19 Fulfilment work queues', () => {
 			await expect.poll(async () => (await readLead(lead.id, user))?.pipeline_stage).toBe('WON');
 
 			await gotoAndWaitForHeading(page, '/fulfilment', 'Fulfilment');
-			await expect(page.getByRole('heading', { name: 'Needs Planning' })).toBeVisible();
+			const views = page.getByRole('navigation', { name: 'Fulfilment work views' });
+			await expect(views.getByRole('link', { name: /Needs planning/ })).toBeVisible();
+			await views.getByRole('link', { name: /Needs planning/ }).click();
 			const caseHref = `/fulfilment/${cases[0].id}`;
 			const queueRow = page.locator('tr').filter({ has: page.locator(`a[href="${caseHref}"]`) });
 			await expect(queueRow).toHaveCount(1);
 			await expect(queueRow.getByRole('link', { name: /Fulfilment #/ })).toBeVisible();
 			await queueRow.getByRole('link', { name: /Open case/ }).click();
 			await page.waitForURL(new RegExp(`/fulfilment/${cases[0].id}$`));
-			for (const heading of ['Overview', 'Work', 'Payments', 'Follow-up actions', 'History']) {
+			for (const heading of [
+				'Overview',
+				'Active work',
+				'Payments',
+				'Follow-up actions',
+				'History'
+			]) {
 				await expect(page.getByRole('heading', { name: heading, exact: true })).toBeVisible();
 			}
 			await expect(page.getByText('P19 browser acceptance')).toBeVisible();
@@ -148,12 +156,14 @@ test.describe('P19 Fulfilment work queues', () => {
 					hasText: /^Completed$/
 				})
 			).toBeVisible();
-			await gotoAndWaitForHeading(page, '/fulfilment', 'Fulfilment');
-			const completedQueue = page
-				.locator('.queue-card')
-				.filter({ has: page.getByRole('heading', { name: 'Completed', exact: true }) });
+			await gotoAndWaitForHeading(page, '/fulfilment?view=completed', 'Fulfilment');
 			await expect(
-				completedQueue.locator(`a.fulfilment-queue-table__case[href="${caseHref}"]`)
+				page.getByRole('navigation', { name: 'Fulfilment work views' }).getByRole('link', {
+					name: /Completed/
+				})
+			).toHaveAttribute('aria-current', 'page');
+			await expect(
+				page.locator(`a.fulfilment-queue-table__case[href="${caseHref}"]`)
 			).toBeVisible();
 		} finally {
 			await cleanupLead(lead.id, user.id);
