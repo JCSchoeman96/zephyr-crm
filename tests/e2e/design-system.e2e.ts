@@ -35,8 +35,35 @@ test.describe('design system and application shell', () => {
 		await page.getByRole('button', { name: 'Open navigation' }).focus();
 		await page.keyboard.press('Enter');
 		await expect(page.getByRole('navigation', { name: 'Primary navigation' })).toBeVisible();
-		await page.getByRole('link', { name: 'Dashboard' }).focus();
-		await expect(page.getByRole('link', { name: 'Dashboard' })).toBeFocused();
+		await page
+			.getByRole('navigation', { name: 'Primary navigation' })
+			.getByRole('link', { name: 'Home', exact: true })
+			.focus();
+		await expect(
+			page
+				.getByRole('navigation', { name: 'Primary navigation' })
+				.getByRole('link', { name: 'Home', exact: true })
+		).toBeFocused();
+	});
+
+	test('presents business areas without stage queues in primary navigation', async ({ page }) => {
+		const navigation = page.getByRole('navigation', { name: 'Primary navigation' });
+		await expect(navigation.getByRole('link')).toHaveText([
+			'Home',
+			'Sales',
+			'Customers',
+			'Fulfilment',
+			'Reports',
+			'Products'
+		]);
+		await expect(navigation.getByRole('link', { name: 'Sales', exact: true })).toHaveAttribute(
+			'href',
+			'/sales'
+		);
+		await expect(navigation.getByRole('link', { name: 'Reports', exact: true })).toHaveAttribute(
+			'href',
+			'/reports'
+		);
 	});
 
 	test('keeps shell within the viewport at mobile, tablet, and desktop widths', async ({
