@@ -47,6 +47,7 @@
 		const params = [
 			['status', data.filters.status],
 			...(data.filters.overdue ? [['overdue', 'true']] : []),
+			...(data.filters.dueToday ? [['due', 'today']] : []),
 			...(data.filters.search ? [['search', data.filters.search]] : []),
 			...(page > 1 ? [['page', String(page)]] : [])
 		];
@@ -101,6 +102,10 @@
 				follow-ups only</label
 			>
 			<Button type="submit" size="sm">Apply filters</Button>
+			<label class="checkbox-label"
+				><input type="checkbox" name="due" value="today" checked={data.filters.dueToday} /> Due today
+				only (UTC)</label
+			>
 		</form>
 	</Card>
 

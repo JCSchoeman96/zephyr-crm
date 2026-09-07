@@ -7,7 +7,7 @@ test('renders the canonical Sales and Fulfilment metrics with payment evidence b
 	const user = await createStaff('owner', 'p20-metrics-browser');
 	try {
 		await signIn(page, user);
-		await page.goto('/', { waitUntil: 'networkidle' });
+		await page.goto('/reports', { waitUntil: 'networkidle' });
 		await expect(
 			page.getByRole('heading', { name: 'Sales and Fulfilment metrics', exact: true })
 		).toBeVisible();
@@ -35,7 +35,7 @@ test('renders the canonical Sales and Fulfilment metrics with payment evidence b
 		await expect(cards.locator('.ui-stat-card__value')).toHaveCount(12);
 		for (const value of await cards.locator('.ui-stat-card__value').all())
 			await expect(value).not.toHaveText('');
-		const dateRange = page.getByRole('form', { name: 'Dashboard date range' });
+		const dateRange = page.getByRole('form', { name: 'Reports date range' });
 		await expect(dateRange.locator('input[name="from"]')).toHaveValue(/^\d{4}-\d{2}-\d{2}$/);
 		await expect(dateRange.locator('input[name="to"]')).toHaveValue(/^\d{4}-\d{2}-\d{2}$/);
 		await expect(metricsSection.getByText(/CRM evidence, not reconciled revenue/i)).toBeVisible();

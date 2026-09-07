@@ -1,125 +1,93 @@
-import { redirect } from '@sveltejs/kit';
+import { error, redirect } from '@sveltejs/kit';
 import type { Actions, PageServerLoad } from './$types';
-import { normalizeDateRange } from '$lib/domain/analytics/metrics';
 import { requireActiveStaff } from '$lib/server/require-auth';
-
-type JsonRecord = Record<string, unknown>;
-
-function record(value: unknown): JsonRecord {
-	return value && typeof value === 'object' && !Array.isArray(value) ? (value as JsonRecord) : {};
-}
-
-function numberValue(value: unknown) {
-	const numeric = Number(value ?? 0);
-	return Number.isFinite(numeric) ? numeric : 0;
-}
-
-function rows(value: unknown) {
-	return Array.isArray(value)
-		? value.filter((row): row is JsonRecord => Boolean(row && typeof row === 'object'))
-		: [];
-}
 
 export const load: PageServerLoad = async (event) => {
 	const { supabase, profile } = await requireActiveStaff(event);
-	const dateRange = normalizeDateRange(
-		event.url.searchParams.get('from'),
-		event.url.searchParams.get('to')
-	);
-	const range = { p_from: dateRange.from, p_to: dateRange.to };
-	const [
-		operationalResponse,
-		kpiResponse,
-		metricsResponse,
-		lostResponse,
-		attributionResponse,
-		recentTasksResponse
-	] = await Promise.all([
-		supabase.rpc('dashboard_operational_summary', range),
-		supabase.rpc('dashboard_sales_kpis', range),
-		supabase.rpc('dashboard_sales_fulfilment_metrics', range),
-		supabase.rpc('dashboard_lost_analysis', { ...range, p_limit: 50 }),
-		supabase.rpc('dashboard_attribution', { ...range, p_limit: 50 }),
-		supabase
-			.from('task_work_queue')
-			.select('id,title,type,due_at,is_overdue,status,lead_id,assigned_to,lock_version')
-			.eq('status', 'open')
-			.order('due_at', { ascending: true, nullsFirst: false })
-			.limit(5)
-	]);
+	const now = new Date();
+	const today = now.toISOString().slice(0, 10);
+	const tomorrow = new Date(Date.parse(today) + 86_400_000).toISOString();
+	const expiryEnd = new Date(Date.parse(today) + 7 * 86_400_000).toISOString().slice(0, 10);
+	const activeStages = ['NEW', 'QUALIFICATION', 'PROPOSAL', 'DECISION'];
+	const count = { count: 'exact' as const, head: true };
+	const [newLeads, overdue, dueToday, waitingOnUs, waitingOnClient, expiring, tasks, enquiries] =
+		await Promise.all([
+			supabase.from('leads').select('id', count).eq('pipeline_stage', 'NEW'),
+			supabase
+				.from('tasks')
+				.select('id', count)
+				.eq('status', 'open')
+				.lt('due_at', now.toISOString()),
+			supabase
+				.from('tasks')
+				.select('id', count)
+				.eq('status', 'open')
+				.gte('due_at', today)
+				.lt('due_at', tomorrow),
+			supabase
+				.from('leads')
+				.select('id', count)
+				.in('pipeline_stage', activeStages)
+				.eq('attention_state', 'waiting_on_us'),
+			supabase
+				.from('leads')
+				.select('id', count)
+				.in('pipeline_stage', activeStages)
+				.eq('attention_state', 'waiting_on_client'),
+			supabase
+				.from('quotes')
+				.select('id', count)
+				.eq('status', 'sent')
+				.gte('valid_until', today)
+				.lte('valid_until', expiryEnd),
+			supabase
+				.from('tasks')
+				.select('id,title,type,due_at,lead_id,client_id,quote_id,fulfilment_case_id')
+				.eq('status', 'open')
+				.order('due_at', { ascending: true, nullsFirst: false })
+				.order('id')
+				.limit(8),
+			supabase
+				.from('leads')
+				.select('id,lead_number,first_name,last_name,company,created_at')
+				.eq('pipeline_stage', 'NEW')
+				.is('paused_at', null)
+				.order('created_at')
+				.order('id')
+				.limit(5)
+		]);
 	if (
-		operationalResponse.error ||
-		kpiResponse.error ||
-		metricsResponse.error ||
-		lostResponse.error ||
-		attributionResponse.error ||
-		recentTasksResponse.error
+		[newLeads, overdue, dueToday, waitingOnUs, waitingOnClient, expiring, tasks, enquiries].some(
+			(result) => result.error
+		)
 	) {
-		throw new Error('Could not load dashboard projections');
+		throw error(503, 'Your work could not be loaded. Please reload the page.');
 	}
-	const operational = record(operationalResponse.data);
-	const kpis = record(kpiResponse.data);
-	const metrics = record(metricsResponse.data);
-	const lost = record(lostResponse.data);
-	const attribution = record(attributionResponse.data);
 	return {
 		profile,
-		dateRange,
 		operational: {
-			newLeads: numberValue(operational.new_leads),
-			overdueTasks: numberValue(operational.overdue_tasks),
-			dueToday: numberValue(operational.due_today),
-			waitingOnUs: numberValue(operational.waiting_on_us),
-			waitingOnClient: numberValue(operational.waiting_on_client),
-			expiringQuotes: numberValue(operational.expiring_quotes)
+			newLeads: newLeads.count ?? 0,
+			overdueTasks: overdue.count ?? 0,
+			dueToday: dueToday.count ?? 0,
+			waitingOnUs: waitingOnUs.count ?? 0,
+			waitingOnClient: waitingOnClient.count ?? 0,
+			expiringQuotes: expiring.count ?? 0
 		},
-		kpis: {
-			leads: numberValue(kpis.new_leads),
-			quotesSent: numberValue(kpis.quotes_sent),
-			quoteValue: numberValue(kpis.quote_value),
-			acceptedValue: numberValue(kpis.accepted_value),
-			wonLeads: numberValue(kpis.won_leads),
-			lostLeads: numberValue(kpis.lost_leads),
-			conversionRate: numberValue(kpis.conversion_rate),
-			pipelineValue: numberValue(kpis.pipeline_value)
-		},
-		metrics: {
-			newEnquiriesWaiting: numberValue(metrics.new_enquiries_waiting),
-			qualificationBacklog: numberValue(metrics.qualification_backlog),
-			quotesNeedingPreparation: numberValue(metrics.quotes_needing_preparation),
-			quotesAwaitingDecision: numberValue(metrics.quotes_awaiting_decision),
-			averageQuoteResponseHours: numberValue(metrics.average_quote_response_hours),
-			acceptedValue: numberValue(metrics.accepted_value),
-			openFulfilments: numberValue(metrics.open_fulfilments),
-			upcomingInstallations: numberValue(metrics.upcoming_installations),
-			awaitingDispatch: numberValue(metrics.awaiting_dispatch),
-			awaitingCollection: numberValue(metrics.awaiting_collection),
-			paymentsAwaitingFollowUp: numberValue(metrics.payments_awaiting_follow_up),
-			completedFulfilments: numberValue(metrics.completed_fulfilments)
-		},
-		lost: {
-			byReason: rows(lost.by_reason).map((row) => ({
-				reasonCode: String(row.reason_code ?? 'unknown'),
-				reasonLabel: String(row.reason_label ?? 'Unknown'),
-				lostCount: numberValue(row.lost_count),
-				lostValue: numberValue(row.lost_value)
-			})),
-			bySource: rows(lost.by_source).map((row) => ({
-				sourceCode: String(row.source_code ?? 'unknown'),
-				lostCount: numberValue(row.lost_count),
-				lostValue: numberValue(row.lost_value)
-			}))
-		},
-		attribution: rows(attribution.rows).map((row) => ({
-			sourceCode: String(row.source_code ?? 'unknown'),
-			utmSource: String(row.utm_source ?? '(none)'),
-			utmMedium: String(row.utm_medium ?? '(none)'),
-			utmCampaign: String(row.utm_campaign ?? '(none)'),
-			leadCount: numberValue(row.lead_count),
-			wonCount: numberValue(row.won_count),
-			revenue: numberValue(row.revenue)
+		expiry: { from: today, to: expiryEnd },
+		tasks: (tasks.data ?? []).map((task) => ({
+			...task,
+			isOverdue: Boolean(task.due_at && Date.parse(task.due_at) < now.getTime()),
+			href: task.fulfilment_case_id
+				? `/fulfilment/${task.fulfilment_case_id}`
+				: task.quote_id
+					? `/quotes/${task.quote_id}`
+					: task.lead_id
+						? `/leads/${task.lead_id}`
+						: task.client_id
+							? `/clients/${task.client_id}`
+							: '/tasks'
 		})),
-		recentTasks: recentTasksResponse.data ?? []
+		enquiries: enquiries.data ?? []
 	};
 };
 

@@ -39,6 +39,7 @@ export const load: PageServerLoad = async (event) => {
 			? requestedStatus
 			: 'open';
 	const overdue = event.url.searchParams.get('overdue') === 'true';
+	const dueToday = event.url.searchParams.get('due') === 'today';
 	const search = event.url.searchParams.get('search')?.trim().slice(0, 120) ?? '';
 	const requestedPage = Number(event.url.searchParams.get('page') ?? '1');
 	const page = Number.isInteger(requestedPage) && requestedPage > 0 ? requestedPage : 1;
@@ -51,6 +52,11 @@ export const load: PageServerLoad = async (event) => {
 		.order('created_at', { ascending: false })
 		.order('id', { ascending: true });
 	if (overdue) taskQuery = taskQuery.eq('is_overdue', true);
+	if (dueToday) {
+		const today = new Date().toISOString().slice(0, 10);
+		const tomorrow = new Date(Date.parse(today) + 86_400_000).toISOString();
+		taskQuery = taskQuery.gte('due_at', today).lt('due_at', tomorrow);
+	}
 	if (search) taskQuery = taskQuery.ilike('title', `%${search}%`);
 	taskQuery = taskQuery.range(offset, offset + taskQueueLimit);
 	const [tasksResponse, leadsResponse, clientsResponse, quotesResponse, staffResponse] =
@@ -130,7 +136,7 @@ export const load: PageServerLoad = async (event) => {
 		clients: mergeById(clientsResponse.data ?? [], taskClientsResponse.data ?? []),
 		quotes: mergeById(quotesResponse.data ?? [], taskQuotesResponse.data ?? []),
 		staff: staffResponse.data ?? [],
-		filters: { status, overdue, search },
+		filters: { status, overdue, dueToday, search },
 		pagination: { page, hasMore: taskPage.hasMore }
 	};
 };
