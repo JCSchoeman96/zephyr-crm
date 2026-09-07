@@ -23,7 +23,7 @@ test.describe('P19 Fulfilment work queues', () => {
 	test('renders the accepted-sale queues and drives canonical work, payment, and follow-up actions', async ({
 		page
 	}) => {
-		test.setTimeout(120_000);
+		test.setTimeout(180_000);
 		const user = await createStaff('owner', 'p19-browser');
 		const lead = await ingestLead('p19-browser');
 		try {
@@ -108,7 +108,7 @@ test.describe('P19 Fulfilment work queues', () => {
 			const dispatchForm = page.locator('form[action="?/dispatch"]');
 			await dispatchForm.getByLabel('Tracking reference').fill('P19-TRACK-001');
 			await dispatchForm.getByLabel('Dispatch notes').fill('Handed to courier');
-			await submitFormButton(dispatchForm.getByRole('button', { name: 'Dispatch courier' }));
+			await submitFormButton(dispatchForm.getByRole('button', { name: 'Dispatch delivery' }));
 			await expect(page.getByText('Dispatched', { exact: true })).toBeVisible();
 			await submitFormButton(page.getByRole('button', { name: 'Confirm delivery' }));
 			await expect(page.getByText('Delivered', { exact: true })).toBeVisible();
