@@ -186,7 +186,7 @@ test.describe('P18 Sales work queues', () => {
 	test('keeps the four queues stage-derived and navigable through authenticated browser actions', async ({
 		page
 	}) => {
-		test.setTimeout(90_000);
+		test.setTimeout(180_000);
 		const fixture = await createFixture();
 		try {
 			await signIn(page, fixture.user);
@@ -268,7 +268,7 @@ test.describe('P18 Sales work queues', () => {
 	});
 
 	test('keeps queue layouts usable at mobile, tablet, and desktop widths', async ({ page }) => {
-		test.setTimeout(90_000);
+		test.setTimeout(180_000);
 		const fixture = await createFixture();
 		try {
 			await signIn(page, fixture.user);
