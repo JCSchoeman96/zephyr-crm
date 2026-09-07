@@ -113,7 +113,11 @@
 						<dd>{data.operational.waitingOnUs}</dd>
 					</div>
 					<div>
-						<dt><a href={resolve('/sales?view=waiting' as '/')}>Waiting for customer</a></dt>
+						<dt>
+							<a href={resolve('/sales?view=all&attention=waiting_on_client')}
+								>Waiting for customer</a
+							>
+						</dt>
 						<dd>{data.operational.waitingOnClient}</dd>
 					</div>
 					<div>
