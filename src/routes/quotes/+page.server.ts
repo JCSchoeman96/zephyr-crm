@@ -26,6 +26,7 @@ export const load: PageServerLoad = async (event) => {
 	const { supabase, profile } = await requireActiveStaff(event);
 	const search = (event.url.searchParams.get('q') ?? '').trim().slice(0, 80);
 	const status = selectedStatus(event.url.searchParams.get('status'));
+	const expiring = event.url.searchParams.get('expiring') === 'soon';
 	const requestedPage = Number(event.url.searchParams.get('page') ?? '1');
 	const page = Number.isInteger(requestedPage) && requestedPage > 0 ? requestedPage : 1;
 	const from = (page - 1) * pageSize;
@@ -48,6 +49,14 @@ export const load: PageServerLoad = async (event) => {
 		);
 	}
 	if (status) quotesQuery = quotesQuery.eq('status', status);
+	if (expiring) {
+		const today = new Date().toISOString().slice(0, 10);
+		const end = new Date(Date.parse(today) + 7 * 86_400_000).toISOString().slice(0, 10);
+		quotesQuery = quotesQuery
+			.eq('status', 'sent')
+			.gte('valid_until', today)
+			.lte('valid_until', end);
+	}
 
 	const { data: quotes, count, error: quotesError } = await quotesQuery;
 	if (quotesError) throw error(500, 'Could not load the quote list');
@@ -79,7 +88,7 @@ export const load: PageServerLoad = async (event) => {
 		leads: leadResponse.data ?? [],
 		clients: clientResponse.data ?? [],
 		profile,
-		filters: { q: search, status },
+		filters: { q: search, status, expiring },
 		pagination: { page, pageSize, total, totalPages: Math.max(1, Math.ceil(total / pageSize)) }
 	};
 };

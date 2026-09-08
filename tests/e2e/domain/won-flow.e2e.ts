@@ -20,22 +20,24 @@ test.describe('canonical Quote acceptance browser journey', () => {
 		try {
 			await signIn(page, user);
 			await page.goto(`/leads/${lead.id}`, { waitUntil: 'networkidle' });
-			await page.getByRole('button', { name: 'Start Qualification' }).click();
-			await page.getByRole('button', { name: 'Ready for Quote' }).click();
-			await expect(page.getByRole('heading', { name: 'Create a simple quote' })).toBeVisible();
-			await page.locator('input[name="subject"]').fill('P14 browser Won quote');
-			await page.locator('input[name="item_name"]').fill('P14 implementation');
-			await page.locator('input[name="quantity"]').fill('2');
-			await page.locator('input[name="unit_price"]').fill('1250');
-			await page.locator('input[name="tax_rate"]').fill('15');
-			await page.getByRole('button', { name: 'Create quote' }).click();
-			await page.getByRole('link', { name: 'P14 browser Won quote' }).click();
-			await page.getByRole('button', { name: 'Add line item' }).click();
+			await page.getByRole('button', { name: 'Review enquiry' }).click();
+			await page.getByRole('button', { name: 'Ready for quote' }).click();
+			await page.getByRole('link', { name: 'Create quote', exact: true }).click();
+			await page.waitForURL(/\/quotes\/new\?lead_id=/);
+			await page.locator('#quote-subject').fill('P14 browser Won quote');
+			await page.getByRole('button', { name: 'Add custom item' }).click();
+			await page.locator('#quote-item-name-0').fill('P14 implementation');
+			await page.locator('#quote-item-quantity-0').fill('2');
+			await page.locator('#quote-item-price-0').fill('1250');
+			await page.locator('#quote-tax-rate').fill('15');
+			await page.getByRole('button', { name: 'Save draft' }).click();
+			await page.waitForURL(/\/quotes\/[0-9a-f-]+$/);
+			await page.getByRole('button', { name: 'Add custom item' }).click();
 			await page.locator('#quote-item-name-1').fill('P14 support');
 			await page.locator('#quote-item-quantity-1').fill('1');
 			await page.locator('#quote-item-price-1').fill('500');
 			await page.getByRole('button', { name: 'Save draft' }).click();
-			await page.getByRole('button', { name: 'Mark ready' }).click();
+			await page.getByRole('button', { name: 'Review quote' }).click();
 			await expect(page.getByRole('button', { name: 'Send quote' })).toBeVisible();
 			await page.getByRole('button', { name: 'Send quote' }).click();
 			await expect(page.getByText('submitted', { exact: true })).toBeVisible();
@@ -61,15 +63,16 @@ test.describe('canonical Quote acceptance browser journey', () => {
 			await expect(
 				page
 					.getByRole('navigation', { name: 'Primary navigation' })
-					.getByRole('link', { name: 'Awaiting Feedback' })
+					.getByRole('link', { name: 'Sales', exact: true })
 			).toBeVisible();
-			await page.getByRole('link', { name: 'P14 browser Won quote' }).click();
-			await expect(page.getByRole('button', { name: 'Accept sale' })).toBeVisible();
+			await page.getByRole('link', { name: 'Record customer response' }).click();
+			await page.getByRole('radio', { name: 'Customer accepted' }).check();
+			await expect(page.getByRole('button', { name: 'Customer accepted' })).toBeVisible();
 			await page.getByLabel('Acceptance source').fill('customer_email');
 			await page
 				.getByLabel('Acceptance evidence')
 				.fill('Customer approved the Quote by email during the browser journey.');
-			await page.getByRole('button', { name: 'Accept sale' }).click();
+			await page.getByRole('button', { name: 'Customer accepted' }).click();
 			await expect(
 				page.locator('[data-tone="success"]').filter({ hasText: /^Accepted$/ })
 			).toBeVisible();

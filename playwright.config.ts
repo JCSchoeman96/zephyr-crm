@@ -46,6 +46,7 @@ if (localAnonKey) appEnvironment.PUBLIC_SUPABASE_PUBLISHABLE_KEY = localAnonKey;
 if (localServiceRoleKey) appEnvironment.SUPABASE_SERVICE_ROLE_KEY = localServiceRoleKey;
 
 export default defineConfig({
+	workers: process.env.CI ? 1 : undefined,
 	webServer: [
 		{
 			command: 'bun scripts/test-p14-sendpulse-fixture.mjs',

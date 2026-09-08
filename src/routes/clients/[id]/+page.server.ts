@@ -1,6 +1,8 @@
 import { error, fail, redirect } from '@sveltejs/kit';
 import type { Actions, PageServerLoad } from './$types';
 import { actionFailureDetails, logActionFailure } from '$lib/server/action-errors';
+import { loadTrustedClientConfiguration } from '$lib/server/client-config';
+import { localDateTimeToIso } from '$lib/time/zoned-datetime';
 import { requireActiveStaff } from '$lib/server/require-auth';
 
 function required(form: FormData, name: string): string {
@@ -30,6 +32,13 @@ function uuid(form: FormData, name: string): string {
 	const value = required(form, name);
 	if (!/^[0-9a-f-]{36}$/i.test(value)) throw new Error(`A valid ${name} is required`);
 	return value;
+}
+
+function formDateTime(form: FormData, name: string) {
+	const value = required(form, name);
+	if (!value) return undefined;
+	const { configuration } = loadTrustedClientConfiguration();
+	return localDateTimeToIso(value, configuration.locale.timezone);
 }
 
 function formValues(form: FormData): Record<string, string> {
@@ -78,48 +87,76 @@ export const load: PageServerLoad = async (event) => {
 		.select('*')
 		.eq('id', event.params.id)
 		.maybeSingle();
-	if (clientResponse.error) throw error(500, 'Could not load client details');
-	if (!clientResponse.data) throw error(404, 'Client not found');
+	if (clientResponse.error) throw error(500, 'Could not load customer details');
+	if (!clientResponse.data) throw error(404, 'Customer not found');
 
-	const [contactsResponse, activityResponse, sourceLeadResponse, sourceLeadActivitiesResponse] =
-		await Promise.all([
-			supabase
-				.from('client_contacts')
-				.select('*')
-				.eq('client_id', event.params.id)
-				.order('is_primary', { ascending: false })
-				.order('created_at', { ascending: true })
-				.limit(100),
-			supabase
-				.from('activities')
-				.select('*')
-				.eq('client_id', event.params.id)
-				.order('occurred_at', { ascending: false })
-				.limit(100),
-			clientResponse.data.source_lead_id
-				? supabase
-						.from('leads')
-						.select('id,lead_number,first_name,last_name,email,company,pipeline_stage')
-						.eq('id', clientResponse.data.source_lead_id)
-						.maybeSingle()
-				: Promise.resolve({ data: null, error: null }),
-			clientResponse.data.source_lead_id
-				? supabase
-						.from('activities')
-						.select('*')
-						.eq('lead_id', clientResponse.data.source_lead_id)
-						.order('occurred_at', { ascending: false })
-						.limit(100)
-				: Promise.resolve({ data: [], error: null })
-		]);
+	const [
+		contactsResponse,
+		activityResponse,
+		sourceLeadResponse,
+		sourceLeadActivitiesResponse,
+		quotesResponse,
+		fulfilmentsResponse,
+		tasksResponse
+	] = await Promise.all([
+		supabase
+			.from('client_contacts')
+			.select('*')
+			.eq('client_id', event.params.id)
+			.order('is_primary', { ascending: false })
+			.order('created_at', { ascending: true })
+			.limit(100),
+		supabase
+			.from('activities')
+			.select('*')
+			.eq('client_id', event.params.id)
+			.order('occurred_at', { ascending: false })
+			.limit(100),
+		clientResponse.data.source_lead_id
+			? supabase
+					.from('leads')
+					.select('id,lead_number,first_name,last_name,email,company,pipeline_stage')
+					.eq('id', clientResponse.data.source_lead_id)
+					.maybeSingle()
+			: Promise.resolve({ data: null, error: null }),
+		clientResponse.data.source_lead_id
+			? supabase
+					.from('activities')
+					.select('*')
+					.eq('lead_id', clientResponse.data.source_lead_id)
+					.order('occurred_at', { ascending: false })
+					.limit(100)
+			: Promise.resolve({ data: [], error: null }),
+		supabase
+			.from('quotes')
+			.select('id,quote_number,subject,status,updated_at')
+			.eq('client_id', event.params.id)
+			.order('updated_at', { ascending: false })
+			.limit(20),
+		supabase
+			.from('fulfilment_cases')
+			.select('id,fulfilment_number,status,updated_at')
+			.eq('client_id', event.params.id)
+			.order('updated_at', { ascending: false })
+			.limit(20),
+		supabase
+			.from('tasks')
+			.select('id,title,type,status,due_at')
+			.eq('client_id', event.params.id)
+			.order('created_at', { ascending: false })
+			.limit(20)
+	]);
 
 	if (
 		contactsResponse.error ||
 		activityResponse.error ||
 		sourceLeadResponse.error ||
-		sourceLeadActivitiesResponse.error
+		sourceLeadActivitiesResponse.error ||
+		quotesResponse.error ||
+		fulfilmentsResponse.error ||
+		tasksResponse.error
 	) {
-		throw error(500, 'Could not load client history');
+		throw error(500, 'Could not load customer history');
 	}
 
 	return {
@@ -128,6 +165,9 @@ export const load: PageServerLoad = async (event) => {
 		activities: activityResponse.data ?? [],
 		sourceLeadActivities: sourceLeadActivitiesResponse.data ?? [],
 		sourceLead: sourceLeadResponse.data,
+		quotes: quotesResponse.data ?? [],
+		fulfilments: fulfilmentsResponse.data ?? [],
+		tasks: tasksResponse.data ?? [],
 		profile
 	};
 };
@@ -140,7 +180,7 @@ export const actions: Actions = {
 		const values = formValues(form);
 		try {
 			const displayName = required(form, 'display_name');
-			if (!displayName) throw new Error('Client display name is required');
+			if (!displayName) throw new Error('Customer display name is required');
 			const response = await supabase.rpc('update_client_details', {
 				p_client_id: event.params.id,
 				p_lock_version: lockVersion(form),
@@ -158,9 +198,9 @@ export const actions: Actions = {
 				p_billing_postal_code: optional(form, 'billing_postal_code'),
 				p_billing_country: optional(form, 'billing_country')
 			});
-			if (response.error) return failure(response.error, 'Could not update Client', values);
+			if (response.error) return failure(response.error, 'Could not update customer', values);
 		} catch (actionError) {
-			return failure(actionError, 'Could not update Client', values);
+			return failure(actionError, 'Could not update customer', values);
 		}
 		throw redirect(303, `/clients/${event.params.id}`);
 	},
@@ -172,18 +212,42 @@ export const actions: Actions = {
 		try {
 			const status = required(form, 'status');
 			if (!['active', 'inactive', 'archived'].includes(status))
-				throw new Error('Client status is invalid');
+				throw new Error('Customer status is invalid');
 			const response = await supabase.rpc('set_client_status', {
 				p_client_id: event.params.id,
 				p_lock_version: lockVersion(form),
 				p_status: status,
 				p_reason: optional(form, 'reason')
 			});
-			if (response.error) return failure(response.error, 'Could not change Client status', values);
+			if (response.error)
+				return failure(response.error, 'Could not change customer status', values);
 		} catch (actionError) {
-			return failure(actionError, 'Could not change Client status', values);
+			return failure(actionError, 'Could not change customer status', values);
 		}
 		throw redirect(303, `/clients/${event.params.id}`);
+	},
+	followUp: async (event) => {
+		const { supabase, profile } = await requireActiveStaff(event);
+		if (!canMutate(profile.role)) return fail(403, { message: 'Viewer access is read-only.' });
+		const form = await event.request.formData();
+		try {
+			const title = required(form, 'title');
+			if (!title) throw new Error('A follow-up title is required');
+			const dueAt = formDateTime(form, 'due_at');
+			const assignedTo = optional(form, 'assigned_to');
+			const response = await supabase.rpc('create_task', {
+				p_client_id: event.params.id,
+				p_type: optional(form, 'type') || 'follow_up',
+				p_title: title,
+				p_description: optional(form, 'description'),
+				...(dueAt ? { p_due_at: dueAt } : {}),
+				...(assignedTo ? { p_assigned_to: assignedTo } : {})
+			});
+			if (response.error) return failure(response.error, 'Could not create follow-up');
+		} catch (actionError) {
+			return failure(actionError, 'Could not create follow-up');
+		}
+		throw redirect(303, `/clients/${event.params.id}#related`);
 	},
 	contactCreate: async (event) => {
 		const { supabase, profile } = await requireActiveStaff(event);
@@ -201,9 +265,9 @@ export const actions: Actions = {
 				p_job_title: optional(form, 'job_title'),
 				p_is_primary: form.get('is_primary') === 'on'
 			});
-			if (response.error) return failure(response.error, 'Could not create Client contact');
+			if (response.error) return failure(response.error, 'Could not create customer contact');
 		} catch (actionError) {
-			return failure(actionError, 'Could not create Client contact');
+			return failure(actionError, 'Could not create customer contact');
 		}
 		throw redirect(303, `/clients/${event.params.id}#contacts`);
 	},
@@ -223,9 +287,9 @@ export const actions: Actions = {
 				p_phone: optional(form, 'phone'),
 				p_job_title: optional(form, 'job_title')
 			});
-			if (response.error) return failure(response.error, 'Could not update Client contact');
+			if (response.error) return failure(response.error, 'Could not update customer contact');
 		} catch (actionError) {
-			return failure(actionError, 'Could not update Client contact');
+			return failure(actionError, 'Could not update customer contact');
 		}
 		throw redirect(303, `/clients/${event.params.id}#contacts`);
 	},
@@ -239,9 +303,9 @@ export const actions: Actions = {
 				p_lock_version: contactLockVersion(form)
 			});
 			if (response.error)
-				return failure(response.error, 'Could not change the primary Client contact');
+				return failure(response.error, 'Could not change the primary customer contact');
 		} catch (actionError) {
-			return failure(actionError, 'Could not change the primary Client contact');
+			return failure(actionError, 'Could not change the primary customer contact');
 		}
 		throw redirect(303, `/clients/${event.params.id}#contacts`);
 	},
@@ -258,9 +322,10 @@ export const actions: Actions = {
 				p_status: status,
 				p_reason: optional(form, 'reason')
 			});
-			if (response.error) return failure(response.error, 'Could not change Client contact status');
+			if (response.error)
+				return failure(response.error, 'Could not change customer contact status');
 		} catch (actionError) {
-			return failure(actionError, 'Could not change Client contact status');
+			return failure(actionError, 'Could not change customer contact status');
 		}
 		throw redirect(303, `/clients/${event.params.id}#contacts`);
 	}

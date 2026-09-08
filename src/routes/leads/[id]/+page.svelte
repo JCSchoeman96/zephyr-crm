@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { resolve } from '$app/paths';
+	import { enquiryNextStep } from '$lib/domain/presentation/enquiry-next-step';
 	import type { ActionData, PageData } from './$types';
 	import AppShell from '$lib/components/shell/AppShell.svelte';
 	import Badge from '$lib/components/ui/Badge.svelte';
@@ -27,9 +28,18 @@
 		parseLeadRequestMessage,
 		shouldExpandLeadRequestDetails
 	} from '$lib/domain/leads/request-details';
+	import { publicClientConfiguration } from '$lib/config/public-client-config';
 
 	let { data, form }: { data: PageData; form: ActionData } = $props();
 	const canMutate = $derived(data.profile.role !== 'viewer');
+	const dateTimeHint = `Times use ${publicClientConfiguration.locale.timezone}`;
+	const nextStep = $derived(
+		enquiryNextStep(
+			data.lead.pipeline_stage,
+			Boolean(data.lead.paused_at),
+			data.currentQuote?.id ?? null
+		)
+	);
 	const leadRequestDetails = $derived(parseLeadRequestMessage(data.lead.message));
 	const leadRequestOpenAll = $derived(
 		shouldExpandLeadRequestDetails({
@@ -73,7 +83,7 @@
 </svelte:head>
 
 <AppShell userEmail={data.auth.user?.email} userRole={data.auth.profile?.role}>
-	<a class="back-link" href={resolve('/leads')}>← Back to Enquiries</a>
+	<a class="back-link" href={resolve('/sales')}>← Back to Sales</a>
 	<PageHeader
 		title={`${data.lead.first_name} ${data.lead.last_name}`}
 		description={data.lead.email ?? 'Enquiry detail'}
@@ -88,7 +98,7 @@
 	<nav class="detail-nav" aria-label="Enquiry detail sections">
 		<a href={resolve(`/leads/${data.lead.id}#overview`)}>Overview</a>
 		<a href={resolve(`/leads/${data.lead.id}#quotes`)}>Quotes</a>
-		<a href={resolve(`/leads/${data.lead.id}#tasks`)}>Follow-up actions</a>
+		<a href={resolve(`/leads/${data.lead.id}#follow-ups`)}>Follow-up actions</a>
 		<a href={resolve(`/leads/${data.lead.id}#activity`)}>History</a>
 	</nav>
 
@@ -96,6 +106,78 @@
 			title={actionErrorTitle(form.message)}
 			message={form.message}
 		/>{/if}
+
+	<section aria-label="Enquiry next step" class="next-step">
+		<Card title="Next step">
+			<p>
+				{data.lead.paused_at
+					? 'This enquiry is on hold. Continue it before taking the next step.'
+					: leadStageMeaning(data.lead.pipeline_stage)}
+			</p>
+			{#if nextStep === 'handoff'}
+				<div class="action-stack">
+					{#if data.lead.converted_client_id}<a
+							class="ui-button ui-button--primary ui-button--md"
+							href={resolve(`/clients/${data.lead.converted_client_id}`)}>Open customer</a
+						>{/if}
+					{#each data.fulfilments as fulfilment (fulfilment.id)}<a
+							class="ui-button ui-button--secondary ui-button--md"
+							href={resolve(`/fulfilment/${fulfilment.id}`)}
+							>Open fulfilment<span class="sr-only"> {fulfilment.id}</span></a
+						>{/each}
+				</div>
+			{:else if nextStep === 'closed'}
+				<p>This enquiry is marked as not proceeding.</p>
+			{:else if canMutate}
+				{#if nextStep === 'resume'}
+					<p>{data.lead.pause_reason}</p>
+					<form method="POST" action="?/resume">
+						<input type="hidden" name="lock_version" value={data.lead.lock_version} /><Button
+							type="submit">Continue enquiry</Button
+						>
+					</form>
+				{:else if nextStep === 'review'}
+					<form method="POST" action="?/qualify">
+						<input type="hidden" name="lock_version" value={data.lead.lock_version} /><Button
+							type="submit">Review enquiry</Button
+						>
+					</form>
+				{:else if nextStep === 'qualify'}
+					<form method="POST" action="?/proposal" class="stack-form">
+						<input type="hidden" name="lock_version" value={data.lead.lock_version} />
+						<Textarea
+							id="qualification-notes"
+							name="qualification_notes"
+							label="Qualification notes"
+							value={data.lead.qualification_notes ?? ''}
+							rows={3}
+							hint="Record the requirements and details you confirmed."
+						/>
+						<Button type="submit">Ready for quote</Button>
+					</form>
+				{:else if nextStep === 'create_quote'}
+					<a
+						class="ui-button ui-button--primary ui-button--md"
+						href={resolve(`/quotes/new?lead_id=${data.lead.id}`)}>Create quote</a
+					>
+				{:else if data.currentQuote}
+					<a
+						class="ui-button ui-button--primary ui-button--md"
+						href={resolve(`/quotes/${data.currentQuote.id}`)}
+						>{nextStep === 'respond' ? 'Record customer response' : 'Open quote'}</a
+					>
+				{:else}
+					<p>The current quote is unavailable. Reload this record before continuing.</p>
+				{/if}
+			{:else}
+				<p class="read-only-note">
+					You can view this enquiry, but you do not have permission to change it.
+				</p>
+				{#if data.currentQuote}<a href={resolve(`/quotes/${data.currentQuote.id}`)}>Open quote</a
+					>{/if}
+			{/if}
+		</Card>
+	</section>
 
 	<div id="overview" class="anchor-section">
 		<div class="detail-grid">
@@ -126,89 +208,6 @@
 						<dd>{followUpLabel(data.lead.attention_state)}</dd>
 					</div>
 				</dl>
-			</Card>
-
-			<Card>
-				<SectionHeader title="Next step" description={leadStageMeaning(data.lead.pipeline_stage)} />
-				<div class="action-stack">
-					{#if canMutate}
-						{#if data.lead.pipeline_stage === 'NEW'}
-							<p class="action-note">
-								Check the customer's details and request before preparing a quote.
-							</p>
-							<form method="POST" action="?/qualify">
-								<input type="hidden" name="lock_version" value={data.lead.lock_version} /><Button
-									type="submit">Start Qualification</Button
-								>
-							</form>
-						{:else if data.lead.pipeline_stage === 'QUALIFICATION'}
-							<p class="action-note">Capture what you learned before preparing a quote.</p>
-							<form method="POST" action="?/proposal" class="stack-form">
-								<input type="hidden" name="lock_version" value={data.lead.lock_version} />
-								<Textarea
-									id="qualification-notes"
-									name="qualification_notes"
-									label="Qualification notes"
-									value={data.lead.qualification_notes ?? ''}
-									rows={3}
-									hint="Record the requirements and details you confirmed."
-								/>
-								<Button type="submit">Ready for Quote</Button>
-							</form>
-						{:else if data.lead.pipeline_stage === 'PROPOSAL' && data.quotes.length === 0}
-							<p class="action-note">
-								Create a quote below or open <a href={resolve('/sales/proposals')}
-									>Quotes to Prepare</a
-								>.
-							</p>
-						{:else if data.lead.pipeline_stage === 'DECISION'}
-							<p class="action-note">
-								Open <a href={resolve('/sales/decisions')}>Awaiting Feedback</a> to accept, adjust, or
-								decline the current Quote.
-							</p>
-						{:else if data.lead.pipeline_stage === 'WON'}
-							<p class="success-note">
-								This enquiry has been added to <a href={resolve('/fulfilment')}>Fulfilment</a>.
-							</p>
-						{:else if data.lead.pipeline_stage === 'LOST'}
-							<p class="action-note">This enquiry is marked as not proceeding.</p>
-						{/if}
-						{#if data.lead.pipeline_stage !== 'WON' && data.lead.pipeline_stage !== 'LOST'}
-							<details class="lost-panel">
-								<summary>Close enquiry</summary>
-								<p class="lost-panel-description">
-									Use this when the customer is not going ahead. Choose a reason so we know what
-									happened.
-								</p>
-								<form method="POST" action="?/lost" class="stack-form">
-									<input type="hidden" name="lock_version" value={data.lead.lock_version} />
-									<Select
-										id="lost_reason_id"
-										name="lost_reason_id"
-										label="Why is it not proceeding?"
-										required
-									>
-										<option value="">Select a reason</option>
-										{#each data.lostReasons as reason (reason.id)}<option value={reason.id}
-												>{reason.label}</option
-											>{/each}
-									</Select>
-									<Textarea
-										id="lost_notes"
-										name="lost_notes"
-										label="Extra notes (optional)"
-										rows={3}
-									/>
-									<Button type="submit" variant="danger">Close enquiry</Button>
-								</form>
-							</details>
-						{/if}
-					{:else}
-						<p class="read-only-note">
-							You can view this enquiry, but you do not have permission to change it.
-						</p>
-					{/if}
-				</div>
 			</Card>
 		</div>
 
@@ -253,72 +252,6 @@
 		{/if}
 	</div>
 
-	{#if canMutate && data.lead.pipeline_stage === 'PROPOSAL' && data.quotes.length === 0}
-		<Card class="quote-create-card">
-			<SectionHeader title="Create a simple quote" description="Totals are calculated for you." />
-			<div class="quote-builder-option">
-				<SectionHeader
-					title="Recommended: Quote Builder"
-					description="Search active catalogue Products and combine multiple or custom lines."
-				/>
-				<a
-					class="ui-button ui-button--primary ui-button--md"
-					href={resolve(`/quotes/new?lead_id=${data.lead.id}`)}>Open Quote Builder</a
-				>
-			</div>
-			<div class="quick-custom-option">
-				<SectionHeader
-					title="Quick custom quote"
-					description="Use this short form for one custom line without opening the catalogue."
-				/>
-				<form method="POST" action="?/createQuote" class="quote-form">
-					<Input
-						id="subject"
-						name="subject"
-						label="Subject"
-						value="Quote for your enquiry"
-						required
-					/>
-					<Input id="item_name" name="item_name" label="Line item" value="Services" required />
-					<div class="form-row">
-						<Input
-							id="quantity"
-							name="quantity"
-							label="Quantity"
-							type="number"
-							min="0.01"
-							step="0.01"
-							value="1"
-							required
-						/>
-						<Input
-							id="unit_price"
-							name="unit_price"
-							label="Unit price (ZAR)"
-							type="number"
-							min="0"
-							step="0.01"
-							value="0"
-							required
-						/>
-						<Input
-							id="tax_rate"
-							name="tax_rate"
-							label="Tax rate (%)"
-							type="number"
-							min="0"
-							max="100"
-							step="0.01"
-							value="0"
-							required
-						/>
-					</div>
-					<Button type="submit">Create quote</Button>
-				</form>
-			</div>
-		</Card>
-	{/if}
-
 	<div id="quotes" class="anchor-section">
 		<Card>
 			<SectionHeader title="Quotes" description="Add prices and send a quote to the customer." />
@@ -337,19 +270,6 @@
 									{money(quote.total)} · {quoteStatusLabel(quote.status)}</span
 								>
 							</div>
-							{#if quote.status === 'ready' && canMutate}
-								<form method="POST" action="?/sendQuote">
-									<input type="hidden" name="quote_id" value={quote.id} /><input
-										type="hidden"
-										name="lock_version"
-										value={quote.lock_version}
-									/><Button type="submit" size="sm">Send quote</Button>
-								</form>
-							{:else if quote.status === 'sent'}
-								<Badge tone="success">Submitted</Badge>
-							{:else if quote.status === 'ready'}
-								<span class="muted">Read-only</span>
-							{/if}
 						</div>
 					{/each}
 				</div>
@@ -357,102 +277,42 @@
 		</Card>
 	</div>
 
-	<Card class="management-card">
-		<SectionHeader
-			title="Responsibility and follow-up"
-			description="Choose who is responsible and whether anyone needs to respond."
-		/>
-		<div class="management-grid">
-			{#if canMutate}
-				<form method="POST" action="?/assign" class="stack-form">
-					<input type="hidden" name="lock_version" value={data.lead.lock_version} />
-					<Select
-						id="assigned_to"
-						name="assigned_to"
-						label="Person responsible"
-						value={data.lead.assigned_to ?? ''}
-					>
-						<option value="">Unassigned</option>
-						{#each data.staff as member (member.id)}
-							<option value={member.id}>{member.full_name || member.email} · {member.role}</option>
-						{/each}
-					</Select>
-					<Button type="submit" size="sm">Save</Button>
-				</form>
-				{#if data.lead.pipeline_stage !== 'WON' && data.lead.pipeline_stage !== 'LOST'}
-					<form method="POST" action="?/setAttention" class="stack-form">
-						<input type="hidden" name="lock_version" value={data.lead.lock_version} />
-						<Select
-							id="attention_state"
-							name="attention_state"
-							label="Follow-up status"
-							value={data.lead.attention_state}
-						>
-							<option value="none">No follow-up needed</option>
-							<option value="waiting_on_client">Waiting for customer</option>
-							<option value="waiting_on_us">We need to respond</option>
-						</Select>
-						<Button type="submit" size="sm">Save</Button>
-					</form>
-					{#if data.lead.paused_at}
-						<form method="POST" action="?/resume" class="stack-form">
-							<input type="hidden" name="lock_version" value={data.lead.lock_version} />
-							<p class="muted-copy">
-								On hold: {data.lead.pause_reason}
-								{#if data.lead.resume_at}
-									· continues {new Date(data.lead.resume_at).toLocaleString('en-ZA')}{/if}
-							</p>
-							<Button type="submit" size="sm">Continue enquiry</Button>
-						</form>
-					{:else}
-						<form method="POST" action="?/pause" class="stack-form">
-							<input type="hidden" name="lock_version" value={data.lead.lock_version} />
-							<Textarea
-								id="pause_reason"
-								name="pause_reason"
-								label="Why is it on hold?"
-								rows={2}
-								required
-							/>
-							<Input
-								id="resume_at"
-								name="resume_at"
-								label="Continue on (optional)"
-								type="datetime-local"
-							/>
-							<Button type="submit" size="sm">Put enquiry on hold</Button>
-						</form>
-					{/if}
-				{/if}
-				{#if data.lead.pipeline_stage === 'LOST' && (data.profile.role === 'owner' || data.profile.role === 'admin')}
-					<form method="POST" action="?/reopen" class="stack-form reopen-form">
-						<input type="hidden" name="lock_version" value={data.lead.lock_version} />
-						<Textarea
-							id="reopen_reason"
-							name="reopen_reason"
-							label="Why are you reopening it?"
-							rows={2}
-							required
-						/>
-						<Button type="submit" size="sm">Reopen enquiry</Button>
-					</form>
-				{/if}
-			{:else}
-				<p class="read-only-note">
-					You can view this enquiry, but you do not have permission to change it.
-				</p>
-			{/if}
-		</div>
-	</Card>
-
 	<div class="lower-grid">
-		<div id="tasks" class="anchor-section">
+		<div id="follow-ups" class="anchor-section">
 			<Card>
 				<SectionHeader
 					title="Follow-up actions"
 					description="Keep track of what needs to happen next."
 				/>
-				{#if data.tasks.length === 0}<p class="muted">No tasks yet.</p>{:else}<ul
+				{#if canMutate}
+					<form method="POST" action="?/followUp" class="stack-form follow-up-create">
+						<Input
+							id="enquiry-follow-up-title"
+							name="title"
+							label="What needs to happen?"
+							required
+						/>
+						<Select id="enquiry-follow-up-type" name="type" label="Action type" value="follow_up">
+							<option value="follow_up">Follow up</option>
+							<option value="call_client">Call customer</option>
+							<option value="review_lead">Review enquiry</option>
+							<option value="custom">Other follow-up</option>
+						</Select>
+						<Input
+							id="enquiry-follow-up-due"
+							name="due_at"
+							label="Due date"
+							type="datetime-local"
+							hint={dateTimeHint}
+						/>
+						<Input id="enquiry-follow-up-notes" name="description" label="Notes (optional)" />
+						<div class="follow-up-actions">
+							<Button type="submit" size="sm">Add follow-up</Button>
+							<a class="muted-link" href={resolve('/tasks')}>Open all follow-ups</a>
+						</div>
+					</form>
+				{/if}
+				{#if data.tasks.length === 0}<p class="muted">No follow-ups yet.</p>{:else}<ul
 						class="plain-list"
 					>
 						{#each data.tasks as task (task.id)}<li>
@@ -465,6 +325,87 @@
 					</ul>{/if}
 			</Card>
 		</div>
+		<details class="management-disclosure">
+			<summary>Responsibility and other actions</summary><Card class="management-card">
+				<SectionHeader
+					title="Responsibility and follow-up"
+					description="Choose who is responsible and whether anyone needs to respond."
+				/>
+				<div class="management-grid">
+					{#if canMutate}
+						<form method="POST" action="?/assign" class="stack-form">
+							<input type="hidden" name="lock_version" value={data.lead.lock_version} />
+							<Select
+								id="assigned_to"
+								name="assigned_to"
+								label="Person responsible"
+								value={data.lead.assigned_to ?? ''}
+							>
+								<option value="">Unassigned</option>
+								{#each data.staff as member (member.id)}
+									<option value={member.id}
+										>{member.full_name || member.email} · {member.role}</option
+									>
+								{/each}
+							</Select>
+							<Button type="submit" size="sm">Save</Button>
+						</form>
+						{#if data.lead.pipeline_stage !== 'WON' && data.lead.pipeline_stage !== 'LOST'}
+							<form method="POST" action="?/setAttention" class="stack-form">
+								<input type="hidden" name="lock_version" value={data.lead.lock_version} />
+								<Select
+									id="attention_state"
+									name="attention_state"
+									label="Follow-up status"
+									value={data.lead.attention_state}
+								>
+									<option value="none">No follow-up needed</option>
+									<option value="waiting_on_client">Waiting for customer</option>
+									<option value="waiting_on_us">We need to respond</option>
+								</Select>
+								<Button type="submit" size="sm">Save</Button>
+							</form>
+							{#if !data.lead.paused_at}
+								<form method="POST" action="?/pause" class="stack-form">
+									<input type="hidden" name="lock_version" value={data.lead.lock_version} />
+									<Textarea
+										id="pause_reason"
+										name="pause_reason"
+										label="Why is it on hold?"
+										rows={2}
+										required
+									/>
+									<Input
+										id="resume_at"
+										name="resume_at"
+										label="Continue on (optional)"
+										type="datetime-local"
+									/>
+									<Button type="submit" size="sm">Put enquiry on hold</Button>
+								</form>
+							{/if}
+						{/if}
+						{#if data.lead.pipeline_stage === 'LOST' && (data.profile.role === 'owner' || data.profile.role === 'admin')}
+							<form method="POST" action="?/reopen" class="stack-form reopen-form">
+								<input type="hidden" name="lock_version" value={data.lead.lock_version} />
+								<Textarea
+									id="reopen_reason"
+									name="reopen_reason"
+									label="Why are you reopening it?"
+									rows={2}
+									required
+								/>
+								<Button type="submit" size="sm">Reopen enquiry</Button>
+							</form>
+						{/if}
+					{:else}
+						<p class="read-only-note">
+							You can view this enquiry, but you do not have permission to change it.
+						</p>
+					{/if}
+				</div>
+			</Card>
+		</details>
 		<div id="activity" class="anchor-section">
 			<Card>
 				<SectionHeader title="History" description="See what has happened with this enquiry." />
@@ -482,9 +423,43 @@
 			</Card>
 		</div>
 	</div>
+	{#if canMutate}
+		{#if data.lead.pipeline_stage !== 'WON' && data.lead.pipeline_stage !== 'LOST'}
+			<details class="lost-panel">
+				<summary>Close enquiry</summary>
+				<p class="lost-panel-description">
+					Use this when the customer is not going ahead. Choose a reason so we know what happened.
+				</p>
+				<form method="POST" action="?/lost" class="stack-form">
+					<input type="hidden" name="lock_version" value={data.lead.lock_version} />
+					<Select
+						id="lost_reason_id"
+						name="lost_reason_id"
+						label="Why is it not proceeding?"
+						required
+					>
+						<option value="">Select a reason</option>
+						{#each data.lostReasons as reason (reason.id)}<option value={reason.id}
+								>{reason.label}</option
+							>{/each}
+					</Select>
+					<Textarea id="lost_notes" name="lost_notes" label="Extra notes (optional)" rows={3} />
+					<Button type="submit" variant="danger">Close enquiry</Button>
+				</form>
+			</details>
+		{/if}
+	{/if}
 </AppShell>
 
 <style>
+	.next-step {
+		margin-bottom: var(--space-lg);
+	}
+	.management-disclosure > summary {
+		cursor: pointer;
+		padding: var(--space-md) 0;
+		font-weight: var(--font-weight-semibold);
+	}
 	.back-link {
 		display: inline-block;
 		margin-bottom: var(--space-md);
@@ -518,7 +493,7 @@
 	.detail-grid,
 	.lower-grid {
 		display: grid;
-		grid-template-columns: repeat(2, minmax(0, 1fr));
+		grid-template-columns: 1fr;
 		gap: var(--space-lg);
 	}
 	.detail-grid {
@@ -671,6 +646,21 @@
 	.success-note,
 	.muted {
 		margin: 0;
+		color: var(--color-text-muted);
+		font-size: var(--font-size-sm);
+	}
+	.follow-up-create {
+		margin-bottom: var(--space-lg);
+		padding-bottom: var(--space-lg);
+		border-bottom: 1px solid var(--color-border-subtle);
+	}
+	.follow-up-actions {
+		display: flex;
+		align-items: center;
+		flex-wrap: wrap;
+		gap: var(--space-md);
+	}
+	.muted-link {
 		color: var(--color-text-muted);
 		font-size: var(--font-size-sm);
 	}

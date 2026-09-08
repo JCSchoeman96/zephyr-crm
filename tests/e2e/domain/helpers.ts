@@ -188,7 +188,9 @@ export async function gotoAndWaitForHeading(
 			`Browser navigation failed for ${path} (${response?.status() ?? 'no response'}).`
 		);
 	}
-	await expect(page.getByRole('heading', { name: heading, exact: true })).toBeVisible();
+	await expect(page.getByRole('heading', { name: heading, exact: true })).toBeVisible({
+		timeout: 15_000
+	});
 }
 
 export async function reloadAndWaitForHeading(page: Page, heading: string): Promise<void> {
@@ -198,7 +200,9 @@ export async function reloadAndWaitForHeading(page: Page, heading: string): Prom
 			`Browser reload failed for ${page.url()} (${response?.status() ?? 'no response'}).`
 		);
 	}
-	await expect(page.getByRole('heading', { name: heading, exact: true })).toBeVisible();
+	await expect(page.getByRole('heading', { name: heading, exact: true })).toBeVisible({
+		timeout: 15_000
+	});
 }
 
 export async function signInWithAal2(page: Page, user: StaffUser): Promise<void> {

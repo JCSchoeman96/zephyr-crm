@@ -14,7 +14,9 @@
 	import RealtimeStatus from '$lib/realtime/RealtimeStatus.svelte';
 
 	let { data }: { data: PageData } = $props();
-	const hasFilters = $derived(Boolean(data.filters.q || data.filters.status));
+	const hasFilters = $derived(
+		Boolean(data.filters.q || data.filters.status || data.filters.expiring)
+	);
 
 	function quoteNumber(quote: PageData['quotes'][number]) {
 		return quote.quote_number ?? `#${quote.base_quote_number}`;
@@ -45,6 +47,7 @@
 			params.push(`${encodeURIComponent(key)}=${encodeURIComponent(String(value))}`);
 		if (data.filters.q) add('q', data.filters.q);
 		if (data.filters.status) add('status', data.filters.status);
+		if (data.filters.expiring) add('expiring', 'soon');
 		add('page', page);
 		return `?${params.join('&')}`;
 	}
@@ -69,6 +72,8 @@
 	{#if navigating.to}<LoadingState message="Loading quotes…" />{/if}
 	<Card class="filters-card">
 		<form method="GET" class="filters-form" aria-label="Filter quotes">
+			{#if data.filters.expiring}<input type="hidden" name="expiring" value="soon" />
+				<p>Sent quotes expiring from today through the next seven days.</p>{/if}
 			<Input
 				id="quote-search"
 				name="q"

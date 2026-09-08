@@ -3,6 +3,8 @@ import type { Actions, PageServerLoad } from './$types';
 import { sendQuote } from '$lib/server/quote-actions';
 import { decimalValue } from '$lib/server/quote-form';
 import { actionFailureDetails, logActionFailure } from '$lib/server/action-errors';
+import { loadTrustedClientConfiguration } from '$lib/server/client-config';
+import { localDateTimeToIso } from '$lib/time/zoned-datetime';
 import { requireActiveStaff } from '$lib/server/require-auth';
 
 function actionFailure(errorValue: unknown, fallback = 'Could not complete Lead action') {
@@ -21,6 +23,13 @@ function formText(formData: FormData, name: string) {
 	return String(formData.get(name) ?? '').trim();
 }
 
+function formDateTime(formData: FormData, name: string) {
+	const value = formText(formData, name);
+	if (!value) return undefined;
+	const { configuration } = loadTrustedClientConfiguration();
+	return localDateTimeToIso(value, configuration.locale.timezone);
+}
+
 export const load: PageServerLoad = async (event) => {
 	const { supabase, profile } = await requireActiveStaff(event);
 	const [
@@ -29,7 +38,9 @@ export const load: PageServerLoad = async (event) => {
 		taskResponse,
 		activityResponse,
 		reasonResponse,
-		staffResponse
+		staffResponse,
+		currentQuoteResponse,
+		fulfilmentResponse
 	] = await Promise.all([
 		supabase.from('leads').select('*').eq('id', event.params.id).maybeSingle(),
 		supabase
@@ -57,7 +68,24 @@ export const load: PageServerLoad = async (event) => {
 			.eq('status', 'active')
 			.in('role', ['owner', 'admin', 'sales'])
 			.order('full_name')
-			.limit(100)
+			.limit(100),
+		supabase
+			.from('quotes')
+			.select('id,status,subject,quote_number')
+			.eq('lead_id', event.params.id)
+			.in('status', ['draft', 'ready', 'sent', 'accepted'])
+			.order('created_at', { ascending: false })
+			.order('revision_number', { ascending: false })
+			.order('id')
+			.limit(1)
+			.maybeSingle(),
+		supabase
+			.from('fulfilment_cases')
+			.select('id,status')
+			.eq('lead_id', event.params.id)
+			.order('created_at', { ascending: false })
+			.order('id')
+			.limit(20)
 	]);
 	if (leadResponse.error) throw error(500, 'Could not load Lead details');
 	if (!leadResponse.data) throw error(404, 'Lead not found');
@@ -66,12 +94,16 @@ export const load: PageServerLoad = async (event) => {
 		taskResponse.error ||
 		activityResponse.error ||
 		reasonResponse.error ||
-		staffResponse.error
+		staffResponse.error ||
+		currentQuoteResponse.error ||
+		fulfilmentResponse.error
 	) {
 		throw error(500, 'Could not load lead details');
 	}
 	return {
 		lead: leadResponse.data,
+		currentQuote: currentQuoteResponse.data,
+		fulfilments: fulfilmentResponse.data ?? [],
 		quotes: quoteResponse.data ?? [],
 		tasks: taskResponse.data ?? [],
 		activities: activityResponse.data ?? [],
@@ -241,5 +273,28 @@ export const actions: Actions = {
 			return actionFailure(actionError, 'Could not reopen Lead');
 		}
 		throw redirect(303, `/leads/${event.params.id}`);
+	},
+	followUp: async (event) => {
+		const { supabase, profile } = await requireActiveStaff(event);
+		if (profile.role === 'viewer') return fail(403, { message: 'Viewer access is read-only.' });
+		const form = await event.request.formData();
+		try {
+			const title = formText(form, 'title');
+			if (!title) throw new Error('A follow-up title is required');
+			const dueAt = formDateTime(form, 'due_at');
+			const assignedTo = formText(form, 'assigned_to');
+			const response = await supabase.rpc('create_task', {
+				p_lead_id: event.params.id,
+				p_type: formText(form, 'type') || 'follow_up',
+				p_title: title,
+				p_description: formText(form, 'description') || undefined,
+				...(dueAt ? { p_due_at: dueAt } : {}),
+				...(assignedTo ? { p_assigned_to: assignedTo } : {})
+			});
+			if (response.error) return actionFailure(response.error, 'Could not create follow-up');
+		} catch (actionError) {
+			return actionFailure(actionError, 'Could not create follow-up');
+		}
+		throw redirect(303, `/leads/${event.params.id}#follow-ups`);
 	}
 };

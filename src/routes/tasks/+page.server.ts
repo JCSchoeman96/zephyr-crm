@@ -2,7 +2,7 @@ import { fail, redirect } from '@sveltejs/kit';
 import type { Actions, PageServerLoad } from './$types';
 import { actionFailureDetails, logActionFailure } from '$lib/server/action-errors';
 import { loadTrustedClientConfiguration } from '$lib/server/client-config';
-import { localDateTimeToIso } from '$lib/time/zoned-datetime';
+import { localCalendarDayBounds, localDateTimeToIso } from '$lib/time/zoned-datetime';
 import { requireActiveStaff } from '$lib/server/require-auth';
 import { pageTaskRows, taskQueueLimit } from '$lib/server/task-queue';
 
@@ -31,6 +31,9 @@ function lockVersion(form: FormData) {
 	return value;
 }
 
+const contextTypes = ['lead', 'client', 'quote'] as const;
+const uuidPattern = /^[0-9a-f-]{36}$/i;
+
 export const load: PageServerLoad = async (event) => {
 	const { supabase, profile } = await requireActiveStaff(event);
 	const requestedStatus = event.url.searchParams.get('status');
@@ -39,7 +42,18 @@ export const load: PageServerLoad = async (event) => {
 			? requestedStatus
 			: 'open';
 	const overdue = event.url.searchParams.get('overdue') === 'true';
+	const dueToday = event.url.searchParams.get('due') === 'today';
 	const search = event.url.searchParams.get('search')?.trim().slice(0, 120) ?? '';
+	const requestedContextType = event.url.searchParams.get('context_type');
+	const requestedContextId = event.url.searchParams.get('context_id')?.trim() ?? '';
+	const preselect = {
+		contextType:
+			requestedContextType &&
+			contextTypes.includes(requestedContextType as (typeof contextTypes)[number])
+				? (requestedContextType as (typeof contextTypes)[number])
+				: '',
+		contextId: uuidPattern.test(requestedContextId) ? requestedContextId : ''
+	};
 	const requestedPage = Number(event.url.searchParams.get('page') ?? '1');
 	const page = Number.isInteger(requestedPage) && requestedPage > 0 ? requestedPage : 1;
 	const offset = (page - 1) * taskQueueLimit;
@@ -51,6 +65,11 @@ export const load: PageServerLoad = async (event) => {
 		.order('created_at', { ascending: false })
 		.order('id', { ascending: true });
 	if (overdue) taskQuery = taskQuery.eq('is_overdue', true);
+	if (dueToday) {
+		const { configuration } = loadTrustedClientConfiguration();
+		const dueDay = localCalendarDayBounds(configuration.locale.timezone);
+		taskQuery = taskQuery.gte('due_at', dueDay.startIso).lt('due_at', dueDay.endIso);
+	}
 	if (search) taskQuery = taskQuery.ilike('title', `%${search}%`);
 	taskQuery = taskQuery.range(offset, offset + taskQueueLimit);
 	const [tasksResponse, leadsResponse, clientsResponse, quotesResponse, staffResponse] =
@@ -130,7 +149,8 @@ export const load: PageServerLoad = async (event) => {
 		clients: mergeById(clientsResponse.data ?? [], taskClientsResponse.data ?? []),
 		quotes: mergeById(quotesResponse.data ?? [], taskQuotesResponse.data ?? []),
 		staff: staffResponse.data ?? [],
-		filters: { status, overdue, search },
+		filters: { status, overdue, dueToday, search },
+		preselect,
 		pagination: { page, hasMore: taskPage.hasMore }
 	};
 };

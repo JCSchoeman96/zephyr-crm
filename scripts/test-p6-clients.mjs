@@ -577,20 +577,20 @@ async function testClientUi(individual, company, sales) {
 	const list = await appPage('/clients');
 	assert(
 		list.includes('Grace Hopper') && list.includes('Orbital Works'),
-		'Client list does not render converted Clients'
+		'Customer list does not render converted Customers'
 	);
 	assert(
-		list.includes('Source enquiry'),
-		'Client list does not expose source enquiry history links'
+		!list.includes('Source enquiry'),
+		'Customer list should demote source-enquiry provenance to detail'
 	);
 	const detail = await appPage(`/clients/${individual.result.client_id}`);
 	assert(
 		detail.includes('Grace Hopper') && detail.includes('P6 historical activity'),
-		'Client detail does not render identity/history'
+		'Customer detail does not render identity/history'
 	);
 	assert(
 		detail.includes('Primary') && detail.includes('Source enquiry'),
-		'Client detail does not render contact/source evidence'
+		'Customer detail does not render contact/source evidence'
 	);
 }
 

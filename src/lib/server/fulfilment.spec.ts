@@ -1,10 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { loadFulfilmentDetail, loadFulfilmentQueues } from './fulfilment';
+import { loadFulfilmentDetail, loadFulfilmentQueues, loadFulfilmentWorkspace } from './fulfilment';
 
 type Row = Record<string, unknown>;
 
 class QueryBuilder implements PromiseLike<{ data: Row[]; error: null }> {
 	private rows: Row[];
+	selectColumns = '*';
+	inFilters: Array<{ column: string; values: unknown[] }> = [];
 
 	constructor(
 		readonly table: string,
@@ -15,11 +17,13 @@ class QueryBuilder implements PromiseLike<{ data: Row[]; error: null }> {
 		audit.push(this);
 	}
 
-	select() {
+	select(columns?: string) {
+		this.selectColumns = columns ?? '*';
 		return this;
 	}
 
 	in(column: string, values: unknown[]) {
+		this.inFilters.push({ column, values: [...values] });
 		this.rows = this.rows.filter((row) => values.includes(row[column]));
 		return this;
 	}
@@ -73,20 +77,21 @@ class FakeSupabase {
 	}
 }
 
-function fulfilmentCase(id: string): Row {
+function fulfilmentCase(id: string, overrides: Partial<Row> = {}): Row {
 	return {
 		id,
 		fulfilment_number: 1,
-		client_id: 'client-1',
-		lead_id: 'lead-1',
-		accepted_quote_id: 'quote-1',
+		client_id: `client-${id}`,
+		lead_id: `lead-${id}`,
+		accepted_quote_id: `quote-${id}`,
 		status: 'open',
 		created_at: '2026-08-27T08:00:00Z',
 		updated_at: '2026-08-27T08:00:00Z',
 		completed_at: null,
 		cancelled_at: null,
 		cancel_reason: null,
-		lock_version: 1
+		lock_version: 1,
+		...overrides
 	};
 }
 
@@ -114,9 +119,9 @@ describe('Fulfilment server loading', () => {
 			],
 			payment_milestones: [],
 			tasks: [],
-			clients: [{ id: 'client-1' }],
-			leads: [{ id: 'lead-1' }],
-			quotes: [{ id: 'quote-1' }]
+			clients: [{ id: 'client-case-1' }],
+			leads: [{ id: 'lead-case-1' }],
+			quotes: [{ id: 'quote-case-1' }]
 		});
 
 		const queues = await loadFulfilmentQueues(client as never);
@@ -147,9 +152,9 @@ describe('Fulfilment server loading', () => {
 				created_at: '2026-08-27T08:00:00Z',
 				actor_id: null
 			})),
-			clients: [{ id: 'client-1' }],
-			leads: [{ id: 'lead-1' }],
-			quotes: [{ id: 'quote-1' }],
+			clients: [{ id: 'client-case-1' }],
+			leads: [{ id: 'lead-case-1' }],
+			quotes: [{ id: 'quote-case-1' }],
 			profiles: []
 		});
 
@@ -163,5 +168,77 @@ describe('Fulfilment server loading', () => {
 			tasks: false,
 			activities: true
 		});
+	});
+
+	it('classifies all queues then loads full context only for the selected view', async () => {
+		const client = new FakeSupabase({
+			fulfilment_cases: [
+				fulfilmentCase('case-plan'),
+				fulfilmentCase('case-install'),
+				fulfilmentCase('case-done', { status: 'completed', completed_at: '2026-08-28T08:00:00Z' })
+			],
+			fulfilment_steps: [
+				{
+					id: 'install-step',
+					fulfilment_case_id: 'case-install',
+					type: 'installation',
+					status: 'awaiting_schedule',
+					scheduled_for: null,
+					created_at: '2026-08-28T08:00:00Z'
+				}
+			],
+			payment_milestones: [],
+			tasks: [],
+			clients: [
+				{ id: 'client-case-plan' },
+				{ id: 'client-case-install' },
+				{ id: 'client-case-done' }
+			],
+			leads: [{ id: 'lead-case-plan' }, { id: 'lead-case-install' }, { id: 'lead-case-done' }],
+			quotes: [{ id: 'quote-case-plan' }, { id: 'quote-case-install' }, { id: 'quote-case-done' }]
+		});
+
+		const workspace = await loadFulfilmentWorkspace(
+			client as never,
+			new URLSearchParams('view=installations')
+		);
+
+		expect(workspace.view).toBe('installations');
+		expect(workspace.counts).toEqual({
+			needs_planning: 1,
+			installations: 1,
+			courier: 0,
+			pickup: 0,
+			payment_attention: 0,
+			completed: 1
+		});
+		expect(workspace.queue.rows).toHaveLength(1);
+		expect(workspace.queue.rows[0]?.case.id).toBe('case-install');
+		expect(workspace.queue.rows[0]?.nextWork).toBe('Schedule installation');
+
+		const stepSelects = client.queries
+			.filter((query) => query.table === 'fulfilment_steps')
+			.map((query) => query.selectColumns);
+		expect(stepSelects.some((columns) => columns === 'id,fulfilment_case_id,type,status')).toBe(
+			true
+		);
+		expect(stepSelects.some((columns) => columns.includes('scheduled_for'))).toBe(true);
+
+		const detailStepFilters = client.queries
+			.filter(
+				(query) =>
+					query.table === 'fulfilment_steps' && query.selectColumns.includes('scheduled_for')
+			)
+			.flatMap((query) =>
+				query.inFilters.filter((filter) => filter.column === 'fulfilment_case_id')
+			);
+		expect(detailStepFilters).toHaveLength(1);
+		expect(detailStepFilters[0]?.values).toEqual(['case-install']);
+
+		const clientFilters = client.queries
+			.filter((query) => query.table === 'clients')
+			.flatMap((query) => query.inFilters.filter((filter) => filter.column === 'id'));
+		expect(clientFilters).toHaveLength(1);
+		expect(clientFilters[0]?.values).toEqual(['client-case-install']);
 	});
 });

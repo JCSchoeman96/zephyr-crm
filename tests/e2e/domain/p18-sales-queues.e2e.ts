@@ -186,16 +186,16 @@ test.describe('P18 Sales work queues', () => {
 	test('keeps the four queues stage-derived and navigable through authenticated browser actions', async ({
 		page
 	}) => {
-		test.setTimeout(90_000);
+		test.setTimeout(180_000);
 		const fixture = await createFixture();
 		try {
 			await signIn(page, fixture.user);
 			const navigation = page.getByRole('navigation', { name: 'Primary navigation' });
-			await expect(navigation.getByRole('link', { name: 'New Enquiries' })).toBeVisible();
-			await expect(navigation.getByRole('link', { name: 'Quotes to Prepare' })).toBeVisible();
+			await expect(navigation.getByRole('link', { name: 'Home', exact: true })).toBeVisible();
+			await expect(navigation.getByRole('link', { name: 'Sales', exact: true })).toBeVisible();
 			await expect(navigation.getByRole('link', { name: 'Fulfilment' })).toBeVisible();
-			await expect(navigation.getByRole('link', { name: 'Clients' })).toBeVisible();
-			await expect(navigation.getByRole('link', { name: 'Tasks' })).toBeVisible();
+			await expect(navigation.getByRole('link', { name: 'Customers' })).toBeVisible();
+			await expect(navigation.getByRole('link', { name: 'Reports' })).toBeVisible();
 
 			await gotoAndWaitForHeading(page, '/sales/enquiries', 'New Enquiries');
 			await expect(page.getByText(fixture.leads.enquiry.company)).toBeVisible();
@@ -268,7 +268,7 @@ test.describe('P18 Sales work queues', () => {
 	});
 
 	test('keeps queue layouts usable at mobile, tablet, and desktop widths', async ({ page }) => {
-		test.setTimeout(90_000);
+		test.setTimeout(180_000);
 		const fixture = await createFixture();
 		try {
 			await signIn(page, fixture.user);

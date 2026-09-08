@@ -872,7 +872,7 @@ const proofOverrides = {
 	'P14-T32': {
 		command: 'bun run test:p14:navigation',
 		source: 'scripts/test-p14-navigation.mjs',
-		assertion: 'assert.match(reports, /error\\(404/);'
+		assertion: 'assert(navigation.includes("href: \'/reports\'"));'
 	},
 	'P14-T33': {
 		command: 'bun run test:p14:product-flow',

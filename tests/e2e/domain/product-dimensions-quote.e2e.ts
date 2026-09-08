@@ -356,7 +356,7 @@ test('Product dimensions stay independent from enquiry through quote presentatio
 
 		await dimensionLine(blindsLines, 1).getByLabel('Width (required)').fill('');
 		await saveDraft(page);
-		await page.getByRole('button', { name: 'Mark ready', exact: true }).click();
+		await page.getByRole('button', { name: 'Review quote', exact: true }).click();
 		await expect(
 			page
 				.getByText('A ready Quote requires all required Product dimensions', { exact: true })
@@ -425,7 +425,7 @@ test('Product dimensions stay independent from enquiry through quote presentatio
 		);
 
 		const readyNavigation = page.waitForNavigation({ waitUntil: 'networkidle' });
-		await page.getByRole('button', { name: 'Mark ready', exact: true }).click();
+		await page.getByRole('button', { name: 'Review quote', exact: true }).click();
 		await readyNavigation;
 		const readyQuotes = (await readQuotesForLead(leadId, owner)) as Array<QuoteFixture>;
 		const readyQuote = readyQuotes.find((quote) => quote.id === draft.quote_id);

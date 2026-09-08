@@ -94,12 +94,12 @@ export const fulfilmentQueueDefinitions: Record<FulfilmentQueueKey, FulfilmentQu
 		description: 'Installation work awaiting a date or already scheduled.'
 	},
 	courier: {
-		title: 'Courier',
-		description: 'Courier work awaiting dispatch, in transit, or delivered.'
+		title: 'Deliveries',
+		description: 'Delivery work awaiting dispatch, in transit, or delivered.'
 	},
 	pickup: {
-		title: 'Pickup',
-		description: 'Pickup work being prepared or ready for collection.'
+		title: 'Collections',
+		description: 'Collection work being prepared or ready for collection.'
 	},
 	payment_attention: {
 		title: 'Payment attention',
@@ -107,7 +107,7 @@ export const fulfilmentQueueDefinitions: Record<FulfilmentQueueKey, FulfilmentQu
 	},
 	completed: {
 		title: 'Completed',
-		description: 'Fulfilment cases completed by the trusted completion action.'
+		description: 'Accepted sales that have finished fulfilment.'
 	}
 };
 

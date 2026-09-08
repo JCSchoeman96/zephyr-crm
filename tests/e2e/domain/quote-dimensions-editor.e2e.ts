@@ -225,7 +225,7 @@ test('quote editor carries enquiry dimensions through a draft and exposes readin
 		await expect(reloadedDimensionalLine.getByLabel('Width (required)')).toHaveValue('');
 		await expect(reloadedDimensionalLine.getByLabel('Full quoted price')).toHaveValue('1400');
 
-		await page.getByRole('button', { name: 'Mark ready', exact: true }).click();
+		await page.getByRole('button', { name: 'Review quote', exact: true }).click();
 		await expect(
 			page
 				.locator('.ui-state__message')

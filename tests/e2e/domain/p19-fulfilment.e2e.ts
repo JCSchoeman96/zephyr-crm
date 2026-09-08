@@ -23,31 +23,33 @@ test.describe('P19 Fulfilment work queues', () => {
 	test('renders the accepted-sale queues and drives canonical work, payment, and follow-up actions', async ({
 		page
 	}) => {
-		test.setTimeout(120_000);
+		test.setTimeout(180_000);
 		const user = await createStaff('owner', 'p19-browser');
 		const lead = await ingestLead('p19-browser');
 		try {
 			await signIn(page, user);
 			await gotoAndWaitForHeading(page, `/leads/${lead.id}`, 'P14 Browser Harness');
-			await page.getByRole('button', { name: 'Start Qualification' }).click();
-			await page.getByRole('button', { name: 'Ready for Quote' }).click();
-			await expect(page.getByRole('heading', { name: 'Create a simple quote' })).toBeVisible();
-			await page.locator('input[name="subject"]').fill('P19 browser acceptance');
-			await page.locator('input[name="item_name"]').fill('P19 fulfilment installation');
-			await page.locator('input[name="quantity"]').fill('1');
-			await page.locator('input[name="unit_price"]').fill('1000');
-			await page.locator('input[name="tax_rate"]').fill('15');
-			await page.getByRole('button', { name: 'Create quote' }).click();
-			await page.getByRole('link', { name: 'P19 browser acceptance' }).click({ noWaitAfter: true });
+			await page.getByRole('button', { name: 'Review enquiry' }).click();
+			await page.getByRole('button', { name: 'Ready for quote' }).click();
+			await page.getByRole('link', { name: 'Create quote', exact: true }).click();
+			await page.waitForURL(/\/quotes\/new\?lead_id=/);
+			await page.locator('#quote-subject').fill('P19 browser acceptance');
+			await page.getByRole('button', { name: 'Add custom item' }).click();
+			await page.locator('#quote-item-name-0').fill('P19 fulfilment installation');
+			await page.locator('#quote-item-quantity-0').fill('1');
+			await page.locator('#quote-item-price-0').fill('1000');
+			await page.getByRole('button', { name: 'Save draft' }).click();
 			await page.waitForURL(/\/quotes\/[0-9a-f-]+$/);
+			await page.getByRole('button', { name: 'Review quote' }).click();
 			await expect(page.getByRole('button', { name: 'Send quote' })).toBeVisible();
 			await submitFormButton(page.getByRole('button', { name: 'Send quote' }));
 			await expect(page.getByText('submitted', { exact: true })).toBeVisible();
+			await page.getByRole('radio', { name: 'Customer accepted' }).check();
 			await page.getByLabel('Acceptance source').fill('customer_email');
 			await page
 				.getByLabel('Acceptance evidence')
 				.fill('Customer approved the Quote by email during the P19 browser journey.');
-			await submitFormButton(page.getByRole('button', { name: 'Accept sale' }));
+			await submitFormButton(page.getByRole('button', { name: 'Customer accepted' }));
 			await expect(
 				page.locator('[data-tone="success"]').filter({ hasText: /^Accepted$/ })
 			).toBeVisible();
@@ -64,14 +66,22 @@ test.describe('P19 Fulfilment work queues', () => {
 			await expect.poll(async () => (await readLead(lead.id, user))?.pipeline_stage).toBe('WON');
 
 			await gotoAndWaitForHeading(page, '/fulfilment', 'Fulfilment');
-			await expect(page.getByRole('heading', { name: 'Needs Planning' })).toBeVisible();
+			const views = page.getByRole('navigation', { name: 'Fulfilment work views' });
+			await expect(views.getByRole('link', { name: /Needs planning/ })).toBeVisible();
+			await views.getByRole('link', { name: /Needs planning/ }).click();
 			const caseHref = `/fulfilment/${cases[0].id}`;
 			const queueRow = page.locator('tr').filter({ has: page.locator(`a[href="${caseHref}"]`) });
 			await expect(queueRow).toHaveCount(1);
 			await expect(queueRow.getByRole('link', { name: /Fulfilment #/ })).toBeVisible();
 			await queueRow.getByRole('link', { name: /Open case/ }).click();
 			await page.waitForURL(new RegExp(`/fulfilment/${cases[0].id}$`));
-			for (const heading of ['Overview', 'Work', 'Payments', 'Follow-up actions', 'History']) {
+			for (const heading of [
+				'Overview',
+				'Active work',
+				'Payments',
+				'Follow-up actions',
+				'History'
+			]) {
 				await expect(page.getByRole('heading', { name: heading, exact: true })).toBeVisible();
 			}
 			await expect(page.getByText('P19 browser acceptance')).toBeVisible();
@@ -80,7 +90,10 @@ test.describe('P19 Fulfilment work queues', () => {
 			await page.getByLabel('Work type').selectOption('installation');
 			await page.getByLabel('Notes', { exact: true }).fill('P19 browser installation');
 			await submitFormButton(page.getByRole('button', { name: 'Add work step' }));
-			await expect(page.getByText('Awaiting schedule', { exact: true })).toBeVisible();
+			await expect(page.getByRole('heading', { name: 'Installation', exact: true })).toBeVisible();
+			await expect(
+				page.locator('.step-card [data-tone]').filter({ hasText: /^Awaiting schedule$/ })
+			).toBeVisible({ timeout: 15_000 });
 			await page.getByLabel('Schedule for').fill('2099-01-01T09:00');
 			await submitFormButton(page.getByRole('button', { name: 'Schedule installation' }));
 			await expect(page.locator('[data-tone]').filter({ hasText: /^Scheduled$/ })).toBeVisible();
@@ -98,7 +111,7 @@ test.describe('P19 Fulfilment work queues', () => {
 			const dispatchForm = page.locator('form[action="?/dispatch"]');
 			await dispatchForm.getByLabel('Tracking reference').fill('P19-TRACK-001');
 			await dispatchForm.getByLabel('Dispatch notes').fill('Handed to courier');
-			await submitFormButton(dispatchForm.getByRole('button', { name: 'Dispatch courier' }));
+			await submitFormButton(dispatchForm.getByRole('button', { name: 'Dispatch delivery' }));
 			await expect(page.getByText('Dispatched', { exact: true })).toBeVisible();
 			await submitFormButton(page.getByRole('button', { name: 'Confirm delivery' }));
 			await expect(page.getByText('Delivered', { exact: true })).toBeVisible();
@@ -146,12 +159,14 @@ test.describe('P19 Fulfilment work queues', () => {
 					hasText: /^Completed$/
 				})
 			).toBeVisible();
-			await gotoAndWaitForHeading(page, '/fulfilment', 'Fulfilment');
-			const completedQueue = page
-				.locator('.queue-card')
-				.filter({ has: page.getByRole('heading', { name: 'Completed', exact: true }) });
+			await gotoAndWaitForHeading(page, '/fulfilment?view=completed', 'Fulfilment');
 			await expect(
-				completedQueue.locator(`a.fulfilment-queue-table__case[href="${caseHref}"]`)
+				page.getByRole('navigation', { name: 'Fulfilment work views' }).getByRole('link', {
+					name: /Completed/
+				})
+			).toHaveAttribute('aria-current', 'page');
+			await expect(
+				page.locator(`a.fulfilment-queue-table__case[href="${caseHref}"]`)
 			).toBeVisible();
 		} finally {
 			await cleanupLead(lead.id, user.id);

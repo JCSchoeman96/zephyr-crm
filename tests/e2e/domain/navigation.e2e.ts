@@ -19,9 +19,12 @@ test.describe('P14 navigation and capability truth', () => {
 						.getByRole('navigation', { name: 'Primary navigation' })
 						.getByRole('link')
 						.evaluateAll((anchors) => anchors.map((anchor) => (anchor as HTMLAnchorElement).href));
-					expect(links.some((href) => href.endsWith('/reports'))).toBe(false);
-					expect(links.some((href) => href.endsWith('/settings'))).toBe(false);
-					if (role !== 'owner') {
+					expect(links.some((href) => href.endsWith('/reports'))).toBe(true);
+					if (role === 'owner') {
+						expect(links.some((href) => href.endsWith('/settings'))).toBe(true);
+						expect(links.some((href) => href.endsWith('/operations'))).toBe(true);
+					} else {
+						expect(links.some((href) => href.endsWith('/settings'))).toBe(false);
 						expect(links.some((href) => href.endsWith('/operations'))).toBe(false);
 					}
 					for (const href of links) {
