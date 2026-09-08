@@ -94,6 +94,32 @@ export function localDateTimeToIso(value: string, timeZone: string) {
 	throw new Error(`The local time ${value} does not exist in ${timeZone}`);
 }
 
+function pad2(value: number) {
+	return `${value}`.padStart(2, '0');
+}
+
+function addGregorianDays(year: number, month: number, day: number, delta: number) {
+	const shifted = new Date(Date.UTC(year, month - 1, day + delta));
+	return {
+		year: shifted.getUTCFullYear(),
+		month: shifted.getUTCMonth() + 1,
+		day: shifted.getUTCDate()
+	};
+}
+
+/** Inclusive local-day start and exclusive next-local-day start as UTC ISO instants. */
+export function localCalendarDayBounds(timeZone: string, instant = new Date()) {
+	const local = partsAt(instant, timeZone);
+	const localDate = `${local.year}-${pad2(local.month)}-${pad2(local.day)}`;
+	const next = addGregorianDays(local.year, local.month, local.day, 1);
+	const nextDate = `${next.year}-${pad2(next.month)}-${pad2(next.day)}`;
+	return {
+		localDate,
+		startIso: localDateTimeToIso(`${localDate}T00:00:00`, timeZone),
+		endIso: localDateTimeToIso(`${nextDate}T00:00:00`, timeZone)
+	};
+}
+
 export function utcIsoToLocalDateTime(value: string, timeZone: string) {
 	const parts = partsAt(parseIso(value), timeZone);
 	return (

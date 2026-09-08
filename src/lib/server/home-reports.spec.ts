@@ -1,5 +1,7 @@
 import { createClient } from '@supabase/supabase-js';
 import { describe, expect, it } from 'vitest';
+import { defaultClientConfiguration } from '$lib/config/client-config';
+import { localCalendarDayBounds } from '$lib/time/zoned-datetime';
 import { load as loadHome } from '../../routes/+page.server';
 import { load as loadReports } from '../../routes/reports/+page.server';
 import { load as loadTasks } from '../../routes/tasks/+page.server';
@@ -42,12 +44,45 @@ describe('Home and Reports presentation boundary', () => {
 	it('opens only follow-ups due today from the Home link', async () => {
 		const { event, requests } = fixture();
 		event.url.searchParams.set('due', 'today');
+		const before = Date.now();
 		await loadTasks(event as never);
+		const after = Date.now();
 		const request = requests.find(({ url }) => url.pathname.endsWith('/task_work_queue'));
-		expect(request?.url.searchParams.getAll('due_at')).toEqual([
-			expect.stringMatching(/^gte\.\d{4}-\d{2}-\d{2}/),
-			expect.stringMatching(/^lt\.\d{4}-\d{2}-\d{2}/)
-		]);
+		const dueAt = request?.url.searchParams.getAll('due_at') ?? [];
+		expect(dueAt).toHaveLength(2);
+		const startIso = dueAt[0]!.slice(4);
+		const endIso = dueAt[1]!.slice(3);
+		const candidates = [before, after].map((ms) =>
+			localCalendarDayBounds(defaultClientConfiguration.locale.timezone, new Date(ms))
+		);
+		expect(
+			candidates.some((bounds) => bounds.startIso === startIso && bounds.endIso === endIso)
+		).toBe(true);
+		expect(startIso.endsWith('Z')).toBe(true);
+		expect(endIso.endsWith('Z')).toBe(true);
+	});
+
+	it('counts Home due-today work with configured timezone bounds', async () => {
+		const { event, requests } = fixture();
+		const before = Date.now();
+		await loadHome(event as never);
+		const after = Date.now();
+		const dueRequest = requests.find(
+			({ url, method }) =>
+				method === 'HEAD' &&
+				url.pathname.endsWith('/tasks') &&
+				url.searchParams.getAll('due_at').length === 2
+		);
+		const dueAt = dueRequest?.url.searchParams.getAll('due_at') ?? [];
+		expect(dueAt).toHaveLength(2);
+		const startIso = dueAt[0]!.slice(4);
+		const endIso = dueAt[1]!.slice(3);
+		const candidates = [before, after].map((ms) =>
+			localCalendarDayBounds(defaultClientConfiguration.locale.timezone, new Date(ms))
+		);
+		expect(
+			candidates.some((bounds) => bounds.startIso === startIso && bounds.endIso === endIso)
+		).toBe(true);
 	});
 
 	it('opens sent Quotes in the Home expiry window', async () => {

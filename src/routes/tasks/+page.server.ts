@@ -2,7 +2,7 @@ import { fail, redirect } from '@sveltejs/kit';
 import type { Actions, PageServerLoad } from './$types';
 import { actionFailureDetails, logActionFailure } from '$lib/server/action-errors';
 import { loadTrustedClientConfiguration } from '$lib/server/client-config';
-import { localDateTimeToIso } from '$lib/time/zoned-datetime';
+import { localCalendarDayBounds, localDateTimeToIso } from '$lib/time/zoned-datetime';
 import { requireActiveStaff } from '$lib/server/require-auth';
 import { pageTaskRows, taskQueueLimit } from '$lib/server/task-queue';
 
@@ -66,9 +66,9 @@ export const load: PageServerLoad = async (event) => {
 		.order('id', { ascending: true });
 	if (overdue) taskQuery = taskQuery.eq('is_overdue', true);
 	if (dueToday) {
-		const today = new Date().toISOString().slice(0, 10);
-		const tomorrow = new Date(Date.parse(today) + 86_400_000).toISOString();
-		taskQuery = taskQuery.gte('due_at', today).lt('due_at', tomorrow);
+		const { configuration } = loadTrustedClientConfiguration();
+		const dueDay = localCalendarDayBounds(configuration.locale.timezone);
+		taskQuery = taskQuery.gte('due_at', dueDay.startIso).lt('due_at', dueDay.endIso);
 	}
 	if (search) taskQuery = taskQuery.ilike('title', `%${search}%`);
 	taskQuery = taskQuery.range(offset, offset + taskQueueLimit);

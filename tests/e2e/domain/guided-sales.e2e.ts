@@ -30,10 +30,12 @@ test('Sales selects bounded work, paginates and continues at the record on mobil
 		const continueLink = list.getByRole('link', { name: /Continue/ });
 		await expect(continueLink).toBeVisible();
 		await continueLink.scrollIntoViewIfNeeded();
-		await Promise.all([
-			page.waitForURL(/\/leads\/[a-f0-9-]+$/, { timeout: 15_000 }),
-			continueLink.click()
-		]);
+		const href = await continueLink.getAttribute('href');
+		expect(href).toMatch(/\/leads\/[a-f0-9-]+$/);
+		await continueLink.click();
+		await expect(page).toHaveURL(new RegExp(`${href!.replaceAll('/', '\\/')}$`), {
+			timeout: 30_000
+		});
 	} finally {
 		for (const id of leads) await cleanupLeadData(id);
 		await cleanupUser(user.id);

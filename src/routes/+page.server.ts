@@ -1,12 +1,15 @@
 import { error, redirect } from '@sveltejs/kit';
 import type { Actions, PageServerLoad } from './$types';
+import { loadTrustedClientConfiguration } from '$lib/server/client-config';
 import { requireActiveStaff } from '$lib/server/require-auth';
+import { localCalendarDayBounds } from '$lib/time/zoned-datetime';
 
 export const load: PageServerLoad = async (event) => {
 	const { supabase, profile } = await requireActiveStaff(event);
 	const now = new Date();
+	const { configuration } = loadTrustedClientConfiguration();
+	const dueDay = localCalendarDayBounds(configuration.locale.timezone, now);
 	const today = now.toISOString().slice(0, 10);
-	const tomorrow = new Date(Date.parse(today) + 86_400_000).toISOString();
 	const expiryEnd = new Date(Date.parse(today) + 7 * 86_400_000).toISOString().slice(0, 10);
 	const activeStages = ['NEW', 'QUALIFICATION', 'PROPOSAL', 'DECISION'];
 	const count = { count: 'exact' as const, head: true };
@@ -22,8 +25,8 @@ export const load: PageServerLoad = async (event) => {
 				.from('tasks')
 				.select('id', count)
 				.eq('status', 'open')
-				.gte('due_at', today)
-				.lt('due_at', tomorrow),
+				.gte('due_at', dueDay.startIso)
+				.lt('due_at', dueDay.endIso),
 			supabase
 				.from('leads')
 				.select('id', count)

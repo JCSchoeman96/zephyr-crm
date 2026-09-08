@@ -35,6 +35,9 @@ const paymentSelect =
 	'id,fulfilment_case_id,type,status,requested_at,received_at,received_recorded_by,note,created_at,updated_at,lock_version';
 const taskSelect =
 	'id,fulfilment_case_id,lead_id,client_id,quote_id,type,title,description,assigned_to,due_at,status,lock_version,created_at,updated_at';
+const classificationStepSelect = 'id,fulfilment_case_id,type,status';
+const classificationPaymentSelect = 'id,fulfilment_case_id,type,status';
+const classificationTaskSelect = 'id,fulfilment_case_id,type,status';
 const clientSelect = 'id,client_number,display_name,company_name,email,phone,status';
 const leadSelect = 'id,lead_number,first_name,last_name,company,email,phone,pipeline_stage';
 const quoteSelect =
@@ -187,7 +190,12 @@ async function loadContext(
 
 async function loadRelations(
 	supabase: FulfilmentReadClient,
-	caseIds: string[]
+	caseIds: string[],
+	selects: { steps: string; payments: string; tasks: string } = {
+		steps: stepSelect,
+		payments: paymentSelect,
+		tasks: taskSelect
+	}
 ): Promise<{
 	steps: FulfilmentStep[];
 	payments: FulfilmentPayment[];
@@ -210,7 +218,7 @@ async function loadRelations(
 		loadPages<FulfilmentStep>((from, to) =>
 			supabase
 				.from('fulfilment_steps')
-				.select(stepSelect)
+				.select(selects.steps)
 				.in('fulfilment_case_id', relationIds)
 				.order('created_at', { ascending: true })
 				.order('id', { ascending: true })
@@ -219,7 +227,7 @@ async function loadRelations(
 		loadPages<FulfilmentPayment>((from, to) =>
 			supabase
 				.from('payment_milestones')
-				.select(paymentSelect)
+				.select(selects.payments)
 				.in('fulfilment_case_id', relationIds)
 				.order('type', { ascending: true })
 				.order('id', { ascending: true })
@@ -228,7 +236,7 @@ async function loadRelations(
 		loadPages<FulfilmentTask>((from, to) =>
 			supabase
 				.from('tasks')
-				.select(taskSelect)
+				.select(selects.tasks)
 				.in('fulfilment_case_id', relationIds)
 				.order('created_at', { ascending: false })
 				.order('id', { ascending: true })
@@ -240,6 +248,18 @@ async function loadRelations(
 		payments: payments as FulfilmentPayment[],
 		tasks: tasks as FulfilmentTask[]
 	};
+}
+
+async function loadBoundedCases(supabase: FulfilmentReadClient) {
+	const casesResponse = await supabase
+		.from('fulfilment_cases')
+		.select(caseSelect)
+		.in('status', ['open', 'completed'])
+		.order('updated_at', { ascending: false })
+		.order('id', { ascending: true })
+		.limit(fulfilmentLimits.cases);
+	if (casesResponse.error) throw error(500, 'Could not load Fulfilment queues');
+	return (casesResponse.data ?? []) as FulfilmentCase[];
 }
 
 function decorateQueues(
@@ -271,15 +291,7 @@ function decorateQueues(
 export async function loadFulfilmentQueues(
 	supabase: FulfilmentReadClient
 ): Promise<FulfilmentQueuesView> {
-	const casesResponse = await supabase
-		.from('fulfilment_cases')
-		.select(caseSelect)
-		.in('status', ['open', 'completed'])
-		.order('updated_at', { ascending: false })
-		.order('id', { ascending: true })
-		.limit(fulfilmentLimits.cases);
-	if (casesResponse.error) throw error(500, 'Could not load Fulfilment queues');
-	const cases = (casesResponse.data ?? []) as FulfilmentCase[];
+	const cases = await loadBoundedCases(supabase);
 	const [{ steps, payments, tasks }, context] = await Promise.all([
 		loadRelations(
 			supabase,
@@ -309,13 +321,53 @@ export async function loadFulfilmentWorkspace(
 	const view: FulfilmentQueueKey = fulfilmentQueueKeys.includes(requested as FulfilmentQueueKey)
 		? (requested as FulfilmentQueueKey)
 		: 'needs_planning';
-	const queues = await loadFulfilmentQueues(supabase);
+	const cases = await loadBoundedCases(supabase);
+	const classification = await loadRelations(
+		supabase,
+		cases.map((currentCase) => currentCase.id),
+		{
+			steps: classificationStepSelect,
+			payments: classificationPaymentSelect,
+			tasks: classificationTaskSelect
+		}
+	);
+	const classified = deriveFulfilmentQueues(
+		cases,
+		classification.steps,
+		classification.payments,
+		classification.tasks
+	);
+	const counts = Object.fromEntries(
+		fulfilmentQueueKeys.map((key) => [key, classified[key].rows.length])
+	) as Record<FulfilmentQueueKey, number>;
+	const selectedCases = classified[view].rows.map((row) => row.case);
+	if (selectedCases.length === 0) {
+		return {
+			view,
+			counts,
+			queue: {
+				...classified[view],
+				rows: []
+			}
+		};
+	}
+	const [{ steps, payments, tasks }, context] = await Promise.all([
+		loadRelations(
+			supabase,
+			selectedCases.map((currentCase) => currentCase.id)
+		),
+		loadContext(supabase, selectedCases)
+	]);
+	const selectedQueue = decorateQueues(
+		deriveFulfilmentQueues(selectedCases, steps, payments, tasks),
+		context.clients,
+		context.leads,
+		context.quotes
+	)[view];
 	return {
 		view,
-		counts: Object.fromEntries(
-			fulfilmentQueueKeys.map((key) => [key, queues[key].rows.length])
-		) as Record<FulfilmentQueueKey, number>,
-		queue: queues[view]
+		counts,
+		queue: selectedQueue
 	};
 }
 
