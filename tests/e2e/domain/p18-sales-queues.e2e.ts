@@ -249,7 +249,9 @@ test.describe('P18 Sales work queues', () => {
 				.getByRole('link', { name: 'Create quote' })
 				.click({ noWaitAfter: true });
 			await page.waitForURL(/\/quotes\/new\?lead_id=/);
-			await expect(page.getByLabel('Enquiry')).toHaveValue(fixture.leads.proposalNotStarted.id);
+			await expect(page.getByLabel('Enquiry', { exact: true })).toHaveValue(
+				fixture.leads.proposalNotStarted.id
+			);
 
 			await gotoAndWaitForHeading(page, '/sales/decisions', 'Awaiting Feedback');
 			await expect(page.getByText(fixture.leads.decisionCurrent.company)).toBeVisible();

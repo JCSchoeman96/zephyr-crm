@@ -140,8 +140,14 @@ test('Product-to-Quote snapshot remains customer-facing after Product mutation',
 			waitUntil: 'networkidle'
 		});
 		expect(quoteResponse?.status()).toBe(200);
-		await expect(page.getByText('Browser Snapshot Service', { exact: true })).toBeVisible();
-		await expect(page.getByLabel('Unit price').nth(1)).toHaveValue('125.5');
+		await expect(
+			page
+				.getByTestId('quote-document-preview')
+				.getByText('Browser Snapshot Service', { exact: true })
+		).toBeVisible();
+		const snapshotLine = page.locator('.line-item').filter({ hasText: 'Browser Snapshot Service' });
+		await snapshotLine.getByRole('button', { name: /Item 2 Browser Snapshot/ }).click();
+		await expect(snapshotLine.getByLabel('Unit price')).toHaveValue('125.5');
 		const initialBody = await page.locator('body').innerText();
 		expect(initialBody).not.toContain('Private Product note must never appear in the Quote');
 
@@ -156,9 +162,14 @@ test('Product-to-Quote snapshot remains customer-facing after Product mutation',
 			owner
 		);
 		await page.reload({ waitUntil: 'networkidle' });
-		await expect(page.getByText('Browser Snapshot Service', { exact: true })).toBeVisible();
-		await expect(page.getByLabel('Unit price').nth(1)).toHaveValue('125.5');
-		await expect(page.getByLabel('Unit price').nth(1)).not.toHaveValue('999.9999');
+		await expect(
+			page
+				.getByTestId('quote-document-preview')
+				.getByText('Browser Snapshot Service', { exact: true })
+		).toBeVisible();
+		await snapshotLine.getByRole('button', { name: /Item 2 Browser Snapshot/ }).click();
+		await expect(snapshotLine.getByLabel('Unit price')).toHaveValue('125.5');
+		await expect(snapshotLine.getByLabel('Unit price')).not.toHaveValue('999.9999');
 		const finalBody = await page.locator('body').innerText();
 		expect(finalBody).not.toContain('Private Product note must never appear in the Quote');
 	} finally {
