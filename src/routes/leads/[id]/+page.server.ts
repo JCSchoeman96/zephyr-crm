@@ -6,6 +6,7 @@ import { actionFailureDetails, logActionFailure } from '$lib/server/action-error
 import { loadTrustedClientConfiguration } from '$lib/server/client-config';
 import { localDateTimeToIso } from '$lib/time/zoned-datetime';
 import { requireActiveStaff } from '$lib/server/require-auth';
+import { parseDetailTab, type DetailTab } from '$lib/domain/leads/detail-tabs';
 
 function actionFailure(errorValue: unknown, fallback = 'Could not complete Lead action') {
 	const details = actionFailureDetails(errorValue, fallback);
@@ -30,8 +31,19 @@ function formDateTime(formData: FormData, name: string) {
 	return localDateTimeToIso(value, configuration.locale.timezone);
 }
 
+function taskId(formData: FormData) {
+	const value = formText(formData, 'task_id');
+	if (!/^[0-9a-f-]{36}$/i.test(value)) throw new Error('A valid Task ID is required');
+	return value;
+}
+
+function tabRedirect(leadId: string, tab: DetailTab) {
+	return `/leads/${leadId}?tab=${encodeURIComponent(tab)}`;
+}
+
 export const load: PageServerLoad = async (event) => {
 	const { supabase, profile } = await requireActiveStaff(event);
+	const activeTab = parseDetailTab(event.url.searchParams.get('tab'));
 	const [
 		leadResponse,
 		quoteResponse,
@@ -109,6 +121,7 @@ export const load: PageServerLoad = async (event) => {
 		activities: activityResponse.data ?? [],
 		lostReasons: reasonResponse.data ?? [],
 		staff: staffResponse.data ?? [],
+		activeTab,
 		profile
 	};
 };
@@ -128,7 +141,7 @@ export const actions: Actions = {
 		} catch (actionError) {
 			return actionFailure(actionError, 'Could not start Lead qualification');
 		}
-		throw redirect(303, `/leads/${event.params.id}`);
+		throw redirect(303, tabRedirect(event.params.id, 'overview'));
 	},
 	proposal: async (event) => {
 		const { supabase } = await requireActiveStaff(event);
@@ -144,7 +157,7 @@ export const actions: Actions = {
 		} catch (actionError) {
 			return actionFailure(actionError, 'Could not make Lead ready for a Quote');
 		}
-		throw redirect(303, `/leads/${event.params.id}`);
+		throw redirect(303, tabRedirect(event.params.id, 'overview'));
 	},
 	createQuote: async (event) => {
 		const { supabase } = await requireActiveStaff(event);
@@ -166,7 +179,7 @@ export const actions: Actions = {
 		} catch (actionError) {
 			return actionFailure(actionError, 'Could not create Quote');
 		}
-		throw redirect(303, `/leads/${event.params.id}`);
+		throw redirect(303, tabRedirect(event.params.id, 'quotes'));
 	},
 	sendQuote: async (event) => {
 		const { supabase } = await requireActiveStaff(event);
@@ -181,7 +194,7 @@ export const actions: Actions = {
 		} catch (actionError) {
 			return actionFailure(actionError, 'Could not send Quote');
 		}
-		throw redirect(303, `/leads/${event.params.id}`);
+		throw redirect(303, tabRedirect(event.params.id, 'quotes'));
 	},
 	lost: async (event) => {
 		const { supabase } = await requireActiveStaff(event);
@@ -198,7 +211,7 @@ export const actions: Actions = {
 		} catch (actionError) {
 			return actionFailure(actionError, 'Could not mark Lead lost');
 		}
-		throw redirect(303, `/leads/${event.params.id}`);
+		throw redirect(303, tabRedirect(event.params.id, 'overview'));
 	},
 	setAttention: async (event) => {
 		const { supabase } = await requireActiveStaff(event);
@@ -213,7 +226,7 @@ export const actions: Actions = {
 		} catch (actionError) {
 			return actionFailure(actionError, 'Could not update Lead attention');
 		}
-		throw redirect(303, `/leads/${event.params.id}`);
+		throw redirect(303, tabRedirect(event.params.id, 'overview'));
 	},
 	pause: async (event) => {
 		const { supabase } = await requireActiveStaff(event);
@@ -229,7 +242,7 @@ export const actions: Actions = {
 		} catch (actionError) {
 			return actionFailure(actionError, 'Could not pause Lead');
 		}
-		throw redirect(303, `/leads/${event.params.id}`);
+		throw redirect(303, tabRedirect(event.params.id, 'overview'));
 	},
 	resume: async (event) => {
 		const { supabase } = await requireActiveStaff(event);
@@ -242,7 +255,7 @@ export const actions: Actions = {
 		} catch (actionError) {
 			return actionFailure(actionError, 'Could not resume Lead');
 		}
-		throw redirect(303, `/leads/${event.params.id}`);
+		throw redirect(303, tabRedirect(event.params.id, 'overview'));
 	},
 	assign: async (event) => {
 		const { supabase } = await requireActiveStaff(event);
@@ -257,7 +270,7 @@ export const actions: Actions = {
 		} catch (actionError) {
 			return actionFailure(actionError, 'Could not assign Lead');
 		}
-		throw redirect(303, `/leads/${event.params.id}`);
+		throw redirect(303, tabRedirect(event.params.id, 'overview'));
 	},
 	reopen: async (event) => {
 		const { supabase } = await requireActiveStaff(event);
@@ -272,7 +285,7 @@ export const actions: Actions = {
 		} catch (actionError) {
 			return actionFailure(actionError, 'Could not reopen Lead');
 		}
-		throw redirect(303, `/leads/${event.params.id}`);
+		throw redirect(303, tabRedirect(event.params.id, 'overview'));
 	},
 	followUp: async (event) => {
 		const { supabase, profile } = await requireActiveStaff(event);
@@ -295,6 +308,55 @@ export const actions: Actions = {
 		} catch (actionError) {
 			return actionFailure(actionError, 'Could not create follow-up');
 		}
-		throw redirect(303, `/leads/${event.params.id}#follow-ups`);
+		throw redirect(303, tabRedirect(event.params.id, 'follow-ups'));
+	},
+	completeFollowUp: async (event) => {
+		const { supabase, profile } = await requireActiveStaff(event);
+		if (profile.role === 'viewer') return fail(403, { message: 'Viewer access is read-only.' });
+		try {
+			const form = await event.request.formData();
+			const response = await supabase.rpc('complete_task', {
+				p_task_id: taskId(form),
+				p_lock_version: lockVersion(form)
+			});
+			if (response.error) return actionFailure(response.error, 'Could not complete follow-up');
+		} catch (actionError) {
+			return actionFailure(actionError, 'Could not complete follow-up');
+		}
+		throw redirect(303, tabRedirect(event.params.id, 'follow-ups'));
+	},
+	rescheduleFollowUp: async (event) => {
+		const { supabase, profile } = await requireActiveStaff(event);
+		if (profile.role === 'viewer') return fail(403, { message: 'Viewer access is read-only.' });
+		try {
+			const form = await event.request.formData();
+			const dueAt = formDateTime(form, 'due_at');
+			if (!dueAt)
+				return actionFailure(new Error('A due date is required'), 'Could not reschedule follow-up');
+			const response = await supabase.rpc('reschedule_task', {
+				p_task_id: taskId(form),
+				p_lock_version: lockVersion(form),
+				p_due_at: dueAt
+			});
+			if (response.error) return actionFailure(response.error, 'Could not reschedule follow-up');
+		} catch (actionError) {
+			return actionFailure(actionError, 'Could not reschedule follow-up');
+		}
+		throw redirect(303, tabRedirect(event.params.id, 'follow-ups'));
+	},
+	cancelFollowUp: async (event) => {
+		const { supabase, profile } = await requireActiveStaff(event);
+		if (profile.role === 'viewer') return fail(403, { message: 'Viewer access is read-only.' });
+		try {
+			const form = await event.request.formData();
+			const response = await supabase.rpc('cancel_task', {
+				p_task_id: taskId(form),
+				p_lock_version: lockVersion(form)
+			});
+			if (response.error) return actionFailure(response.error, 'Could not cancel follow-up');
+		} catch (actionError) {
+			return actionFailure(actionError, 'Could not cancel follow-up');
+		}
+		throw redirect(303, tabRedirect(event.params.id, 'follow-ups'));
 	}
 };
