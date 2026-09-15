@@ -196,6 +196,16 @@ test('quote editor carries enquiry dimensions through a draft and exposes readin
 		await expect(
 			dimensionalLine.getByRole('button', { name: /Dimensional editor Product/ })
 		).toHaveAttribute('aria-expanded', 'true');
+		await dimensionalLine.getByRole('button', { name: /Dimensional editor Product/ }).click();
+		await expect(dimensionalLine.locator('[data-line-item-toggle]')).toHaveAttribute(
+			'aria-expanded',
+			'false'
+		);
+		await dimensionalLine.getByRole('button', { name: /Dimensional editor Product/ }).click();
+		await expect(dimensionalLine.locator('[data-line-item-toggle]')).toHaveAttribute(
+			'aria-expanded',
+			'true'
+		);
 		await expect(page.getByText('1500 mm', { exact: true })).toBeVisible();
 		await expect(page.getByText('1200 mm', { exact: true })).toBeVisible();
 		await expect(page.getByText('Openings', { exact: true })).toBeVisible();

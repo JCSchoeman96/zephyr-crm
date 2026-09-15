@@ -208,6 +208,10 @@
 		activeItemKey = key;
 	}
 
+	function toggleItem(key: string) {
+		activeItemKey = activeItemKey === key ? null : key;
+	}
+
 	function updateDimension(
 		itemKey: string,
 		key: Parameters<typeof updateQuoteItemDimension>[1],
@@ -371,7 +375,7 @@
 							bind:item={items[index]}
 							{index}
 							active={activeItemKey === quoteEditorItemKey(item, index)}
-							onSelect={() => selectItem(quoteEditorItemKey(item, index))}
+							onSelect={() => toggleItem(quoteEditorItemKey(item, index))}
 							{readonly}
 							removeDisabled={false}
 							onRemove={() => removeItem(index)}
