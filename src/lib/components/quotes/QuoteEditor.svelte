@@ -7,41 +7,22 @@
 	import ProductPicker from '$lib/components/products/ProductPicker.svelte';
 	import QuoteDocumentPreview from '$lib/components/quotes/QuoteDocumentPreview.svelte';
 	import QuoteLineEditor from '$lib/components/quotes/QuoteLineEditor.svelte';
+	import QuoteMeasurementsEditor from '$lib/components/quotes/QuoteMeasurementsEditor.svelte';
 	import type { QuotePresentationModel } from '$lib/domain/quotes/documents/presentation-model';
-	import { normalizeDimensionValue, type DimensionValue } from '$lib/domain/products/dimensions';
+	import { normalizeDimensionValue } from '$lib/domain/products/dimensions';
 	import { publicClientConfiguration } from '$lib/config/public-client-config';
 	import type { ProductOption } from '$lib/services/products';
-
-	type EditorItem = {
-		editorKey?: string;
-		id?: string;
-		name: string;
-		description: string;
-		quantity: string;
-		unit_price: string;
-		taxable: boolean;
-		source_type?: string;
-		product_id?: string | null;
-		product_code_snapshot?: string | null;
-		unit_label_snapshot?: string | null;
-		catalogue_unit_price?: string | number | null;
-		source_product_version?: number | null;
-		source_product_reviewed_version?: number | null;
-		current_product_lock_version?: number | null;
-		product_lock_version?: number | null;
-		is_stale?: boolean;
-		dimensionsEnabled?: boolean;
-		dimensions?: DimensionValue[];
-		product_category_id_snapshot?: string | null;
-		product_category_code_snapshot?: string | null;
-		product_category_label_snapshot?: string | null;
-	};
-	export type QuoteLeadMeasurements = {
-		width: string | null;
-		height: string | null;
-		openings: string | null;
-	};
-	type LeadOption = { id: string; label: string; measurements?: QuoteLeadMeasurements };
+	import {
+		isDimensionalQuoteItem,
+		quoteEditorItemKey,
+		updateQuoteItemDimension
+	} from './quote-editor-state';
+	import type {
+		QuoteEditorCategory,
+		QuoteEditorItem,
+		QuoteLeadMeasurements,
+		QuoteLeadOption
+	} from './quote-editor-types';
 
 	let {
 		action,
@@ -59,6 +40,11 @@
 		currency = $bindable(publicClientConfiguration.locale.currency),
 		lockVersion = 1,
 		initialItems = [],
+		initialActiveItemKey = '',
+		focusItemKey = null,
+		formId = 'quote-editor-form',
+		markReadyAction = '?/markReady',
+		sendAction = '?/send',
 		readonly = false,
 		presentationModel = null,
 		productCategories = [],
@@ -73,7 +59,7 @@
 		action: string;
 		quoteId?: string | null;
 		leadId?: string;
-		leadOptions?: LeadOption[];
+		leadOptions?: QuoteLeadOption[];
 		clientId?: string;
 		clientOptions?: { id: string; label: string }[];
 		subject?: string;
@@ -84,11 +70,16 @@
 		validUntil?: string;
 		currency?: string;
 		lockVersion?: number;
-		initialItems?: Partial<EditorItem>[];
+		initialItems?: Partial<QuoteEditorItem>[];
+		initialActiveItemKey?: string;
+		focusItemKey?: string | null;
+		formId?: string;
+		markReadyAction?: string;
+		sendAction?: string;
 		readonly?: boolean;
 		quoteNumber?: string;
 		presentationModel?: QuotePresentationModel | null;
-		productCategories?: { id: string; label: string }[];
+		productCategories?: QuoteEditorCategory[];
 		leadMeasurements?: QuoteLeadMeasurements | null;
 		errorMessage?: string;
 		productAction?: string;
@@ -103,38 +94,44 @@
 		return new Date(timestamp).toISOString().slice(0, 10);
 	}
 
-	function normalizeItems(source: Partial<EditorItem>[]): EditorItem[] {
-		return source.length
-			? source.map((item) => ({
-					editorKey: item.editorKey ?? item.id,
-					id: item.id,
-					name: String(item.name ?? ''),
-					description: String(item.description ?? ''),
-					quantity: String(item.quantity ?? '1'),
-					unit_price: String(item.unit_price ?? '0'),
-					taxable: item.taxable ?? true,
-					source_type: item.source_type ?? 'custom',
-					product_id: item.product_id ?? null,
-					product_code_snapshot: item.product_code_snapshot ?? null,
-					unit_label_snapshot: item.unit_label_snapshot ?? null,
-					catalogue_unit_price: item.catalogue_unit_price ?? null,
-					source_product_version: item.source_product_version ?? null,
-					source_product_reviewed_version: item.source_product_reviewed_version ?? null,
-					current_product_lock_version: item.current_product_lock_version ?? null,
-					product_lock_version: item.product_lock_version ?? null,
-					is_stale: item.is_stale ?? false,
-					dimensionsEnabled: Boolean(item.dimensions?.length),
-					dimensions: Array.isArray(item.dimensions) ? item.dimensions : [],
-					product_category_id_snapshot: item.product_category_id_snapshot ?? null,
-					product_category_code_snapshot: item.product_category_code_snapshot ?? null,
-					product_category_label_snapshot: item.product_category_label_snapshot ?? null
-				}))
-			: [];
+	function normalizeItems(source: Partial<QuoteEditorItem>[]): QuoteEditorItem[] {
+		return source.map((item) => {
+			const sourceType = item.source_type ?? 'custom';
+			const dimensions =
+				sourceType === 'catalogue' && Array.isArray(item.dimensions) ? item.dimensions : [];
+			return {
+				editorKey: item.editorKey ?? item.id,
+				id: item.id,
+				name: String(item.name ?? ''),
+				description: String(item.description ?? ''),
+				quantity: String(item.quantity ?? '1'),
+				unit_price: String(item.unit_price ?? '0'),
+				taxable: item.taxable ?? true,
+				source_type: sourceType,
+				product_id: item.product_id ?? null,
+				product_code_snapshot: item.product_code_snapshot ?? null,
+				unit_label_snapshot: item.unit_label_snapshot ?? null,
+				catalogue_unit_price: item.catalogue_unit_price ?? null,
+				source_product_version: item.source_product_version ?? null,
+				source_product_reviewed_version: item.source_product_reviewed_version ?? null,
+				current_product_lock_version: item.current_product_lock_version ?? null,
+				product_lock_version: item.product_lock_version ?? null,
+				is_stale: item.is_stale ?? false,
+				dimensionsEnabled: item.dimensionsEnabled ?? dimensions.length > 0,
+				dimensions,
+				product_category_id_snapshot: item.product_category_id_snapshot ?? null,
+				product_category_code_snapshot: item.product_category_code_snapshot ?? null,
+				product_category_label_snapshot: item.product_category_label_snapshot ?? null
+			};
+		});
 	}
 
-	let items = $state<EditorItem[]>([]);
+	let items = $state<QuoteEditorItem[]>([]);
 	let nextEditorKey = 0;
 	let itemsInitialized = false;
+	let activeStateInitialized = false;
+	let activeItemKey = $state<string | null>(null);
+
 	$effect(() => {
 		if (itemsInitialized) return;
 		items = normalizeItems(initialItems).map((item, index) => ({
@@ -143,10 +140,25 @@
 		}));
 		itemsInitialized = true;
 	});
+
+	$effect(() => {
+		if (!itemsInitialized || activeStateInitialized) return;
+		const requestedKey = focusItemKey || initialActiveItemKey;
+		if (requestedKey) {
+			const entry = items.find((item, index) => quoteEditorItemKey(item, index) === requestedKey);
+			if (entry) {
+				const index = items.indexOf(entry);
+				activeItemKey = quoteEditorItemKey(entry, index);
+			}
+		}
+		activeStateInitialized = true;
+	});
+
 	let serializedItems = $derived(
 		JSON.stringify(
 			items.map((item) => ({
 				...(item.id ? { id: item.id } : {}),
+				...(item.editorKey ? { editor_key: item.editorKey } : {}),
 				...(item.source_type === 'catalogue' && !item.id
 					? {
 							source_type: 'catalogue',
@@ -184,40 +196,53 @@
 		)
 	);
 	let reviewActions = $derived(!readonly && status === 'draft');
-	let selectedMeasurementLine = $state('');
 	let enquiry = $derived(
 		leadMeasurements ?? leadOptions.find((lead) => lead.id === leadId)?.measurements ?? null
-	);
-	let dimensionalItems = $derived(
-		items
-			.map((item, index) => ({ item, index }))
-			.filter(({ item }) => item.dimensions?.length && item.source_type === 'catalogue')
 	);
 
 	function isDimensionReadinessError(message: string | undefined) {
 		return Boolean(message && /required.*product dimensions|dimensions.*required/i.test(message));
 	}
 
-	function applyEnquiryMeasurements() {
-		const target = dimensionalItems.find(
-			({ item, index }) => (item.id ?? item.editorKey ?? `new-${index}`) === selectedMeasurementLine
+	function selectItem(key: string) {
+		activeItemKey = key;
+	}
+
+	function updateDimension(
+		itemKey: string,
+		key: Parameters<typeof updateQuoteItemDimension>[1],
+		value: string | null
+	) {
+		items = items.map((item, index) =>
+			quoteEditorItemKey(item, index) === itemKey
+				? updateQuoteItemDimension(item, key, value)
+				: item
 		);
-		if (!target || !enquiry) return;
-		target.item.dimensions = (target.item.dimensions ?? []).map((dimension) => {
-			if (dimension.key !== 'width' && dimension.key !== 'height') return dimension;
-			const rawValue = enquiry[dimension.key];
-			if (!rawValue) return dimension;
+	}
+
+	function applyEnquiryMeasurements() {
+		if (!activeItemKey || !enquiry) return;
+		const entry = items.find((item, index) => quoteEditorItemKey(item, index) === activeItemKey);
+		if (!entry || !isDimensionalQuoteItem(entry)) return;
+		let updated = entry;
+		for (const key of ['width', 'height'] as const) {
+			const rawValue = enquiry[key];
+			if (!rawValue) continue;
 			try {
-				return { ...dimension, value: normalizeDimensionValue(rawValue) };
+				updated = updateQuoteItemDimension(updated, key, normalizeDimensionValue(rawValue));
 			} catch {
-				return dimension;
+				// Keep the entered value when an enquiry measurement is outside the quote bounds.
 			}
-		});
+		}
+		items = items.map((item, index) =>
+			quoteEditorItemKey(item, index) === activeItemKey ? updated : item
+		);
 	}
 
 	function addItem() {
+		const editorKey = `new-${nextEditorKey++}`;
 		items.push({
-			editorKey: `new-${nextEditorKey++}`,
+			editorKey,
 			name: '',
 			description: '',
 			quantity: '1',
@@ -226,6 +251,7 @@
 			dimensionsEnabled: false,
 			dimensions: []
 		});
+		activeItemKey = editorKey;
 	}
 
 	function addCatalogueProduct(product: ProductOption, selectedQuantity: string) {
@@ -233,8 +259,9 @@
 			...definition,
 			value: null
 		}));
+		const editorKey = `new-${nextEditorKey++}`;
 		items.push({
-			editorKey: `new-${nextEditorKey++}`,
+			editorKey,
 			name: product.name,
 			description: product.customer_description ?? '',
 			quantity: product.dimensions_enabled ? '1' : selectedQuantity,
@@ -257,10 +284,17 @@
 				productCategories.find((category) => category.id === product.category_id)?.label ??
 				'Uncategorised'
 		});
+		activeItemKey = editorKey;
 	}
 
 	function removeItem(index: number) {
+		const removedKey = quoteEditorItemKey(items[index], index);
 		items.splice(index, 1);
+		if (activeItemKey !== removedKey) return;
+		const replacement = items[index] ?? items[index - 1];
+		activeItemKey = replacement
+			? quoteEditorItemKey(replacement, items.indexOf(replacement))
+			: null;
 	}
 
 	function moveItem(index: number, direction: -1 | 1) {
@@ -271,15 +305,12 @@
 </script>
 
 <div class="quote-editor-layout" data-quote-number={quoteNumber}>
-	{#if readonly}
-		<Card title="Quote preview" class="quote-preview-card">
-			<QuoteDocumentPreview model={presentationModel} />
-		</Card>
-	{:else}
-		<form method="POST" {action} class="quote-editor-form">
+	{#if !readonly}
+		<form id={formId} method="POST" {action} class="quote-editor-form">
 			<input type="hidden" name="quote_id" value={quoteId ?? ''} />
 			<input type="hidden" name="lock_version" value={lockVersion} />
 			<input type="hidden" name="items" value={serializedItems} />
+			<input type="hidden" name="active_item_key" value={activeItemKey ?? ''} />
 			{#if !quoteId}
 				<input
 					type="hidden"
@@ -313,6 +344,16 @@
 				<Input id="quote-subject" name="subject" label="Subject" bind:value={subject} required />
 			</Card>
 
+			<QuoteMeasurementsEditor
+				{items}
+				{activeItemKey}
+				leadMeasurements={enquiry}
+				validationMessage={isDimensionReadinessError(errorMessage) ? errorMessage : ''}
+				onSelectItem={selectItem}
+				onApplyEnquiry={applyEnquiryMeasurements}
+				onDimensionChange={updateDimension}
+			/>
+
 			{#if status === 'draft'}
 				<ProductPicker
 					action={productAction}
@@ -323,65 +364,14 @@
 				/>
 			{/if}
 
-			<Card title="Measurements from enquiry" class="editor-card enquiry-measurements">
-				{#if enquiry?.width || enquiry?.height || enquiry?.openings}
-					<p class="panel-help">
-						These values came from the enquiry. Applying Width or Height copies them into one
-						selected Product line as editable defaults; it does not change the enquiry.
-					</p>
-					<div class="measurement-summary" aria-label="Read-only enquiry measurements">
-						<div>
-							<span>Width</span><strong
-								>{enquiry.width ? `${enquiry.width} mm` : 'Not captured'}</strong
-							>
-						</div>
-						<div>
-							<span>Height</span><strong
-								>{enquiry.height ? `${enquiry.height} mm` : 'Not captured'}</strong
-							>
-						</div>
-						<div><span>Openings</span><strong>{enquiry.openings ?? 'Not captured'}</strong></div>
-					</div>
-					<p class="panel-help">
-						Openings is context only. It never creates or multiplies quote lines.
-					</p>
-					{#if dimensionalItems.length}
-						<div class="apply-measurements">
-							<Select
-								id="measurement-line-target"
-								label="Apply Width/Height to line"
-								bind:value={selectedMeasurementLine}
-							>
-								<option value="">Select a dimensional Product line</option>
-								{#each dimensionalItems as entry, measurementIndex (entry.item.id ?? entry.item.editorKey ?? `measurement-${entry.index}`)}
-									<option value={entry.item.id ?? entry.item.editorKey ?? `new-${entry.index}`}>
-										{entry.item.name || `Product line ${measurementIndex + 1}`}
-									</option>
-								{/each}
-							</Select>
-							<Button
-								type="button"
-								variant="secondary"
-								disabled={!selectedMeasurementLine || (!enquiry?.width && !enquiry?.height)}
-								onclick={applyEnquiryMeasurements}>Apply to line</Button
-							>
-						</div>
-					{:else}
-						<p class="panel-help">Add a dimensional Product line to apply these values.</p>
-					{/if}
-				{:else}
-					<p class="panel-help">
-						No structured Width, Height, or Openings values were captured on this enquiry.
-					</p>
-				{/if}
-			</Card>
-
 			<Card title="Quote items" class="editor-card">
 				<div class="line-items" aria-label="Quote line items">
 					{#each items as item, index (item.id ?? item.editorKey ?? `new-${index}`)}
 						<QuoteLineEditor
 							bind:item={items[index]}
 							{index}
+							active={activeItemKey === quoteEditorItemKey(item, index)}
+							onSelect={() => selectItem(quoteEditorItemKey(item, index))}
 							{readonly}
 							removeDisabled={false}
 							onRemove={() => removeItem(index)}
@@ -443,18 +433,36 @@
 					<Textarea id="quote-terms" name="terms" label="Terms" rows={4} bind:value={terms} />
 				</div>
 			</details>
-			<div class="editor-actions">
-				<Button type="submit">Save draft</Button>
-				<span>Totals are recalculated by PostgreSQL when saved or reviewed.</span>
-			</div>
 		</form>
 	{/if}
 
-	{#if !readonly}
-		<Card title="Customer preview" class="quote-preview-card">
+	<aside class="quote-preview-rail" aria-label="Quote actions and preview">
+		{#if !readonly}
+			<Card title="Quote actions" class="quote-actions-card">
+				<p class="quote-actions-help">
+					{quoteId
+						? status === 'ready'
+							? 'Save changes or send this quote to the customer.'
+							: 'Save your draft or review it when the measurements and prices are ready.'
+						: 'Save this draft to create the quote.'}
+				</p>
+				<div class="quote-action-buttons">
+					<Button type="submit" form={formId}>Save draft</Button>
+					{#if quoteId && status === 'draft'}
+						<Button type="submit" form={formId} formaction={markReadyAction} variant="secondary"
+							>Review quote</Button
+						>
+					{:else if quoteId && status === 'ready'}
+						<Button type="submit" form={formId} formaction={sendAction}>Send quote</Button>
+					{/if}
+				</div>
+			</Card>
+		{/if}
+
+		<Card title={readonly ? 'Quote preview' : 'Customer preview'} class="quote-preview-card">
 			<QuoteDocumentPreview model={presentationModel} />
 		</Card>
-	{/if}
+	</aside>
 </div>
 
 <style>
@@ -464,11 +472,18 @@
 		gap: var(--space-lg);
 		align-items: start;
 	}
-	.quote-editor-form {
+	.quote-editor-form,
+	.quote-preview-rail {
 		display: grid;
 		gap: var(--space-lg);
+		min-width: 0;
+	}
+	.quote-preview-rail {
+		position: sticky;
+		top: var(--space-lg);
 	}
 	:global(.editor-card),
+	:global(.quote-actions-card),
 	:global(.quote-preview-card) {
 		min-width: 0;
 	}
@@ -482,71 +497,18 @@
 		gap: var(--space-md);
 		margin-bottom: var(--space-md);
 	}
-	:global(.enquiry-measurements) {
-		display: grid;
-		gap: var(--space-sm);
-	}
-	.panel-help {
-		margin: 0;
-		color: var(--color-text-muted);
-		font-size: var(--font-size-sm);
-	}
-	.measurement-summary {
-		display: grid;
-		grid-template-columns: repeat(3, minmax(0, 1fr));
-		gap: var(--space-sm);
-	}
-	.measurement-summary div {
-		display: grid;
-		gap: 0.15rem;
-		padding: var(--space-sm);
-		border-radius: var(--radius-sm);
-		background: var(--color-surface-subtle);
-	}
-	.measurement-summary span {
-		color: var(--color-text-muted);
-		font-size: var(--font-size-xs);
-	}
-	.apply-measurements {
-		display: grid;
-		grid-template-columns: minmax(0, 1fr) auto;
-		gap: var(--space-sm);
-		align-items: end;
-	}
-	.editor-actions {
-		display: flex;
-		align-items: center;
-		gap: var(--space-md);
-		flex-wrap: wrap;
-	}
-	.editor-actions span {
-		color: var(--color-text-muted);
-		font-size: var(--font-size-xs);
-	}
-	.quote-settings {
-		padding: var(--space-md);
-		border: 1px solid var(--color-border-subtle);
-		border-radius: var(--radius-md);
-		background: var(--color-surface);
-	}
-	.quote-settings > summary {
-		cursor: pointer;
-		color: var(--color-text-muted);
-		font-size: var(--font-size-sm);
-		font-weight: 600;
-	}
-	.quote-settings-body {
-		display: grid;
-		gap: var(--space-md);
-		margin-top: var(--space-md);
-	}
 	.totals-controls {
 		max-width: 12rem;
 	}
-	:global(.quote-preview-card) {
-		position: sticky;
-		top: var(--space-lg);
-		min-width: 0;
+	.quote-actions-help {
+		margin: 0 0 var(--space-md);
+		color: var(--color-text-muted);
+		font-size: var(--font-size-sm);
+	}
+	.quote-action-buttons {
+		display: flex;
+		gap: var(--space-sm);
+		flex-wrap: wrap;
 	}
 	:global(.quote-preview-card .ui-card__body) {
 		padding: 0;
@@ -555,7 +517,7 @@
 		.quote-editor-layout {
 			grid-template-columns: 1fr;
 		}
-		:global(.quote-preview-card) {
+		.quote-preview-rail {
 			position: static;
 		}
 	}
@@ -563,10 +525,8 @@
 		.editor-grid {
 			grid-template-columns: 1fr;
 		}
-		.measurement-summary {
-			grid-template-columns: 1fr;
-		}
-		.apply-measurements {
+		.quote-action-buttons {
+			display: grid;
 			grid-template-columns: 1fr;
 		}
 	}

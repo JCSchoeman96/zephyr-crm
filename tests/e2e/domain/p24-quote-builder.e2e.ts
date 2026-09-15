@@ -10,6 +10,7 @@ import {
 	readLead,
 	readQuotesForLead,
 	runCleanup,
+	openQuoteLine,
 	signIn,
 	type StaffUser
 } from './helpers';
@@ -239,7 +240,7 @@ test('Quote builder searches bounded active Products, preserves custom lines, an
 				p_introduction: 'P24 quote builder browser proof',
 				p_terms: 'P24 terms',
 				p_tax_label: 'VAT',
-				p_tax_rate: '15',
+				p_tax_rate: '22.5',
 				p_valid_until: '2099-12-31',
 				p_currency: 'ZAR',
 				p_items: [
@@ -257,6 +258,17 @@ test('Quote builder searches bounded active Products, preserves custom lines, an
 
 		await signIn(page, owner);
 		await page.goto('/quotes/' + draft.quote_id, { waitUntil: 'networkidle' });
+		await expect(page.getByLabel('Tax rate (%)')).toHaveValue('22.5');
+		const railOrder = await page.locator('.quote-preview-rail').evaluate((rail) => {
+			const actions = rail.querySelector('.quote-actions-card');
+			const preview = rail.querySelector('.quote-preview-card');
+			return Boolean(
+				actions &&
+				preview &&
+				actions.compareDocumentPosition(preview) & Node.DOCUMENT_POSITION_FOLLOWING
+			);
+		});
+		expect(railOrder).toBe(true);
 		await expect(
 			page.getByRole('heading', { name: 'Add from catalogue', exact: true })
 		).toBeVisible();
@@ -316,19 +328,28 @@ test('Quote builder searches bounded active Products, preserves custom lines, an
 		await page.getByRole('button', { name: 'Add Product to quote', exact: true }).click();
 		await page.waitForLoadState('networkidle');
 
-		await expect(page.getByText('P24 Searchable 01', { exact: true })).toHaveCount(1);
+		await expect(
+			page.locator('[data-line-item-toggle]').filter({ hasText: 'P24 Searchable 01' })
+		).toHaveCount(1);
 		await expect(page.getByText('Catalogue line', { exact: true })).toBeVisible();
-		await expect(page.getByText('Custom setup line', { exact: true })).toBeVisible();
+		await expect(
+			page.locator('.line-item-summary').filter({ hasText: 'Custom setup line' })
+		).toBeVisible();
 		const bodyText = await page.locator('body').innerText();
 		expect(bodyText).not.toContain('private internal note');
 
 		if (!firstProduct) throw new Error('P24 browser Product fixture was not created.');
-		await page.locator('#quote-item-quantity-1').fill('2.1250');
-		await page.locator('#quote-item-description-1').fill('Negotiated customer description');
-		await page.locator('#quote-item-price-1').fill('111.1100');
+		const addedProductLine = page.locator('.line-item').filter({ hasText: 'P24-BROWSER-01' });
+		await openQuoteLine(addedProductLine);
+		await addedProductLine.locator('#quote-item-quantity-1').fill('2.1250');
+		await addedProductLine
+			.locator('#quote-item-description-1')
+			.fill('Negotiated customer description');
+		await addedProductLine.locator('#quote-item-price-1').fill('111.1100');
 		await page.getByRole('button', { name: 'Save draft', exact: true }).click();
 		await page.waitForLoadState('networkidle');
 		let productLine = page.locator('.line-item').filter({ hasText: 'P24-BROWSER-01' });
+		await openQuoteLine(productLine);
 		await expect(productLine.locator('#quote-item-quantity-1')).toHaveValue('2.125');
 		await expect(productLine.locator('#quote-item-price-1')).toHaveValue('111.11');
 		await expect(productLine.locator('#quote-item-description-1')).toHaveValue(
@@ -339,8 +360,11 @@ test('Quote builder searches bounded active Products, preserves custom lines, an
 		await page.getByRole('button', { name: 'Save draft', exact: true }).click();
 		await page.waitForLoadState('networkidle');
 		productLine = page.locator('.line-item').filter({ hasText: 'P24-BROWSER-01' });
+		await openQuoteLine(productLine);
 		await expect(productLine.locator('#quote-item-quantity-0')).toHaveValue('2.125');
-		await expect(page.locator('#quote-item-name-1')).toHaveValue('Custom setup line');
+		const customLine = page.locator('.line-item').filter({ hasText: 'Custom setup line' });
+		await openQuoteLine(customLine);
+		await expect(customLine.locator('#quote-item-name-1')).toHaveValue('Custom setup line');
 
 		const changed = (await authenticatedRpc(
 			'update_product',
@@ -361,6 +385,8 @@ test('Quote builder searches bounded active Products, preserves custom lines, an
 		)) as { product_id: string; lock_version: number };
 		firstProduct = { id: changed.product_id, lockVersion: changed.lock_version };
 		await page.reload({ waitUntil: 'networkidle' });
+		productLine = page.locator('.line-item').filter({ hasText: 'P24-BROWSER-01' });
+		await openQuoteLine(productLine);
 		await expect(
 			page.getByText('Product changed since this line was added', { exact: true })
 		).toBeVisible();
@@ -379,6 +405,7 @@ test('Quote builder searches bounded active Products, preserves custom lines, an
 		await page.getByRole('button', { name: 'Refresh from Catalogue', exact: true }).click();
 		await page.waitForLoadState('networkidle');
 		productLine = page.locator('.line-item').filter({ hasText: 'P24-BROWSER-01-UPDATED' });
+		await openQuoteLine(productLine);
 		await expect(productLine).toContainText('P24-BROWSER-01-UPDATED');
 		await expect(productLine).toContainText('session');
 		await expect(productLine.locator('#quote-item-quantity-0')).toHaveValue('2.125');
@@ -411,6 +438,8 @@ test('Quote builder searches bounded active Products, preserves custom lines, an
 		)) as { product_id: string; lock_version: number };
 		firstProduct = { id: repriced.product_id, lockVersion: repriced.lock_version };
 		await page.reload({ waitUntil: 'networkidle' });
+		productLine = page.locator('.line-item').filter({ hasText: 'P24-BROWSER-01-UPDATED' });
+		await openQuoteLine(productLine);
 		await expect(
 			page.getByText('Product changed since this line was added', { exact: true })
 		).toBeVisible();
@@ -420,6 +449,7 @@ test('Quote builder searches bounded active Products, preserves custom lines, an
 			page.getByText('Product changed since this line was added', { exact: true })
 		).toHaveCount(0);
 		productLine = page.locator('.line-item').filter({ hasText: 'P24-BROWSER-01-UPDATED' });
+		await openQuoteLine(productLine);
 		await expect(productLine.locator('#quote-item-price-0')).toHaveValue('111.11');
 		await expect(productLine).toContainText('125.5');
 
@@ -459,12 +489,15 @@ test('new quotes can save an empty draft but cannot be marked ready without a li
 
 		await signIn(page, owner);
 		await page.goto(`/quotes/new?lead_id=${lead.id}`, { waitUntil: 'networkidle' });
+		await expect(page.getByLabel('Tax rate (%)')).toHaveValue('15');
+		await expect(page.getByRole('button', { name: 'Review quote', exact: true })).toHaveCount(0);
 		await expect(
 			page.getByRole('heading', { name: 'Add from catalogue', exact: true })
 		).toBeVisible();
 		await expect(page.locator('.line-item')).toHaveCount(0);
 
 		await page.getByLabel('Subject').fill('P24 empty draft');
+		await page.getByLabel('Tax rate (%)').fill('18.5');
 		const saveNavigation = page.waitForNavigation({ waitUntil: 'networkidle' });
 		await page.getByRole('button', { name: 'Save draft', exact: true }).click();
 		await saveNavigation;
@@ -472,6 +505,7 @@ test('new quotes can save an empty draft but cannot be marked ready without a li
 		const quoteId = quoteIdFromUrl(page.url());
 		await expect(page).toHaveURL(new RegExp(`/quotes/${quoteId}$`));
 		await expect(page.locator('.line-item')).toHaveCount(0);
+		await expect(page.getByLabel('Tax rate (%)')).toHaveValue('18.5');
 		await expect(
 			page.getByRole('heading', { name: 'Add from catalogue', exact: true })
 		).toBeVisible();
@@ -480,7 +514,11 @@ test('new quotes can save an empty draft but cannot be marked ready without a li
 		expect(quotes[0]).toMatchObject({ id: quoteId, status: 'draft' });
 		expect(await readQuoteItems(quoteId)).toHaveLength(0);
 
-		const markReadyForm = page.locator('form[action="?/markReady"]');
+		const markReadyForm = page.locator(`form#quote-editor-${quoteId}`);
+		await expect(page.getByRole('button', { name: 'Review quote', exact: true })).toHaveAttribute(
+			'form',
+			`quote-editor-${quoteId}`
+		);
 		const lockVersion = Number(
 			await markReadyForm.locator('input[name="lock_version"]').inputValue()
 		);
@@ -559,6 +597,7 @@ test('catalogue-first new quotes add Products locally before saving', async ({ p
 
 		await expect(page).toHaveURL(new RegExp(`/quotes/new\\?lead_id=${lead.id}$`));
 		await expect(page.locator('.line-item')).toHaveCount(1);
+		await openQuoteLine(page.locator('.line-item').nth(0));
 		await expect(page.locator('#quote-item-name-0')).toHaveValue('P24 Catalogue First Product');
 
 		await page.getByLabel('Subject').fill('P24 failed new quote');
@@ -571,9 +610,12 @@ test('catalogue-first new quotes add Products locally before saving', async ({ p
 		await expect(page.getByText('tax rate must be a valid decimal', { exact: true })).toBeVisible();
 		const pendingLine = page.locator('.line-item.catalogue-line');
 		await expect(pendingLine).toHaveCount(1);
+		await openQuoteLine(pendingLine);
 		await expect(page.getByText('Catalogue line', { exact: true })).toBeVisible();
 		await expect(page.locator('#quote-item-name-0')).toHaveValue('P24 Catalogue First Product');
-		await expect(pendingLine.getByText('P24-CATALOGUE-FIRST', { exact: true })).toBeVisible();
+		await expect(
+			pendingLine.locator('.catalogue-summary').getByText('P24-CATALOGUE-FIRST', { exact: true })
+		).toBeVisible();
 		await expect(pendingLine.getByText('hour', { exact: true })).toBeVisible();
 		await expect(pendingLine.getByText('P24 Catalogue First', { exact: true })).toBeVisible();
 		await expect(pendingLine.getByText('125.5', { exact: true })).toBeVisible();
@@ -643,6 +685,11 @@ test('catalogue-first new quotes persist multiple and repeated Products without 
 		await expect(page.locator('.line-item')).toHaveCount(2);
 		await expect(page.locator('.line-item.catalogue-line')).toHaveCount(2);
 		await expect(page.getByText('Custom setup line', { exact: true })).toHaveCount(0);
+		const repeatedLines = page.locator('.line-item.catalogue-line');
+		await openQuoteLine(repeatedLines.nth(0));
+		await repeatedLines.nth(0).locator('#quote-item-quantity-0').fill('2');
+		await openQuoteLine(repeatedLines.nth(1));
+		await repeatedLines.nth(1).locator('#quote-item-quantity-1').fill('3');
 
 		await page.getByLabel('Subject').fill('P24 catalogue-only quote');
 		const firstSaveNavigation = page.waitForNavigation({ waitUntil: 'networkidle' });
@@ -657,6 +704,7 @@ test('catalogue-first new quotes persist multiple and repeated Products without 
 		]) {
 			const line = page.locator('.line-item.catalogue-line').filter({ hasText: product.code });
 			await expect(line).toHaveCount(1);
+			await openQuoteLine(line);
 			await expect(line.getByLabel('Name')).toHaveValue(product.name);
 			await expect(line).toContainText(product.code);
 			await expect(line).toContainText(`P24 Catalogue ${suffix}`);
@@ -691,7 +739,9 @@ test('catalogue-first new quotes persist multiple and repeated Products without 
 		await addCatalogueProduct(page, firstCode, firstName);
 		await addCatalogueProduct(page, firstCode, firstName);
 		await expect(page.locator('.line-item.catalogue-line')).toHaveCount(2);
+		await openQuoteLine(page.locator('.line-item.catalogue-line').nth(0));
 		await page.locator('#quote-item-quantity-0').fill('2');
+		await openQuoteLine(page.locator('.line-item.catalogue-line').nth(1));
 		await page.locator('#quote-item-quantity-1').fill('3');
 		await page.getByLabel('Subject').fill('P24 repeated catalogue quote');
 		const repeatedSaveNavigation = page.waitForNavigation({ waitUntil: 'networkidle' });
@@ -699,7 +749,9 @@ test('catalogue-first new quotes persist multiple and repeated Products without 
 		await repeatedSaveNavigation;
 		const repeatedQuoteId = quoteIdFromUrl(page.url());
 		await expect(page.locator('.line-item.catalogue-line')).toHaveCount(2);
+		await openQuoteLine(page.locator('.line-item.catalogue-line').nth(0));
 		await expect(page.locator('#quote-item-quantity-0')).toHaveValue('2');
+		await openQuoteLine(page.locator('.line-item.catalogue-line').nth(1));
 		await expect(page.locator('#quote-item-quantity-1')).toHaveValue('3');
 
 		const repeatedItems = await readQuoteItems(repeatedQuoteId);

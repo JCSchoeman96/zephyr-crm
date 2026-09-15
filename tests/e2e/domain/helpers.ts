@@ -1,10 +1,10 @@
 import { createHmac } from 'node:crypto';
 import { execFileSync } from 'node:child_process';
 import { randomUUID } from 'node:crypto';
-import { expect, type Page } from '@playwright/test';
+import { expect, type Locator, type Page } from '@playwright/test';
 import { createClient } from '@supabase/supabase-js';
 
-export const appUrl = 'http://127.0.0.1:4173';
+export const appUrl = process.env.ZEPHYR_APP_URL ?? 'http://127.0.0.1:4173';
 export const bricksSecret = 'p14-browser-bricks-secret';
 const bricksFormId = process.env.BRICKS_FORM_ID?.trim() || 'aaa03e';
 
@@ -203,6 +203,12 @@ export async function reloadAndWaitForHeading(page: Page, heading: string): Prom
 	await expect(page.getByRole('heading', { name: heading, exact: true })).toBeVisible({
 		timeout: 15_000
 	});
+}
+
+export async function openQuoteLine(line: Locator): Promise<Locator> {
+	const toggle = line.locator('[data-line-item-toggle]');
+	if ((await toggle.getAttribute('aria-expanded')) !== 'true') await toggle.click();
+	return line;
 }
 
 export async function signInWithAal2(page: Page, user: StaffUser): Promise<void> {

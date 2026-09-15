@@ -13,6 +13,10 @@ function validForm(): FormData {
 }
 
 describe('quote defaults contract', () => {
+	it('uses a 15 percent tax rate for new quote defaults', () => {
+		expect(defaultQuoteDefaults.tax_rate).toBe(15);
+	});
+
 	it('parses the exact quote-default form shape', () => {
 		const form = new FormData();
 		form.set('prefix', ' oa- ');

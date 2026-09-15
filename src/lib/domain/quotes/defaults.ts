@@ -10,7 +10,7 @@ export type QuoteDefaults = {
 export const defaultQuoteDefaults: QuoteDefaults = {
 	prefix: 'Q-',
 	tax_label: 'VAT',
-	tax_rate: 0,
+	tax_rate: 15,
 	validity_days: 30,
 	terms: '',
 	bank_details: ''

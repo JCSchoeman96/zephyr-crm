@@ -5,6 +5,11 @@ import { join } from 'node:path';
 import { spawn } from 'node:child_process';
 
 const previewDirectory = mkdtempSync(join(tmpdir(), 'zephyr-p14-preview-'));
+const requestedPreviewPort = Number(process.env.ZEPHYR_PREVIEW_PORT ?? 4173);
+const previewPort =
+	Number.isInteger(requestedPreviewPort) && requestedPreviewPort > 0 && requestedPreviewPort < 65536
+		? requestedPreviewPort
+		: 4173;
 const envFile = join(previewDirectory, 'worker.env');
 const bindingNames = [
 	'ZEPHYR_COMPONENT_LAB_ENABLED',
@@ -51,6 +56,7 @@ const runtimeEnvironment = {
 	PUBLIC_SUPABASE_PUBLISHABLE_KEY:
 		process.env.PUBLIC_SUPABASE_PUBLISHABLE_KEY || local.ANON_KEY || local.PUBLISHABLE_KEY || '',
 	SUPABASE_SERVICE_ROLE_KEY: process.env.SUPABASE_SERVICE_ROLE_KEY || local.SERVICE_ROLE_KEY || '',
+	PUBLIC_SITE_URL: process.env.PUBLIC_SITE_URL || `http://127.0.0.1:${previewPort}`,
 	BRICKS_FORM_ID: process.env.BRICKS_FORM_ID || 'aaa03e',
 	AUTOMATION_CRON_SECRET: process.env.AUTOMATION_CRON_SECRET || 'p14-browser-automation-secret'
 };
@@ -87,10 +93,14 @@ build.once('exit', (buildCode, buildSignal) => {
 		process.exitCode = buildCode ?? 1;
 		return;
 	}
-	const preview = spawn('wrangler', ['dev', '--local', '--port', '4173', '--env-file', envFile], {
-		stdio: 'inherit',
-		env: runtimeEnvironment
-	});
+	const preview = spawn(
+		'wrangler',
+		['dev', '--local', '--port', String(previewPort), '--env-file', envFile],
+		{
+			stdio: 'inherit',
+			env: runtimeEnvironment
+		}
+	);
 	activeChild = preview;
 	preview.once('exit', (previewCode, previewSignal) => {
 		cleanup();

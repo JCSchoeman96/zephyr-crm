@@ -35,9 +35,9 @@ test.describe('P17 Sales-to-Fulfilment tracer bullet', () => {
 			await page.getByRole('button', { name: 'Review quote' }).click();
 			await expect(page.getByRole('button', { name: 'Send quote' })).toBeVisible();
 			await page.getByRole('button', { name: 'Send quote' }).evaluate((button) => {
-				const form = button.closest('form');
+				const form = (button as HTMLButtonElement).form ?? button.closest('form');
 				if (!(form instanceof HTMLFormElement)) throw new Error('Send quote form not found.');
-				form.requestSubmit();
+				form.requestSubmit(button as HTMLButtonElement);
 			});
 			await expect(page.getByText('submitted', { exact: true })).toBeVisible();
 			await page.getByRole('radio', { name: 'Customer accepted' }).check();
@@ -46,10 +46,10 @@ test.describe('P17 Sales-to-Fulfilment tracer bullet', () => {
 				.getByLabel('Acceptance evidence')
 				.fill('Customer approved the Quote by email during the P17 browser journey.');
 			await page.getByRole('button', { name: 'Customer accepted' }).evaluate((button) => {
-				const form = button.closest('form');
+				const form = (button as HTMLButtonElement).form ?? button.closest('form');
 				if (!(form instanceof HTMLFormElement))
 					throw new Error('Customer accepted form not found.');
-				form.requestSubmit();
+				form.requestSubmit(button as HTMLButtonElement);
 			});
 			await expect(
 				page.locator('[data-tone="success"]').filter({ hasText: /^Accepted$/ })

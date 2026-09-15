@@ -166,10 +166,36 @@ test('quote editor carries enquiry dimensions through a draft and exposes readin
 
 		const dimensionalLine = page.locator('.line-item').filter({ hasText: productCode });
 		await expect(dimensionalLine).toHaveCount(1);
-		await expect(dimensionalLine.getByLabel('Width (required)')).toBeVisible();
-		await expect(dimensionalLine.getByLabel('Height (required)')).toBeVisible();
+		const customLine = page.locator('.line-item').filter({ hasText: 'Existing custom line' });
+		await expect(customLine.locator('[data-line-item-toggle]')).toHaveAttribute(
+			'aria-expanded',
+			'false'
+		);
+		await expect(
+			page.getByRole('heading', { name: 'Quote measurements', exact: true })
+		).toBeVisible();
+		await expect(
+			page.getByRole('heading', { name: 'Add from catalogue', exact: true })
+		).toBeVisible();
+		const measurements = page.getByTestId('quote-measurements-editor');
+		const measurementsBeforePicker = await measurements.evaluate((element) => {
+			const picker = document.querySelector('.product-picker');
+			return Boolean(
+				picker && element.compareDocumentPosition(picker) & Node.DOCUMENT_POSITION_FOLLOWING
+			);
+		});
+		expect(measurementsBeforePicker).toBe(true);
+		await expect(measurements).toBeVisible();
+		await expect(
+			measurements.getByRole('button', { name: /Dimensional editor Product/ })
+		).toBeVisible();
+		await expect(measurements.getByLabel('Width (required)')).toBeVisible();
+		await expect(measurements.getByLabel('Height (required)')).toBeVisible();
 		await expect(dimensionalLine.getByText('1', { exact: true })).toBeVisible();
 		await expect(dimensionalLine.getByLabel('Full quoted price')).toBeVisible();
+		await expect(
+			dimensionalLine.getByRole('button', { name: /Dimensional editor Product/ })
+		).toHaveAttribute('aria-expanded', 'true');
 		await expect(page.getByText('1500 mm', { exact: true })).toBeVisible();
 		await expect(page.getByText('1200 mm', { exact: true })).toBeVisible();
 		await expect(page.getByText('Openings', { exact: true })).toBeVisible();
@@ -182,10 +208,7 @@ test('quote editor carries enquiry dimensions through a draft and exposes readin
 		const customBefore = beforeApply.find((item) => item.name === 'Existing custom line');
 		expect(customBefore).not.toHaveProperty('dimensions');
 
-		await page.getByLabel('Apply Width/Height to line').selectOption({
-			label: 'Dimensional editor Product'
-		});
-		await page.getByRole('button', { name: 'Apply to line', exact: true }).click();
+		await page.getByRole('button', { name: 'Use on active item', exact: true }).click();
 		const afterApply = JSON.parse(await itemsField.inputValue()) as Array<Record<string, unknown>>;
 		const dimensionalAfterApply = afterApply.find(
 			(item) => item.name === 'Dimensional editor Product'
@@ -196,7 +219,7 @@ test('quote editor carries enquiry dimensions through a draft and exposes readin
 		]);
 		expect(afterApply.filter((item) => item.dimensions).length).toBe(1);
 
-		await dimensionalLine.getByLabel('Width (required)').fill('');
+		await measurements.getByLabel('Width (required)').fill('');
 		await dimensionalLine.getByLabel('Full quoted price').fill('1400');
 		const saveRequestPromise = page.waitForRequest(
 			(request) =>
@@ -222,7 +245,12 @@ test('quote editor carries enquiry dimensions through a draft and exposes readin
 			{ key: 'height', label: 'Height', unit: 'mm', required: true, value: '1200' }
 		]);
 		const reloadedDimensionalLine = page.locator('.line-item').filter({ hasText: productCode });
-		await expect(reloadedDimensionalLine.getByLabel('Width (required)')).toHaveValue('');
+		await expect(reloadedDimensionalLine.locator('[data-line-item-toggle]')).toHaveAttribute(
+			'aria-expanded',
+			'false'
+		);
+		await measurements.getByRole('button', { name: /Dimensional editor Product/ }).click();
+		await expect(measurements.getByLabel('Width (required)')).toHaveValue('');
 		await expect(reloadedDimensionalLine.getByLabel('Full quoted price')).toHaveValue('1400');
 
 		await page.getByRole('button', { name: 'Review quote', exact: true }).click();
@@ -231,9 +259,9 @@ test('quote editor carries enquiry dimensions through a draft and exposes readin
 				.locator('.ui-state__message')
 				.filter({ hasText: 'A ready Quote requires all required Product dimensions' })
 		).toBeVisible();
-		await expect(
-			page.locator('.line-item').filter({ hasText: productCode }).getByRole('alert')
-		).toContainText('A ready Quote requires all required Product dimensions');
+		await expect(page.getByTestId('quote-measurements-editor').getByRole('alert')).toContainText(
+			'A ready Quote requires all required Product dimensions'
+		);
 	} finally {
 		await runCleanup([
 			...leadIds.map((leadId) => ({
