@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { parseQuoteItems } from './quote-form';
+import { parseQuoteItems, quoteFormFailureValues } from './quote-form';
 
 const productDimensions = [
 	{ key: 'width', label: 'Width', unit: 'mm', required: true, value: '1500' },
@@ -13,6 +13,13 @@ function formWithItems(items: unknown[]) {
 }
 
 describe('quote form item parsing', () => {
+	it('preserves the active line key during failure rehydration', () => {
+		const form = formWithItems([]);
+		form.set('active_item_key', 'new-2');
+
+		expect(quoteFormFailureValues(form)).toMatchObject({ active_item_key: 'new-2' });
+	});
+
 	it('preserves pending catalogue identity and excludes server-owned fields', () => {
 		const [item] = parseQuoteItems(
 			formWithItems([

@@ -13,9 +13,9 @@ import {
 
 async function submitFormButton(button: import('@playwright/test').Locator) {
 	await button.evaluate((element) => {
-		const form = element.closest('form');
+		const form = (element as HTMLButtonElement).form ?? element.closest('form');
 		if (!(form instanceof HTMLFormElement)) throw new Error('Action form not found.');
-		form.requestSubmit();
+		form.requestSubmit(element as HTMLButtonElement);
 	});
 }
 

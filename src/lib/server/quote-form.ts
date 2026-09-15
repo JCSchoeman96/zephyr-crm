@@ -159,6 +159,7 @@ export function quoteFormFailureValues(form: FormData): Record<string, string> {
 		'currency',
 		'lock_version',
 		'items',
+		'active_item_key',
 		'quote_failure_rehydration_catalogue_display'
 	];
 	return Object.fromEntries(

@@ -294,22 +294,23 @@ test('Product dimensions stay independent from enquiry through quote presentatio
 		await expect(enquiry).toContainText('1500 mm');
 		await expect(enquiry).toContainText('1200 mm');
 		await expect(enquiry).toContainText('3');
-		const measurementTarget = page.getByLabel('Apply Width/Height to line');
-		const firstTargetValue = await measurementTarget.locator('option').nth(1).getAttribute('value');
-		if (!firstTargetValue) throw new Error('The first dimensional line was not selectable.');
-		await measurementTarget.selectOption(firstTargetValue);
-		await page.getByRole('button', { name: 'Apply to line', exact: true }).click();
-		await expect(dimensionLine(blindsLines, 0).getByLabel('Width (required)')).toHaveValue('1500');
-		await expect(dimensionLine(blindsLines, 0).getByLabel('Height (required)')).toHaveValue('1200');
+		const measurements = page.getByTestId('quote-measurements-editor');
+		const measurementLines = measurements.locator('.measurement-line');
+		await measurementLines.nth(0).click();
+		await page.getByRole('button', { name: 'Use on active item', exact: true }).click();
+		await expect(measurements.getByLabel('Width (required)')).toHaveValue('1500');
+		await expect(measurements.getByLabel('Height (required)')).toHaveValue('1200');
 
-		await dimensionLine(blindsLines, 0).getByLabel('Width (required)').fill('1500');
-		await dimensionLine(blindsLines, 0).getByLabel('Height (required)').fill('1500');
+		await measurements.getByLabel('Width (required)').fill('1500');
+		await measurements.getByLabel('Height (required)').fill('1500');
 		await dimensionLine(blindsLines, 0).getByLabel('Full quoted price').fill('1500');
-		await dimensionLine(blindsLines, 1).getByLabel('Width (required)').fill('1000');
-		await dimensionLine(blindsLines, 1).getByLabel('Height (required)').fill('900');
+		await measurementLines.nth(1).click();
+		await measurements.getByLabel('Width (required)').fill('1000');
+		await measurements.getByLabel('Height (required)').fill('900');
 		await dimensionLine(blindsLines, 1).getByLabel('Full quoted price').fill('1000');
-		await shuttersLine.getByLabel('Width (required)').fill('2500');
-		await shuttersLine.getByLabel('Height (required)').fill('1500');
+		await measurementLines.nth(2).click();
+		await measurements.getByLabel('Width (required)').fill('2500');
+		await measurements.getByLabel('Height (required)').fill('1500');
 		await shuttersLine.getByLabel('Full quoted price').fill('3000');
 		await saveDraft(page);
 
@@ -322,13 +323,22 @@ test('Product dimensions stay independent from enquiry through quote presentatio
 			dimensionLine(blindsLines, 1),
 			shuttersLine
 		]) {
-			await expect(line.locator('input[type="hidden"][name^="quote-item-quantity-"]')).toHaveValue(
-				'1'
+			await expect(line.locator('[data-line-item-toggle]')).toHaveAttribute(
+				'aria-expanded',
+				'false'
 			);
-			await expect(line.locator('input[id^="quote-item-quantity-"]')).toHaveCount(0);
 		}
+		await measurementLines.nth(0).click();
+		await expect(measurements.getByLabel('Width (required)')).toHaveValue('1500');
+		await expect(measurements.getByLabel('Height (required)')).toHaveValue('1500');
 		await expect(dimensionLine(blindsLines, 0).getByLabel('Full quoted price')).toHaveValue('1500');
+		await measurementLines.nth(1).click();
+		await expect(measurements.getByLabel('Width (required)')).toHaveValue('1000');
+		await expect(measurements.getByLabel('Height (required)')).toHaveValue('900');
 		await expect(dimensionLine(blindsLines, 1).getByLabel('Full quoted price')).toHaveValue('1000');
+		await measurementLines.nth(2).click();
+		await expect(measurements.getByLabel('Width (required)')).toHaveValue('2500');
+		await expect(measurements.getByLabel('Height (required)')).toHaveValue('1500');
 		await expect(shuttersLine.getByLabel('Full quoted price')).toHaveValue('3000');
 
 		const preview = page.getByTestId('quote-document-preview');
@@ -354,22 +364,22 @@ test('Product dimensions stay independent from enquiry through quote presentatio
 		expect(await page.locator('body').innerText()).not.toContain('private internal note');
 		await expect(preview.locator('.item-line')).toHaveCount(3);
 
-		await dimensionLine(blindsLines, 1).getByLabel('Width (required)').fill('');
+		await measurementLines.nth(1).click();
+		await measurements.getByLabel('Width (required)').fill('');
 		await saveDraft(page);
+		await measurementLines.nth(1).click();
 		await page.getByRole('button', { name: 'Review quote', exact: true }).click();
 		await expect(
 			page
 				.getByText('A ready Quote requires all required Product dimensions', { exact: true })
 				.first()
 		).toBeVisible();
-		await expect(
-			dimensionLine(page.locator('.line-item').filter({ hasText: blockoutCode }), 1).getByRole(
-				'alert'
-			)
-		).toContainText('A ready Quote requires all required Product dimensions');
+		await expect(page.getByTestId('quote-measurements-editor').getByRole('alert')).toContainText(
+			'A ready Quote requires all required Product dimensions'
+		);
 
 		blindsLines = page.locator('.line-item').filter({ hasText: blockoutCode });
-		await dimensionLine(blindsLines, 1).getByLabel('Width (required)').fill('1000');
+		await measurements.getByLabel('Width (required)').fill('1000');
 		await saveDraft(page);
 
 		await authenticatedRpc(
@@ -395,28 +405,27 @@ test('Product dimensions stay independent from enquiry through quote presentatio
 		)) as { lock_version: number };
 		blockout.lockVersion = changedProduct.lock_version;
 		await page.reload({ waitUntil: 'networkidle' });
-		await expect(
-			page.getByText('Product changed since this line was added', { exact: true })
-		).toHaveCount(2);
-		await expect(page.getByRole('button', { name: 'Keep Quoted Values', exact: true })).toHaveCount(
-			2
-		);
-
 		for (let index = 0; index < 2; index += 1) {
-			await page.getByRole('button', { name: 'Keep Quoted Values', exact: true }).first().click();
+			await measurementLines.nth(index).click();
+			await expect(
+				page.getByText('Product changed since this line was added', { exact: true })
+			).toHaveCount(1);
+			await page.getByRole('button', { name: 'Keep Quoted Values', exact: true }).click();
 			await page.waitForLoadState('networkidle');
 		}
 		await expect(
 			page.getByText('Product changed since this line was added', { exact: true })
 		).toHaveCount(0);
 		blindsLines = page.locator('.line-item').filter({ hasText: blockoutCode });
-		await expect(dimensionLine(blindsLines, 0).getByLabel('Width (required)')).toHaveValue('1500');
-		await expect(dimensionLine(blindsLines, 0).getByLabel('Height (required)')).toHaveValue('1500');
-		await expect(dimensionLine(blindsLines, 1).getByLabel('Width (required)')).toHaveValue('1000');
-		await expect(dimensionLine(blindsLines, 1).getByLabel('Height (required)')).toHaveValue('900');
+		await measurementLines.nth(0).click();
+		await expect(measurements.getByLabel('Width (required)')).toHaveValue('1500');
+		await expect(measurements.getByLabel('Height (required)')).toHaveValue('1500');
 		await expect(dimensionLine(blindsLines, 0).getByLabel('Full quoted price')).toHaveValue('1500');
-		await expect(dimensionLine(blindsLines, 1).getByLabel('Full quoted price')).toHaveValue('1000');
 		await expect(dimensionLine(blindsLines, 0).getByText('Blinds', { exact: true })).toBeVisible();
+		await measurementLines.nth(1).click();
+		await expect(measurements.getByLabel('Width (required)')).toHaveValue('1000');
+		await expect(measurements.getByLabel('Height (required)')).toHaveValue('900');
+		await expect(dimensionLine(blindsLines, 1).getByLabel('Full quoted price')).toHaveValue('1000');
 		await expect(
 			page.getByTestId('quote-document-preview').locator('tbody[aria-label="Blinds"]')
 		).toHaveCount(1);

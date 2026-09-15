@@ -174,9 +174,18 @@
 								: undefined;
 						const base = loaded
 							? editorItem(loaded)
-							: { source_type: 'custom', name: '', dimensions: [] as DimensionValue[] };
+							: {
+									editorKey: undefined,
+									source_type: 'custom' as const,
+									name: '',
+									dimensions: [] as DimensionValue[]
+								};
 						return {
 							...base,
+							editorKey:
+								typeof record.editor_key === 'string' && record.editor_key.trim()
+									? record.editor_key.trim()
+									: base.editorKey,
 							name: base.source_type === 'catalogue' ? base.name : String(record.name ?? ''),
 							description: String(record.description ?? ''),
 							quantity: String(record.quantity ?? '1'),
@@ -197,6 +206,7 @@
 		const source = data.productSources.find((value) => value.quoteItemId === item.id);
 		const dimensions = safePersistedDimensions(item.dimensions);
 		return {
+			editorKey: item.id,
 			id: item.id,
 			name: item.name,
 			description: item.description ?? '',
@@ -341,6 +351,11 @@
 			reviewAction="?/reviewProduct"
 			presentationModel={data.presentationModel}
 			initialItems={initialItems()}
+			initialActiveItemKey={formValue('active_item_key', '')}
+			focusItemKey={data.focusItemKey}
+			formId={`quote-editor-${data.quote.id}`}
+			markReadyAction="?/markReady"
+			sendAction="?/send"
 			errorMessage={form?.message ?? ''}
 			leadMeasurements={data.leadMeasurements}
 			status={data.quote.status}
@@ -365,33 +380,6 @@
 			}))}
 			status={data.quote.status}
 		/>
-	{/if}
-
-	{#if nextStep === 'review' || nextStep === 'send'}
-		<section class="quote-next-step" aria-label="Quote next step">
-			{#if nextStep === 'review'}
-				<Card title="Next step">
-					<p>Check the items and totals, then review this quote when it is ready to send.</p>
-					<form method="POST" action="?/markReady">
-						<input type="hidden" name="lock_version" value={data.quote.lock_version} /><Button
-							type="submit">Review quote</Button
-						>
-					</form>
-				</Card>
-			{:else}
-				<Card title="Ready to send">
-					<p>Check what the customer will receive, then send this quote.</p>
-					{#if canEditQuote()}
-						<p class="muted">You can still edit this quote before sending.</p>
-					{/if}
-					<form method="POST" action="?/send">
-						<input type="hidden" name="lock_version" value={data.quote.lock_version} /><Button
-							type="submit">Send quote</Button
-						>
-					</form>
-				</Card>
-			{/if}
-		</section>
 	{/if}
 
 	<div class="detail-grid">

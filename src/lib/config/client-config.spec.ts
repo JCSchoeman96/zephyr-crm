@@ -7,6 +7,13 @@ import {
 } from './client-config';
 
 describe('client configuration contract', () => {
+	it('uses a 15 percent tax rate in the client fallback configuration', () => {
+		expect(defaultClientConfiguration.quotes.taxRate).toBe(15);
+		expect(defaultClientConfiguration.quotes.taxRate).toBe(
+			parsePublicClientConfiguration().quotes.taxRate
+		);
+	});
+
 	it('parses the complete non-secret template', () => {
 		const configuration = parseClientConfiguration({
 			...defaultClientConfiguration,

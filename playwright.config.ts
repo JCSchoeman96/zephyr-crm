@@ -26,6 +26,12 @@ const localApiUrl = process.env.SUPABASE_URL ?? local.API_URL;
 const localAnonKey =
 	process.env.PUBLIC_SUPABASE_PUBLISHABLE_KEY ?? local.ANON_KEY ?? local.PUBLISHABLE_KEY;
 const localServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY ?? local.SERVICE_ROLE_KEY;
+const requestedPreviewPort = Number(process.env.ZEPHYR_PREVIEW_PORT ?? 4173);
+const previewPort =
+	Number.isInteger(requestedPreviewPort) && requestedPreviewPort > 0 && requestedPreviewPort < 65536
+		? requestedPreviewPort
+		: 4173;
+const previewUrl = process.env.ZEPHYR_APP_URL ?? `http://127.0.0.1:${previewPort}`;
 const appEnvironment: Record<string, string> = {
 	ZEPHYR_COMPONENT_LAB_ENABLED: process.env.ZEPHYR_COMPONENT_LAB_ENABLED ?? '1',
 	BRICKS_WEBHOOK_SECRET: 'p14-browser-bricks-secret',
@@ -36,7 +42,7 @@ const appEnvironment: Record<string, string> = {
 	SENDPULSE_SENDER_EMAIL: 'sales@p14.example.test',
 	SENDPULSE_SENDER_NAME: 'P14 Example Sales',
 	SENDPULSE_WEBHOOK_SECRET: 'p14-browser-sendpulse-secret',
-	PUBLIC_SITE_URL: 'http://127.0.0.1:4173'
+	PUBLIC_SITE_URL: previewUrl
 };
 if (localApiUrl) {
 	appEnvironment.PUBLIC_SUPABASE_URL = localApiUrl;
@@ -54,12 +60,12 @@ export default defineConfig({
 			reuseExistingServer: false
 		},
 		{
-			command: 'bun scripts/test-p14-preview.mjs',
-			port: 4173,
+			command: `ZEPHYR_PREVIEW_PORT=${previewPort} bun scripts/test-p14-preview.mjs`,
+			port: previewPort,
 			env: appEnvironment,
 			reuseExistingServer: false
 		}
 	],
 	testMatch: '**/*.e2e.{ts,js}',
-	use: { baseURL: 'http://127.0.0.1:4173' }
+	use: { baseURL: previewUrl }
 });

@@ -71,6 +71,10 @@
 								? displayRecord[name]
 								: record[name];
 						return {
+							editorKey:
+								typeof record.editor_key === 'string' && record.editor_key.trim()
+									? record.editor_key.trim()
+									: undefined,
 							name: String(record.name ?? ''),
 							description: String(record.description ?? ''),
 							quantity: String(record.quantity ?? '1'),
@@ -139,6 +143,8 @@
 		validUntil={formValue('valid_until', defaultValidUntil(data.quoteDefaults.validity_days))}
 		currency={formValue('currency', 'ZAR')}
 		initialItems={initialItems()}
+		initialActiveItemKey={formValue('active_item_key', '')}
+		formId="quote-editor-new"
 		errorMessage={form?.message ?? ''}
 	/>
 </AppShell>

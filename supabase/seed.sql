@@ -27,7 +27,7 @@ insert into public.app_settings (setting_key, setting_value, description)
 values
 	('company_identity', '{"name":"Zephyr CRM","logo_path":"","brand_tokens":{"primary":"#315cce","primary_strong":"#2649a8","accent":"#d9773b"}}'::jsonb, 'Non-secret company identity and client brand tokens'),
 	('locale', '{"language":"en-ZA","timezone":"Africa/Johannesburg","currency":"ZAR","date_format":"dd/MM/yyyy"}'::jsonb, 'Presentation and scheduling defaults'),
-	('quote_defaults', '{"prefix":"Q-","tax_label":"VAT","validity_days":30,"tax_rate":0,"terms":"","bank_details":""}'::jsonb, 'Non-secret commercial defaults for new quotes'),
+	('quote_defaults', '{"prefix":"Q-","tax_label":"VAT","validity_days":30,"tax_rate":15,"terms":"","bank_details":""}'::jsonb, 'Non-secret commercial defaults for new quotes'),
 	('sales_rules', '{"follow_up_days":3,"stale_lead_days":14,"default_owner_email":""}'::jsonb, 'Lead follow-up and stale-opportunity rules'),
 	('email_defaults', '{"sender_email":"","sender_name":"Zephyr CRM","reply_to":"","template_ids":{}}'::jsonb, 'Non-secret sender identity and message template identifiers'),
 	('integration_identifiers', '{"bricks_form_id":"contact-form","sendpulse_api_base_url":"https://api.sendpulse.com","sendpulse_sender_domain":"","sendpulse_template_ids":{}}'::jsonb, 'Non-secret external integration identifiers'),

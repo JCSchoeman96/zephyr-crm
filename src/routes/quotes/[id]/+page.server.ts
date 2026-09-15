@@ -90,6 +90,8 @@ function recipientFrom(lead: Record<string, unknown>, client: Record<string, unk
 
 export const load: PageServerLoad = async (event) => {
 	const { supabase, profile } = await requireActiveStaff(event);
+	const requestedFocusItemKey = event.url.searchParams.get('focus_item')?.trim() ?? '';
+	const focusItemKey = uuidPattern.test(requestedFocusItemKey) ? requestedFocusItemKey : null;
 	const quoteResponse = await supabase
 		.from('quotes')
 		.select('*')
@@ -231,6 +233,7 @@ export const load: PageServerLoad = async (event) => {
 		productSources,
 		presentationModel,
 		leadMeasurements,
+		focusItemKey,
 		profile
 	};
 };
@@ -253,10 +256,12 @@ export const actions: Actions = {
 	},
 	markReady: async (event) => {
 		const { supabase } = await requireActiveStaff(event);
+		const form = await event.request.formData();
+		const values = quoteFormFailureValues(form);
 		try {
 			const response = await supabase.rpc('mark_quote_ready', {
 				p_quote_id: event.params.id,
-				p_lock_version: lockVersion(await event.request.formData())
+				p_lock_version: lockVersion(form)
 			});
 			if (response.error) {
 				if (
@@ -265,7 +270,8 @@ export const actions: Actions = {
 				) {
 					return fail(422, {
 						message: 'A ready Quote requires all required Product dimensions',
-						code: 'VALIDATION'
+						code: 'VALIDATION',
+						values
 					});
 				}
 				if (
@@ -274,13 +280,14 @@ export const actions: Actions = {
 				) {
 					return fail(422, {
 						message: 'Quote has unresolved Product source changes',
-						code: 'VALIDATION'
+						code: 'VALIDATION',
+						values
 					});
 				}
-				return actionFailure(response.error, 'Could not mark Quote ready');
+				return actionFailure(response.error, 'Could not mark Quote ready', values);
 			}
 		} catch (actionError) {
-			return actionFailure(actionError, 'Could not mark Quote ready');
+			return actionFailure(actionError, 'Could not mark Quote ready', values);
 		}
 		throw redirect(303, `/quotes/${event.params.id}`);
 	},
@@ -297,10 +304,16 @@ export const actions: Actions = {
 				p_quantity: quantity
 			} as never);
 			if (response.error) return actionFailure(response.error, 'Could not add Product to Quote');
+			const focusItemKey = String(record(response.data).quote_item_id ?? '');
+			const focusQuery = uuidPattern.test(focusItemKey)
+				? `?focus_item=${encodeURIComponent(focusItemKey)}`
+				: '';
+			throw redirect(303, `/quotes/${event.params.id}${focusQuery}`);
 		} catch (actionError) {
+			if (actionError && typeof actionError === 'object' && 'status' in actionError)
+				throw actionError;
 			return actionFailure(actionError, 'Could not add Product to Quote');
 		}
-		throw redirect(303, `/quotes/${event.params.id}`);
 	},
 	refreshProduct: async (event) => {
 		const { supabase } = await requireActiveStaff(event);

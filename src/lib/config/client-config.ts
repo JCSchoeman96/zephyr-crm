@@ -98,7 +98,7 @@ export const defaultClientConfiguration: ClientConfiguration = {
 	quotes: {
 		prefix: 'Q-',
 		taxLabel: 'VAT',
-		taxRate: 0,
+		taxRate: 15,
 		defaultValidityDays: 30,
 		terms: '',
 		bankDetails: ''
