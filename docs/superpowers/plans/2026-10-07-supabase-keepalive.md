@@ -267,7 +267,7 @@ Expected: `Supabase keepalive database contract passed`.
 - Create: `workers/supabase-keepalive/worker-configuration.d.ts` (generated)
 - Create: `tsconfig.keepalive.json`
 - Modify: `package.json`
-- Modify: `docs/OPERATIONS.md`
+- Create: `docs/SUPABASE_KEEPALIVE_OPERATIONS.md`
 
 - [x] **Step 1: Add the dedicated Wrangler config**
 
@@ -294,7 +294,7 @@ Add `bun run keepalive:check` to the project `check` command so the separate Wor
 
 - [x] **Step 3: Document operation and the Free Plan limit**
 
-Add a `Supabase keepalive` subsection to `docs/OPERATIONS.md`. State the 04:15 UTC schedule, explain that hosted migration application must precede deployment, document `bun run keepalive:dry-run` and `bun run wrangler deploy --config workers/supabase-keepalive/wrangler.jsonc`, and state that this is best-effort for Free Plan activity. Do not deploy or apply the hosted migration.
+Create `docs/SUPABASE_KEEPALIVE_OPERATIONS.md` with the 04:15 UTC schedule, the hosted migration-before-deployment order, `bun run keepalive:dry-run`, the Worker deployment command, and the Free Plan best-effort limit. Keep `docs/OPERATIONS.md` unchanged because it is part of the frozen v1.4 authority hash set. Do not deploy or apply the hosted migration.
 
 - [x] **Step 4: Run focused validation and inspect the final diff**
 

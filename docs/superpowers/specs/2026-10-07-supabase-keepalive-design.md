@@ -18,7 +18,7 @@ The scheduled handler treats a non-success response or a response other than JSO
 
 ## Validation and rollout
 
-Validate the migration locally, generate and check Wrangler types for the separate config, run the scheduled handler against the local Supabase stack, and use Wrangler's dry-run packaging check. Do not deploy the Worker or apply the migration to hosted Supabase as part of this change. Document the deploy and hosted migration steps for a separately authorized rollout.
+Validate the migration locally, generate and check Wrangler types for the separate config, run the scheduled handler against the local Supabase stack, and use Wrangler's dry-run packaging check. Do not deploy the Worker or apply the migration to hosted Supabase as part of this change. Record the deploy and hosted migration steps in `docs/SUPABASE_KEEPALIVE_OPERATIONS.md` for a separately authorized rollout.
 
 ## Limit
 
