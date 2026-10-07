@@ -2203,6 +2203,7 @@ export type Database = {
 				};
 				Returns: Json;
 			};
+			keepalive: { Args: never; Returns: boolean };
 			mark_payment_not_required: {
 				Args: {
 					p_lock_version: number;

@@ -331,7 +331,7 @@ const p1Proofs = {
 			command: 'bun run check',
 			source: 'package.json',
 			assertion:
-				'"check": "bun run gen && wrangler types --include-env=false --check && svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",'
+				'"check": "bun run gen && wrangler types --include-env=false --check && bun run keepalive:check && svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",'
 		}
 	},
 	'P1-T03': {
