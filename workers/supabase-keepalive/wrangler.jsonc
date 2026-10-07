@@ -1,6 +1,7 @@
 {
 	"$schema": "../../node_modules/wrangler/config-schema.json",
 	"name": "zephyr-supabase-keepalive",
+	"account_id": "cab06cfd9963d7c5d210ca17a4f439ad",
 	"main": "src/index.ts",
 	"compatibility_date": "2026-10-07",
 	"triggers": {
