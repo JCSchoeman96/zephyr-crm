@@ -16,7 +16,7 @@
 - Create: `scripts/test-supabase-keepalive-worker.mjs`
 - Create: `scripts/test-supabase-keepalive-db.mjs`
 
-- [ ] **Step 1: Add the Worker behavior check before Worker code**
+- [x] **Step 1: Add the Worker behavior check before Worker code**
 
 Create `scripts/test-supabase-keepalive-worker.mjs` with this test:
 
@@ -86,13 +86,13 @@ try {
 console.log('Supabase keepalive Worker checks passed');
 ```
 
-- [ ] **Step 2: Run the Worker check to verify the expected failure**
+- [x] **Step 2: Run the Worker check to verify the expected failure**
 
 Run: `bun scripts/test-supabase-keepalive-worker.mjs`
 
 Expected: non-zero exit with `Keepalive scheduled handler is missing`.
 
-- [ ] **Step 3: Add a local database and API contract check**
+- [x] **Step 3: Add a local database and API contract check**
 
 Create `scripts/test-supabase-keepalive-db.mjs` with these local-only assertions:
 
@@ -159,7 +159,7 @@ assert.equal(await response.json(), true, 'keepalive RPC must return JSON true')
 console.log('Supabase keepalive database contract passed');
 ```
 
-- [ ] **Step 4: Start and reset only the local Supabase stack, then verify the database check fails before the migration exists**
+- [x] **Step 4: Start and reset only the local Supabase stack, then verify the database check fails before the migration exists**
 
 Run:
 
@@ -176,8 +176,9 @@ Expected: the database check exits non-zero with `keepalive function is not inst
 **Files:**
 - Create: `supabase/migrations/20261007100000_supabase_keepalive.sql`
 - Create: `workers/supabase-keepalive/src/index.ts`
+- Modify: `src/lib/types/database.ts` (generated public function type)
 
-- [ ] **Step 1: Add the forward-only migration**
+- [x] **Step 1: Add the forward-only migration**
 
 Use this SQL:
 
@@ -200,14 +201,11 @@ grant execute on function public.keepalive() to anon;
 commit;
 ```
 
-- [ ] **Step 2: Add the Worker handler**
+- [x] **Step 2: Add the Worker handler**
 
-Generate the Worker environment declarations from the dedicated Wrangler config in Task 3. Reference the generated `KeepaliveWorkerEnv` and the repository's generated Workers runtime declarations. Implement this handler:
+Generate the Worker environment declarations from the dedicated Wrangler config in Task 3. Implement this handler using the generated `KeepaliveWorkerEnv` and repository Workers runtime declarations:
 
 ```ts
-/// <reference path="../worker-configuration.d.ts" />
-/// <reference path="../../../worker-configuration.d.ts" />
-
 export default {
 	async scheduled(controller: ScheduledController, env: KeepaliveWorkerEnv): Promise<void> {
 		const event = {
@@ -245,13 +243,13 @@ export default {
 } satisfies ExportedHandler<KeepaliveWorkerEnv>;
 ```
 
-- [ ] **Step 3: Run the Worker behavior check**
+- [x] **Step 3: Run the Worker behavior check**
 
 Run: `bun scripts/test-supabase-keepalive-worker.mjs`
 
 Expected: `Supabase keepalive Worker checks passed`.
 
-- [ ] **Step 4: Reset local Supabase and run the database contract check**
+- [x] **Step 4: Reset local Supabase and run the database contract check**
 
 Run:
 
@@ -267,14 +265,15 @@ Expected: `Supabase keepalive database contract passed`.
 **Files:**
 - Create: `workers/supabase-keepalive/wrangler.jsonc`
 - Create: `workers/supabase-keepalive/worker-configuration.d.ts` (generated)
+- Create: `tsconfig.keepalive.json`
 - Modify: `package.json`
 - Modify: `docs/OPERATIONS.md`
 
-- [ ] **Step 1: Add the dedicated Wrangler config**
+- [x] **Step 1: Add the dedicated Wrangler config**
 
 Create `workers/supabase-keepalive/wrangler.jsonc` with schema path `../../node_modules/wrangler/config-schema.json`, Worker name `zephyr-supabase-keepalive`, main path `src/index.ts`, compatibility date `2026-10-07`, and Cron expression `15 4 * * *`. Copy `SUPABASE_URL` and `PUBLIC_SUPABASE_PUBLISHABLE_KEY` values from the root `wrangler.jsonc` into non-secret Worker vars named `SUPABASE_URL` and `SUPABASE_PUBLISHABLE_KEY`. Enable Workers logs and traces with full head sampling because this job runs once daily.
 
-- [ ] **Step 2: Generate dedicated Worker types and add package scripts**
+- [x] **Step 2: Generate dedicated Worker types and add package scripts**
 
 Run: `bun run wrangler types workers/supabase-keepalive/worker-configuration.d.ts --config workers/supabase-keepalive/wrangler.jsonc --env-interface KeepaliveWorkerEnv --include-runtime=false`
 
@@ -285,16 +284,19 @@ Add these scripts to `package.json` and preserve the frozen exact dependency ver
 	"test:keepalive:worker": "bun scripts/test-supabase-keepalive-worker.mjs",
 	"test:keepalive:db": "bun scripts/test-supabase-keepalive-db.mjs",
 	"keepalive:types": "wrangler types workers/supabase-keepalive/worker-configuration.d.ts --config workers/supabase-keepalive/wrangler.jsonc --env-interface KeepaliveWorkerEnv --include-runtime=false",
-	"keepalive:types:check": "wrangler types workers/supabase-keepalive/worker-configuration.d.ts --config workers/supabase-keepalive/wrangler.jsonc --env-interface KeepaliveWorkerEnv --include-runtime=false --check",
+	"keepalive:types:check": "bun run keepalive:types && wrangler types workers/supabase-keepalive/worker-configuration.d.ts --config workers/supabase-keepalive/wrangler.jsonc --env-interface KeepaliveWorkerEnv --include-runtime=false --check",
+	"keepalive:check": "bun run gen && bun run keepalive:types && tsc --noEmit --project tsconfig.keepalive.json",
 	"keepalive:dry-run": "wrangler deploy --dry-run --config workers/supabase-keepalive/wrangler.jsonc"
 }
 ```
 
-- [ ] **Step 3: Document operation and the Free Plan limit**
+Add `bun run keepalive:check` to the project `check` command so the separate Worker source is checked with the generated runtime and environment types.
+
+- [x] **Step 3: Document operation and the Free Plan limit**
 
 Add a `Supabase keepalive` subsection to `docs/OPERATIONS.md`. State the 04:15 UTC schedule, explain that hosted migration application must precede deployment, document `bun run keepalive:dry-run` and `bun run wrangler deploy --config workers/supabase-keepalive/wrangler.jsonc`, and state that this is best-effort for Free Plan activity. Do not deploy or apply the hosted migration.
 
-- [ ] **Step 4: Run focused validation and inspect the final diff**
+- [x] **Step 4: Run focused validation and inspect the final diff**
 
 Run:
 
@@ -302,8 +304,10 @@ Run:
 bun run test:keepalive:worker
 bun run test:keepalive:db
 bun run db:test
+bun run db:types:check
 bun run keepalive:types
 bun run keepalive:types:check
+bun run keepalive:check
 bun run keepalive:dry-run
 bun run check
 bun run lint

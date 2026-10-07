@@ -1,0 +1,25 @@
+{
+	"$schema": "../../node_modules/wrangler/config-schema.json",
+	"name": "zephyr-supabase-keepalive",
+	"main": "src/index.ts",
+	"compatibility_date": "2026-10-07",
+	"triggers": {
+		"crons": ["15 4 * * *"]
+	},
+	"vars": {
+		"SUPABASE_URL": "https://ccetqjnptbktttlajzba.supabase.co",
+		"SUPABASE_PUBLISHABLE_KEY": "sb_publishable_rKenWxVc6Lu6_4SYS1u4Vg_S2otptI9"
+	},
+	"observability": {
+		"enabled": true,
+		"head_sampling_rate": 1,
+		"logs": {
+			"enabled": true,
+			"head_sampling_rate": 1
+		},
+		"traces": {
+			"enabled": true,
+			"head_sampling_rate": 1
+		}
+	}
+}
